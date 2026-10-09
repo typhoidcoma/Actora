@@ -1,4 +1,5 @@
 import type { EmotionVector, MoodState, PrimaryEmotion } from '../aelora/protocol'
+import { useScheme } from '../stores/scheme'
 import { BRAND, EXT } from './brand'
 
 export type RGB = [number, number, number]
@@ -10,33 +11,33 @@ const hex = (h: string): RGB => {
 }
 
 // Brand palette + extensions (src/ui/brand.ts).
-const NAVY = hex(BRAND.navy)
-const ORANGE = hex(BRAND.orange)
-const YELLOW = hex(BRAND.yellow)
-const SAGE = hex(BRAND.sage)
-const TEAL = hex(BRAND.teal)
-const DEEP_TEAL = hex(EXT.deepTeal)
-const PEACH = hex(EXT.peach)
-const BUTTER = hex(EXT.butter)
-const SAGE_DEEP = hex(EXT.sageDeep)
-const EMBER = hex(EXT.ember)
-const AMBER = hex(EXT.amber)
+const INDIGO = hex(BRAND.indigo)
+const AMBER = hex(BRAND.amber)
+const ROSE = hex(BRAND.rose)
+const CRIMSON = hex(BRAND.crimson)
+const TURQUOISE = hex(BRAND.turquoise)
+const LAVENDER = hex(EXT.lavender)
+const INK = hex(EXT.ink)
 const MIST = hex(EXT.mist)
+const BUTTER = hex(EXT.butter)
+const APRICOT = hex(EXT.apricot)
+const MINT = hex(EXT.mint)
+const TEAL_DEEP = hex(EXT.tealDeep)
 const ICE = hex(EXT.ice)
 
 /** Orb interior colours per Plutchik emotion, all inside the brand palette. */
 const EMOTION_TRIADS: Record<PrimaryEmotion, Triad> = {
-  joy: [YELLOW, PEACH, BUTTER],
-  trust: [TEAL, SAGE, ICE],
-  fear: [DEEP_TEAL, NAVY, MIST],
-  surprise: [ORANGE, YELLOW, BUTTER],
-  sadness: [NAVY, MIST, DEEP_TEAL],
-  disgust: [SAGE_DEEP, NAVY, SAGE],
-  anger: [EMBER, ORANGE, AMBER],
-  anticipation: [SAGE, YELLOW, ICE],
+  joy: [AMBER, BUTTER, MINT],
+  trust: [TURQUOISE, MINT, ICE],
+  fear: [INDIGO, LAVENDER, INK],
+  surprise: [ROSE, AMBER, BUTTER],
+  sadness: [INDIGO, MIST, LAVENDER],
+  disgust: [TEAL_DEEP, INDIGO, MIST],
+  anger: [CRIMSON, ROSE, APRICOT],
+  anticipation: [AMBER, TURQUOISE, ICE],
 }
 
-export const NEUTRAL: Triad = [TEAL, SAGE, ICE]
+export const NEUTRAL: Triad = [TURQUOISE, LAVENDER, ICE]
 
 const isEmotion = (e: string): e is PrimaryEmotion => e in EMOTION_TRIADS
 
@@ -48,7 +49,13 @@ const mixTriad = (a: Triad, b: Triad, t: number): Triad =>
  * every emotion in RGB would pull complementary hues toward beige, so we don't.
  * Source: the continuous emotion vector when present, else the discrete mood.
  */
-export function orbColors(mood: MoodState | null, emotion: EmotionVector): Triad {
+export function orbColors(
+  mood: MoodState | null,
+  emotion: EmotionVector,
+  rest: string[] | null = useScheme.getState().scheme.orb,
+): Triad {
+  // Wendy can set the orb's resting colours (already guarded by the scheme engine).
+  const neutral = rest ? (rest.map(hex) as Triad) : NEUTRAL
   let ranked = (Object.entries(emotion) as Array<[string, number]>)
     .filter(([k, v]) => isEmotion(k) && v > 0.05)
     .sort((a, b) => b[1] - a[1]) as Array<[PrimaryEmotion, number]>
@@ -58,11 +65,11 @@ export function orbColors(mood: MoodState | null, emotion: EmotionVector): Triad
     ranked = [[mood.emotion as PrimaryEmotion, w]]
     if (mood.secondary && isEmotion(String(mood.secondary))) ranked.push([mood.secondary as PrimaryEmotion, w * 0.4])
   }
-  if (!ranked.length) return NEUTRAL
+  if (!ranked.length) return neutral
 
   const [[top, w1], second] = ranked
   // Weak feelings stay closer to the neutral teal base.
-  let out = mixTriad(NEUTRAL, EMOTION_TRIADS[top], Math.min(1, 0.45 + w1 * 0.7))
+  let out = mixTriad(neutral, EMOTION_TRIADS[top], Math.min(1, 0.45 + w1 * 0.7))
   if (second) out = mixTriad(out, EMOTION_TRIADS[second[0]], (second[1] / (w1 + second[1])) * 0.45)
   return out
 }

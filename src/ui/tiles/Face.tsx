@@ -1,3 +1,4 @@
+import { inkOf } from '../brand'
 import type { ReactNode } from 'react'
 
 export type Corner = 0 | 1 | 2 | 3 // tl, tr, bl, br
@@ -28,7 +29,7 @@ export function Face({
         right ? 'items-end text-right' : 'items-start text-left'
       } ${bottom ? 'justify-end' : 'justify-start'}`}
     >
-      <span className="label" style={{ color: accent }}>
+      <span className="label" style={{ color: inkOf(accent) }}>
         {label}
       </span>
       <div className={`flex items-baseline gap-2 ${right ? 'flex-row-reverse' : ''}`}>

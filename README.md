@@ -124,11 +124,15 @@ The setup follows Aelora's `docs/PUSH.md`:
 
 ### Look
 
-- **Palette.** Designer palette (`src/ui/brand.ts`, mirrored as CSS tokens): navy `#233C4B`, orange `#FF7D2D`, yellow
-  `#FAC846`, sage `#A0C382` and teal `#5F9B8C`, plus tints (peach, butter, deep teal, mist) for emotion and weather range.
-  - The semantic tokens are `accent` (teal), `urgent` (orange) and `calm` (deep sage `#5F8A3F`, readable on cream).
-  - Priority heat runs orange, then amber (`#C98A0E`, a readable yellow), then sage. Daylight is cream `#F7F2E7`; dusk
-    is deep navy.
+- **Palette.** Designer palette (`src/ui/brand.ts`): indigo `#3F3E6F`, amber `#FFBE0B`, rose `#E3425F`, crimson
+  `#DE2B52` and turquoise `#2EDDBA`, plus tints for emotion and weather range.
+  - All UI colour comes from the **scheme engine** (`src/color/`): OKLCH colour science that turns the brand (or
+    Wendy's `colors.set` request) into CSS variables for both themes. `--role-*` are fills and glows (≥3:1 on the
+    background); `--ink-*` are their readable text forms (≥4.5:1).
+  - Guardrails: gamut mapping by chroma, lightness/chroma bands, near-neutral surfaces, `urgent` always warm and
+    `calm` never, minimum ΔE between kinds and heat levels. Wendy's palette lasts 8 h by default; `colors.reset`
+    restores the brand.
+  - Priority heat runs crimson, then amber, then turquoise. Daylight is a pale indigo-white; dusk is deep indigo.
 - **Shape.** Cards are exactly 4:3 with 12px corners.
 - **Themes.**
   - **Daylight** is Hog Bristle and runs while the sun is up at your location (Open-Meteo sunrise/sunset).

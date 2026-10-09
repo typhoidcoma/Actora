@@ -1,16 +1,16 @@
-// Renders the app icon (orange/teal/navy orb on cream, yellow halo) to PNGs for the PWA manifest
+// Renders the app icon (rose/indigo orb on pale indigo, turquoise halo) to PNGs for the PWA manifest
 // and iOS home screen. Zero dependencies: rasterises with math, encodes with zlib.
 // Usage: node scripts/gen-icons.mjs
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { deflateSync } from 'node:zlib'
 
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
-const CREAM = hex('#F7F2E7')
+const CREAM = hex('#F3F3FE')
 const STOPS = [
-  [0, hex('#FDE3A0')],
-  [0.3, hex('#FF7D2D')],
-  [0.7, hex('#5F9B8C')],
-  [1, hex('#233C4B')],
+  [0, hex('#FFE08A')],
+  [0.3, hex('#E3425F')],
+  [0.7, hex('#3F3E6F')],
+  [1, hex('#1A1936')],
 ]
 const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t)
 function ramp(t) {
@@ -37,7 +37,7 @@ function render(size) {
       // soft warm halo instead of a neon glow
       const glow = Math.exp(-Math.max(0, r - R) / (size * 0.07)) * 0.35 * (1 - body)
       let col = mix(CREAM, ramp(Math.min(1, lr)), body)
-      col = mix(col, hex('#FAC846'), glow)
+      col = mix(col, hex('#2EDDBA'), glow)
       const i = (y * size + x) * 4
       px[i] = col[0]
       px[i + 1] = col[1]

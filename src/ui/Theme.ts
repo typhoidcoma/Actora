@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useUi } from '../stores/ui'
 import { isDaylight, useSky } from '../weather/sky'
-import { ROLE } from './brand'
+import { useScheme } from '../stores/scheme'
 
 export type ResolvedTheme = 'day' | 'dusk'
-
-const THEME_COLOR: Record<ResolvedTheme, string> = ROLE.themeColor
 
 /** Current theme: Wendy's or the user's override, else the sun at the user's location. */
 export function useTheme(): ResolvedTheme {
@@ -23,9 +21,10 @@ export function useTheme(): ResolvedTheme {
 /** Applies the theme to <html> (CSS tokens cross-fade) and the browser chrome colour. */
 export function useThemeSync(): ResolvedTheme {
   const theme = useTheme()
+  const chrome = useScheme((s) => s.scheme[theme].surface.bg)
   useEffect(() => {
     document.documentElement.dataset.theme = theme
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[theme])
-  }, [theme])
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', chrome)
+  }, [theme, chrome])
   return theme
 }

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { orbSignals, useAgent, type AgentState, type Reaction } from '../../stores/agent'
 import { useOptionsStore } from '../../stores/options'
 import { orbColors, type Triad } from '../palette'
+import { useScheme } from '../../stores/scheme'
 import { OrbFallback } from './OrbFallback'
 import { fragment, vertex } from './shader'
 
@@ -129,9 +130,16 @@ export function Orb() {
 
     // Colours only change when mood/emotion change; recompute lazily.
     let colors: Triad = orbColors(useAgent.getState().mood, useAgent.getState().emotion)
-    const unsub = useAgent.subscribe((s, p) => {
+    const unsubAgent = useAgent.subscribe((s, p) => {
       if (s.mood !== p.mood || s.emotion !== p.emotion) colors = orbColors(s.mood, s.emotion)
     })
+    const unsubScheme = useScheme.subscribe((s, p) => {
+      if (s.scheme.orb !== p.scheme.orb) colors = orbColors(useAgent.getState().mood, useAgent.getState().emotion)
+    })
+    const unsub = () => {
+      unsubAgent()
+      unsubScheme()
+    }
 
     const drifted: Triad = [
       [0, 0, 0],

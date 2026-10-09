@@ -1,3 +1,4 @@
+import { inkOf } from '../brand'
 import { motion, useDragControls, type PanInfo } from 'motion/react'
 import type { ReactNode } from 'react'
 import { useMetrics } from '../../stores/metrics'
@@ -68,7 +69,7 @@ export function Panel({
       >
         <div className={`min-w-0 ${lead ? 'flex min-h-14 flex-col justify-center' : ''}`}>
           {kicker && (
-            <div className="label mb-1" style={{ color: accent }}>
+            <div className="label mb-1" style={{ color: inkOf(accent) }}>
               {kicker}
             </div>
           )}

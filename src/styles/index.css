@@ -17,10 +17,12 @@
 }
 
 /*
- * Two themes over one palette: daylight (cream) and dusk (deep navy).
- * Brand palette (designer, Oct 2026; JS mirror in src/ui/brand.ts): navy #233C4B,
- * orange #FF7D2D, yellow #FAC846, sage #A0C382, teal #5F9B8C.
- * Semantic roles: accent = teal, urgent = orange, calm = sage.
+ * Two themes over one palette: daylight (pale indigo-white) and dusk (deep indigo).
+ * Brand palette (designer, Oct 2026): indigo #3F3E6F, amber #FFBE0B, rose #E3425F,
+ * crimson #DE2B52, turquoise #2EDDBA (src/ui/brand.ts).
+ * Colours are computed at runtime by the scheme engine (src/color/scheme.ts), which
+ * also guards Wendy's colour choices; the values below are its brand output, used
+ * as first-paint fallbacks. --role-* are fills/glows, --ink-* readable text.
  * Every themed value is a registered custom property so a theme change cross-fades.
  */
 @theme inline {
@@ -32,12 +34,11 @@
   --color-faint: var(--t-faint);
   --color-line: var(--t-line);
   --color-scrim: var(--t-scrim);
-  --color-on-accent: #ffffff;
+  --color-on-accent: var(--on-accent);
 
-  --color-accent: #5f9b8c;
-  --color-urgent: #ff7d2d;
-  --color-calm: #5f8a3f;
-  --color-slate: #233c4b;
+  --color-accent: var(--ink-accent);
+  --color-urgent: var(--ink-urgent);
+  --color-calm: var(--ink-calm);
 
   --font-sans: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
@@ -49,27 +50,27 @@
 @property --t-bg {
   syntax: '<color>';
   inherits: true;
-  initial-value: #f7f2e7;
+  initial-value: #f3f3fe;
 }
 @property --t-bg-2 {
   syntax: '<color>';
   inherits: true;
-  initial-value: #fbf8f1;
+  initial-value: #f9faff;
 }
 @property --t-text {
   syntax: '<color>';
   inherits: true;
-  initial-value: #233c4b;
+  initial-value: #2b2b42;
 }
 @property --t-strong {
   syntax: '<color>';
   inherits: true;
-  initial-value: #172a36;
+  initial-value: #181730;
 }
 @property --t-muted {
   syntax: '<color>';
   inherits: true;
-  initial-value: #5f7480;
+  initial-value: #606176;
 }
 @property --t-glass {
   syntax: '<color>';
@@ -85,20 +86,41 @@
 :root,
 :root[data-theme='day'] {
   color-scheme: light;
-  --t-bg: #f7f2e7;
-  --t-bg-2: #fbf8f1;
-  --t-text: #233c4b;
-  --t-strong: #172a36;
-  --t-muted: #5f7480;
-  --t-faint: #a1aeb3;
-  --t-line: rgb(35 60 75 / 0.12);
-  --t-scrim: rgb(247 242 231 / 0.55);
-  --t-glass: rgb(255 252 245 / 0.45);
-  --t-glass-thick: rgb(255 252 245 / 0.8);
+  --t-bg: #f3f3fe;
+  --t-bg-2: #f9faff;
+  --t-text: #2b2b42;
+  --t-strong: #181730;
+  --t-muted: #606176;
+  --t-faint: #a2a3b1;
+  --t-line: rgb(43 43 66 / 0.12);
+  --t-scrim: rgb(243 243 254 / 0.55);
+  --t-glass: rgb(255 255 255 / 0.45);
+  --t-glass-thick: rgb(255 255 255 / 0.8);
   --t-spec: rgb(255 255 255 / 0.85);
   --t-spec-soft: rgb(255 255 255 / 0.35);
-  --t-shade: rgb(35 60 75 / 0.08);
-  --t-drop: rgb(35 60 75 / 0.16);
+  --t-shade: rgb(43 43 66 / 0.08);
+  --t-drop: rgb(43 43 66 / 0.16);
+  --role-accent: #009f84;
+  --ink-accent: #007e69;
+  --role-urgent: #de2b52;
+  --ink-urgent: #d7224d;
+  --role-mid: #b58500;
+  --ink-mid: #916900;
+  --role-calm: #009f84;
+  --ink-calm: #007e69;
+  --role-task: #009f84;
+  --ink-task: #007e69;
+  --role-event: #424172;
+  --ink-event: #424172;
+  --role-reminder: #e3425f;
+  --ink-reminder: #d12e51;
+  --role-goal: #b58500;
+  --ink-goal: #916900;
+  --role-wendy: #424172;
+  --ink-wendy: #424172;
+  --role-finds: #e3425f;
+  --ink-finds: #d12e51;
+  --on-accent: #181730;
   --t-fringe: 0;
   --t-ambient: 0.6;
   --t-grain: 0.07;
@@ -107,20 +129,41 @@
 
 :root[data-theme='dusk'] {
   color-scheme: dark;
-  --t-bg: #1b2f3b;
-  --t-bg-2: #233c4b;
-  --t-text: #f3efe4;
-  --t-strong: #ffffff;
-  --t-muted: #a9bbc2;
-  --t-faint: #6f8791;
-  --t-line: rgb(243 239 228 / 0.1);
-  --t-scrim: rgb(14 26 33 / 0.55);
-  --t-glass: rgb(95 155 140 / 0.16);
-  --t-glass-thick: rgb(30 52 64 / 0.84);
+  --t-bg: #191832;
+  --t-bg-2: #24243f;
+  --t-text: #edeef7;
+  --t-strong: #fdfdff;
+  --t-muted: #b1b2c7;
+  --t-faint: #77788c;
+  --t-line: rgb(237 238 247 / 0.1);
+  --t-scrim: rgb(11 9 34 / 0.55);
+  --t-glass: rgb(127 128 181 / 0.14);
+  --t-glass-thick: rgb(33 32 59 / 0.84);
   --t-spec: rgb(255 248 232 / 0.4);
   --t-spec-soft: rgb(255 248 232 / 0.1);
-  --t-shade: rgb(6 14 20 / 0.4);
-  --t-drop: rgb(6 14 20 / 0.6);
+  --t-shade: rgb(3 1 19 / 0.4);
+  --t-drop: rgb(3 1 19 / 0.6);
+  --role-accent: #2eddba;
+  --ink-accent: #2eddba;
+  --role-urgent: #de2b52;
+  --ink-urgent: #ee3e5f;
+  --role-mid: #ffbe0b;
+  --ink-mid: #ffbe0b;
+  --role-calm: #2eddba;
+  --ink-calm: #2eddba;
+  --role-task: #2eddba;
+  --ink-task: #2eddba;
+  --role-event: #616295;
+  --ink-event: #7c7eb3;
+  --role-reminder: #e3425f;
+  --ink-reminder: #e84663;
+  --role-goal: #ffbe0b;
+  --ink-goal: #ffbe0b;
+  --role-wendy: #616295;
+  --ink-wendy: #7c7eb3;
+  --role-finds: #e3425f;
+  --ink-finds: #e84663;
+  --on-accent: #191832;
   --t-fringe: 1;
   --t-ambient: 0.75;
   --t-grain: 0.06;
@@ -343,8 +386,8 @@ button {
     border-radius: inherit;
     opacity: var(--t-fringe);
     box-shadow:
-      inset 1.5px 1.5px 1px -1px rgb(250 200 70 / 0.4),
-      inset -1.5px -1.5px 1px -1px rgb(255 125 45 / 0.28);
+      inset 1.5px 1.5px 1px -1px rgb(46 221 186 / 0.35),
+      inset -1.5px -1.5px 1px -1px rgb(227 66 95 / 0.28);
     mix-blend-mode: screen;
     pointer-events: none;
   }
@@ -404,8 +447,8 @@ button {
     border-radius: 50%;
     background: radial-gradient(
       circle,
-      var(--mood-1, #5f9b8c) 0%,
-      color-mix(in srgb, var(--mood-2, #a0c382) 60%, transparent) 35%,
+      var(--mood-1, #2eddba) 0%,
+      color-mix(in srgb, var(--mood-2, #8f8cc7) 60%, transparent) 35%,
       transparent 68%
     );
     filter: blur(30px);

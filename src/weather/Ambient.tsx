@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { blobColor, randomLayout } from './palette'
 import { useSky, watchSky } from './sky'
 import { useTheme } from '../ui/Theme'
+import { useScheme } from '../stores/scheme'
 
 /**
  * Drifting, pre-blurred colour field behind the glass. The layout is random on
@@ -10,6 +11,7 @@ import { useTheme } from '../ui/Theme'
 export function Ambient() {
   const sky = useSky()
   const day = useTheme() === 'day'
+  const override = useScheme((s) => s.scheme[day ? 'day' : 'dusk'].ambient)
   const [layout] = useState(() => randomLayout())
 
   useEffect(() => watchSky(), [])
@@ -27,7 +29,7 @@ export function Ambient() {
               height: `${b.size}vmax`,
               animationDuration: `${b.duration}s`,
               animationDelay: `${b.delay}s`,
-              '--c': blobColor(sky, b.slot, day),
+              '--c': blobColor(sky, b.slot, day, override),
             } as React.CSSProperties
           }
         />

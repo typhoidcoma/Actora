@@ -33,6 +33,8 @@ import {
   type TranscriptMessage,
 } from './protocol'
 import { request } from './request'
+import { describeScheme, type SchemeInput } from '../color/scheme'
+import { resetColors, setColors, useScheme } from '../stores/scheme'
 import type { FrameBus } from './socket'
 
 /**
@@ -46,6 +48,11 @@ import type { FrameBus } from './socket'
  *   options.set {options: [{label, say}]}                  replace the tap options here
  *   chat.open · chat.close · reply.show · reply.hide
  *   theme.set {mode: auto|day|dusk} · voice.listen · push.offer
+ *   colors.set {seed?, harmony?, accent?, urgent?, mid?, calm?, task?, event?, reminder?, goal?,
+ *               wendy?, finds?, neutral?, ambient?: hex[], orb?: hex[], hours?}   restyle the app
+ *   colors.reset                                           back to the brand palette
+ * Colours pass through the scheme engine (src/color/scheme.ts): contrast, gamut,
+ * meaning and separation guardrails; what it changed comes back in screen.colors.notes.
  */
 export const AVAILABLE_ACTIONS = [
   'priorities.set',
@@ -64,6 +71,8 @@ export const AVAILABLE_ACTIONS = [
   'reply.show',
   'reply.hide',
   'theme.set',
+  'colors.set',
+  'colors.reset',
   'voice.listen',
   'push.offer',
 ] as const
@@ -114,6 +123,7 @@ function screen() {
     reader: u.reader,
     priorities,
     box4,
+    colors: describeScheme(useScheme.getState().scheme, useScheme.getState().source),
     visible: visible.slice(0, 12),
   }
 }
@@ -268,6 +278,14 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
     case 'voice.listen':
       // Browsers need a user gesture to start the mic; surface the chip instead.
       optionsStore.push(contextKeyOf(useUi.getState()), [actOption('Tap to talk', { type: 'voice' })])
+      return
+    case 'colors.set': {
+      const { hours, ...input } = args as SchemeInput & { hours?: number }
+      setColors(input, hours)
+      return
+    }
+    case 'colors.reset':
+      resetColors()
       return
     case 'push.offer': {
       const status = usePush.getState().status

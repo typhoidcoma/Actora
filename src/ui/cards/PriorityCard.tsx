@@ -1,3 +1,4 @@
+import { inkOf } from '../brand'
 import { motion } from 'motion/react'
 import { runOption } from '../../options/run'
 import { actOption } from '../../options/types'
@@ -98,10 +99,7 @@ export function PriorityCard({
       }}
     >
       <div className="min-w-0">
-        <div
-          className="text-[13px] font-bold"
-          style={{ color: `color-mix(in srgb, ${kind.color} 72%, var(--t-strong))` }}
-        >
+        <div className="text-[13px] font-bold" style={{ color: inkOf(kind.color) }}>
           {item.whyFrom === 'wendy' ? 'Wendy says' : 'Why now'}
         </div>
         <div className="line-clamp-2 text-[max(13px,calc(var(--grid)*0.024))] leading-snug font-medium text-strong">

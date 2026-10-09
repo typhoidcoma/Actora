@@ -1,53 +1,59 @@
-// The brand palette, in one place. Swap colours here (and the matching CSS
-// tokens in styles/index.css); every card, panel, orb and sky reads from this.
+// The brand palette, in one place. Everything colourful in the app derives from
+// these through the scheme engine (src/color/scheme.ts), which also guards any
+// colours Wendy picks at runtime.
 //
-// Designer palette (Oct 2026): navy, orange, yellow, sage, teal.
+// Designer palette (Oct 2026): indigo, amber, rose, crimson, turquoise.
+// Sampled from the swatch image; replace with the designer's exact hex codes.
 
 export const BRAND = {
-  navy: '#233C4B',
-  orange: '#FF7D2D',
-  yellow: '#FAC846',
-  sage: '#A0C382',
-  teal: '#5F9B8C',
+  indigo: '#3F3E6F',
+  amber: '#FFBE0B',
+  rose: '#E3425F',
+  crimson: '#DE2B52',
+  turquoise: '#2EDDBA',
 } as const
 
-/** Tints and shades of the brand hues, for range (orb emotions, weather) and readable text on cream. */
+/** Tints and shades of the brand hues, for range (orb emotions, weather skies). */
 export const EXT = {
-  deepTeal: '#3E7466',
-  tealLight: '#9CCABD',
-  peach: '#FFB27A',
-  butter: '#FDE3A0',
-  sageLight: '#CFE2BC',
-  /** Sage dark enough to read on cream. */
-  sageDeep: '#5F8A3F',
-  ember: '#E8571C',
-  /** Yellow dark enough to read on cream. */
-  amber: '#C98A0E',
-  ink: '#16293A',
-  mist: '#7F96A3',
-  cream: '#F7F2E7',
-  ice: '#EEF4EF',
+  lavender: '#8F8CC7',
+  indigoDeep: '#26254A',
+  ink: '#1A1936',
+  mist: '#8C8BAE',
+  butter: '#FFE08A',
+  apricot: '#FF9E3D',
+  blush: '#F59AAE',
+  mint: '#9EF0DD',
+  tealDeep: '#14A88B',
+  ice: '#EEF0FA',
 } as const
 
-/** What each colour means in the UI. */
+/**
+ * What each colour means in the UI. Values are CSS variables written by the
+ * scheme engine: `--role-*` is the colour itself (fills, glows, washes; ≥3:1 on
+ * the background) and `--ink-*` its readable text form (≥4.5:1). Both follow
+ * the theme and Wendy's colour choices, and cross-fade when either changes.
+ */
+const role = (name: string) => `var(--role-${name})`
+
 export const ROLE = {
-  accent: BRAND.teal,
-  urgent: BRAND.orange,
-  calm: EXT.sageDeep,
+  accent: role('accent'),
+  urgent: role('urgent'),
+  calm: role('calm'),
   kind: {
-    task: BRAND.teal,
-    event: EXT.sageDeep,
-    notification: BRAND.orange,
-    goal: EXT.amber,
+    task: role('task'),
+    event: role('event'),
+    notification: role('reminder'),
+    goal: role('goal'),
   },
   /** Urgency heat for priority cards: calm → pressing. */
-  heat: { calm: EXT.sageDeep, mid: EXT.amber, urgent: BRAND.orange },
-  wendy: EXT.deepTeal,
-  finds: BRAND.orange,
-  status: { ok: EXT.sageDeep, busy: BRAND.teal, warn: BRAND.orange },
-  onImage: '#FBF8F1',
-  onImageTag: BRAND.yellow,
-  findsFallback: `linear-gradient(135deg, ${BRAND.navy}, ${BRAND.teal} 50%, ${BRAND.orange})`,
-  /** Browser chrome colour per theme (matches --t-bg). */
-  themeColor: { day: '#F7F2E7', dusk: '#1B2F3B' },
+  heat: { calm: role('calm'), mid: role('mid'), urgent: role('urgent') },
+  wendy: role('wendy'),
+  finds: role('finds'),
+  status: { ok: role('calm'), busy: role('accent'), warn: role('urgent') },
+  onImage: '#FBF9F4',
+  onImageTag: BRAND.amber,
+  findsFallback: `linear-gradient(135deg, ${role('wendy')}, ${role('finds')} 55%, ${role('mid')})`,
 } as const
+
+/** The readable text form of a role colour (`var(--role-x)` → `var(--ink-x)`); other colours pass through. */
+export const inkOf = (color: string) => color.replace('var(--role-', 'var(--ink-')

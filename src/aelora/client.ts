@@ -8,6 +8,7 @@ import { setTokenSource } from './http'
 import type { ClientMessage, Notification, ServerFrame, Task } from './protocol'
 import { request } from './request'
 import { routeFrame, sendClientState } from './router'
+import { useScheme } from '../stores/scheme'
 import { AeloraSocket, type WebSocketLike } from './socket'
 
 let socket: AeloraSocket | null = null
@@ -71,6 +72,9 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
       sendClientState(sock)
   })
 
+  // Wendy hears what her colour change became (guardrail notes) right away.
+  const offScheme = useScheme.subscribe((s, p) => s.scheme !== p.scheme && sendClientState(sock))
+
   // CONVERSATIONS-CLIENT.md: re-open the active thread on return to the app,
   // which covers a phone that was backgrounded rather than disconnected.
   const onVisible = () => {
@@ -93,6 +97,7 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
     offFrames()
     offStatus()
     offUi()
+    offScheme()
     sock.stop()
     if (socket === sock) {
       socket = null
