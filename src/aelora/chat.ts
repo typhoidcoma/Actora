@@ -1,6 +1,25 @@
 import { orbSignals, useAgent, type ChatBubble } from '../stores/agent'
 import type { MoodState, ServerFrame, TranscriptMessage } from './protocol'
 import type { FrameBus } from './socket'
+import { describeTool, toolDetail } from './activity'
+import type { Step } from '../stores/agent'
+
+let stepSeq = 0
+
+/** A tool call began; or, if it's already showing (tool.progress and mindmap both report it), fill in its detail. */
+function startStep(steps: Step[], name: string, detail: string | null): Step[] {
+  const open = steps.findLastIndex((x) => x.name === name && x.status === 'running')
+  if (open >= 0) {
+    if (!detail || steps[open].detail) return steps
+    return steps.map((x, i) => (i === open ? { ...x, detail } : x))
+  }
+  return [...steps, { id: `step-${++stepSeq}`, name, ...describeTool(name), detail, status: 'running' }]
+}
+
+function endStep(steps: Step[], name: string, failed: boolean): Step[] {
+  const open = steps.findLastIndex((x) => x.name === name && x.status === 'running')
+  return open < 0 ? steps : steps.map((x, i) => (i === open ? { ...x, status: failed ? 'failed' : 'done' } : x))
+}
 
 // The chat turn as a small state machine over the shared frame stream
 // (FRONTEND.md → "Streaming chat"):
@@ -42,6 +61,8 @@ export function sendChat(bus: FrameBus, text: string): boolean {
     streaming: '',
     phase: 'thinking',
     toolName: null,
+    steps: [],
+    turnAt: Date.now(),
   })
   clearTimeout(turnTimer)
   turnTimer = setTimeout(() => failTurn(), TURN_TIMEOUT_MS)
@@ -119,11 +140,17 @@ export function handleChatFrame(f: ServerFrame): boolean {
       orbSignals.bump()
       return true
 
-    case 'tool.progress':
+    case 'tool.progress': {
       if (!mine) return true
-      if (f.phase === 'called') set({ phase: 'tool', toolName: String(f.name ?? '') })
-      else set({ phase: 'thinking', toolName: null })
+      const name = String(f.name ?? '')
+      if (f.phase === 'called') {
+        set({ phase: 'tool', toolName: name, steps: startStep(s.steps, name, toolDetail(f.argsSummary)) })
+      } else {
+        set({ phase: 'thinking', toolName: null, steps: endStep(s.steps, name, f.phase === 'failed') })
+        orbSignals.bump(0.45) // a small flare as each step lands
+      }
       return true
+    }
 
     case 'done': {
       if (!mine) return true
@@ -152,6 +179,13 @@ export function handleChatFrame(f: ServerFrame): boolean {
     case 'event': {
       const data = f.data as { type?: string; conversationId?: string } | undefined
       // Tokens already streamed were retracted because the model pivoted to a tool.
+      // The mindmap copy of a tool call carries its arguments: the query, the page.
+      if (f.event === 'mindmap' && data?.type === 'tool:called' && data.conversationId === s.turnId) {
+        const d = data as { name?: string; argsSummary?: unknown }
+        const detail = toolDetail(d.argsSummary)
+        if (detail && d.name) set({ steps: startStep(get().steps, d.name, detail) })
+        return true
+      }
       if (f.event === 'mindmap' && data?.type === 'tool:working' && data.conversationId === s.turnId) {
         set({ streaming: '', phase: 'tool' })
         return true

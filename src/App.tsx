@@ -20,6 +20,16 @@ function firstName(session: Session): string | null {
   return name?.trim().split(/\s+/)[0] || null
 }
 
+/** Error from an OAuth redirect (?error_description= or #error_description=), cleared from the address bar. */
+function oauthError(): string | null {
+  const url = new URL(window.location.href)
+  const hash = new URLSearchParams(url.hash.slice(1))
+  const msg = url.searchParams.get('error_description') ?? hash.get('error_description')
+  if (!msg) return null
+  window.history.replaceState(null, '', url.pathname)
+  return `Sign-in failed: ${msg.replaceAll('+', ' ')}`
+}
+
 function Loading() {
   useThemeSync()
   return <Backdrop />
@@ -53,9 +63,12 @@ function AuthedApp() {
 
     getSupabase()
       .then(async (sb) => {
-        const { data } = await sb.auth.getSession()
+        const { data, error } = await sb.auth.getSession()
         if (cancelled) return
         apply(sb, data.session)
+        // A failed OAuth return (denied consent, bad redirect, expired code) says why in the URL.
+        const why = oauthError() ?? (data.session ? null : error?.message)
+        if (why && !data.session) setAuth({ status: 'signed-out', error: why })
         const sub = sb.auth.onAuthStateChange((event, session) => {
           apply(sb, session)
           // The JWT is pinned into the socket at connect time; reconnect with the new one.

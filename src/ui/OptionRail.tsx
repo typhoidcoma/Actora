@@ -110,8 +110,14 @@ function Chip({ option, index, disabled }: { option: Option; index: number; disa
   return (
     <motion.button
       layout
-      initial={{ opacity: 0, y: 10, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1, transition: { ...morph, delay: index * 0.03 } }}
+      initial={{ opacity: 0, y: 14, scale: 0.92, filter: 'blur(4px)' }}
+      animate={{
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        filter: 'blur(0px)',
+        transition: { type: 'spring', stiffness: 380, damping: 26, delay: index * 0.05 },
+      }}
       exit={{ opacity: 0, scale: 0.94, transition: { duration: 0.12 } }}
       whileTap={jelly}
       {...sheen}

@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useAgent } from '../stores/agent'
 import { ui } from '../stores/ui'
 import { useMetrics } from '../stores/metrics'
-import { toolLabel } from './format'
+import { Activity } from './Activity'
 import { firstSentence, plainText } from './markdownText'
 
 /**
@@ -96,7 +96,7 @@ export function WendyLine() {
               </span>
             )}
             {content.key === 'thinking' ? (
-              <Thinking label={a.phase === 'tool' ? toolLabel(a.toolName) : null} />
+              <Activity />
             ) : content.live ? (
               <Words text={content.text} />
             ) : (
@@ -153,22 +153,6 @@ function Words({ text }: { text: string }) {
         </motion.span>
       ))}
     </>
-  )
-}
-
-function Thinking({ label }: { label: string | null }) {
-  if (label) return <span className="text-muted italic">{label.toLowerCase()}…</span>
-  return (
-    <span className="inline-flex items-center gap-2 align-middle" aria-label="Wendy is thinking">
-      {[0, 1, 2].map((i) => (
-        <motion.span
-          key={i}
-          className="h-2 w-2 rounded-full bg-accent"
-          animate={{ opacity: [0.25, 1, 0.25], y: [0, -3, 0] }}
-          transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.15, ease: 'easeInOut' }}
-        />
-      ))}
-    </span>
   )
 }
 

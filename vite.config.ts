@@ -8,7 +8,10 @@ import { defineConfig } from 'vite'
 // (Aelora docs/PUSH.md — the service worker is a push transport, not a cache).
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  server: { host: true },
+  // Pinned: Supabase/Google only redirect back to http://localhost:5173, so never
+  // drift to 5174 when the port is busy (sign-in would silently fail there).
+  server: { host: true, port: 5173, strictPort: true },
+  preview: { port: 5173, strictPort: true },
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],

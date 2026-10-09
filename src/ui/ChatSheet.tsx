@@ -5,6 +5,7 @@ import { useAgent, type ChatBubble } from '../stores/agent'
 import { useMetrics } from '../stores/metrics'
 import { ui, useUi } from '../stores/ui'
 import { toolLabel } from './format'
+import { Activity } from './Activity'
 import { LazyMarkdown as Markdown } from './LazyMarkdown'
 import { stableMarkdown } from './markdownText'
 import { glide, morph, press } from './motion'
@@ -79,13 +80,14 @@ function SheetHeader({ onPointerDown }: { onPointerDown: (e: React.PointerEvent)
   const botName = useAgent((s) => s.botName)
   const phase = useAgent((s) => s.phase)
   const tool = useAgent((s) => s.toolName)
+  const doing = useAgent((s) => s.steps.findLast((x) => x.status === 'running')?.doing ?? null)
   const status =
     phase === 'offline'
       ? 'Reconnecting…'
       : phase === 'thinking'
         ? 'Thinking…'
         : phase === 'tool'
-          ? `${toolLabel(tool) || 'Working'}…`
+          ? `${doing ?? (toolLabel(tool) || 'Working')}…`
           : phase === 'speaking'
             ? 'Speaking'
             : 'Here for you'
@@ -192,7 +194,9 @@ function Transcript() {
                 <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-[3px] animate-pulse bg-accent" />
               </div>
             ) : (
-              <TypingDots />
+              <div className="text-[17px] font-semibold text-strong">
+                <Activity compact />
+              </div>
             )}
           </motion.div>
         )}
@@ -221,20 +225,5 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-[88%] self-start text-text">
       <Markdown text={bubble.text} />
     </motion.div>
-  )
-}
-
-function TypingDots() {
-  return (
-    <div className="flex h-6 items-center gap-1.5">
-      {[0, 1, 2].map((i) => (
-        <motion.span
-          key={i}
-          className="h-1.5 w-1.5 rounded-full bg-accent"
-          animate={{ opacity: [0.25, 1, 0.25], y: [0, -3, 0] }}
-          transition={{ duration: 1, repeat: Infinity, delay: i * 0.15, ease: 'easeInOut' }}
-        />
-      ))}
-    </div>
   )
 }

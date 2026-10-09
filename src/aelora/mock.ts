@@ -249,6 +249,11 @@ export class MockWebSocket implements WebSocketLike {
     this.onclose?.({ code } as CloseEvent)
   }
 
+  private toolCall(cid: string, name: string, args: Record<string, string>): void {
+    this.emit({ type: 'tool.progress', conversationId: cid, channelId: cid, phase: 'called', name })
+    this.event('mindmap', { type: 'tool:called', conversationId: cid, name, argsSummary: JSON.stringify(args) })
+  }
+
   private chat(message: string, thread?: string): void {
     const cid = thread ?? this.conversationId
     const [, text, tool] = /today's fun stuff/i.test(message)
@@ -266,13 +271,30 @@ export class MockWebSocket implements WebSocketLike {
     )
 
     if (tool) {
+      // Real turns chain tools; show the activity line something to narrate.
+      const chain: Array<[string, Record<string, string>]> =
+        tool === 'web_search'
+          ? [
+              ['search_memory', { query: 'what they enjoy' }],
+              ['web_search', { query: message.slice(0, 60) }],
+              ['fetch_url', { url: 'https://www.theverge.com/tech' }],
+            ]
+          : [[tool, {}]]
+      for (const [name, args] of chain.slice(0, -1)) {
+        t += 300
+        this.later(t, () => this.toolCall(cid, name, args))
+        t += 1100
+        this.later(t, () =>
+          this.emit({ type: 'tool.progress', conversationId: cid, channelId: cid, phase: 'succeeded', name }),
+        )
+      }
       t += 300
-      this.later(t, () =>
-        this.emit({ type: 'tool.progress', conversationId: cid, channelId: cid, phase: 'called', name: tool }),
-      )
-      t += 900
+      const [, lastArgs] = chain[chain.length - 1]
+      const last = chain[chain.length - 1][0]
+      this.later(t, () => this.toolCall(cid, last, lastArgs))
+      t += 1100
       this.later(t, () => {
-        this.emit({ type: 'tool.progress', conversationId: cid, channelId: cid, phase: 'succeeded', name: tool })
+        this.emit({ type: 'tool.progress', conversationId: cid, channelId: cid, phase: 'succeeded', name: last })
         if (tool === 'create_task') {
           const title = message.replace(/^.*?(add( a)? task( to)?|remind me to)\s*/i, '').trim() || 'New task'
           const task: Task = {

@@ -6,10 +6,11 @@ import { initScheme } from './stores/scheme'
 
 initScheme()
 
-// Dev only: drive ui_actions from the console, e.g. __actora.ui('colors.set', { seed: '#7a5ad6' }).
+// Dev only: drive Wendy from the console, e.g. __actora.ui('colors.set', { seed: '#7a5ad6' })
+// or __actora.chat('find the best ramen nearby').
 if (import.meta.env.DEV) {
-  void import('./aelora/router').then(({ runUiAction }) => {
-    ;(window as unknown as { __actora: object }).__actora = { ui: runUiAction }
+  void Promise.all([import('./aelora/router'), import('./options/run')]).then(([router, run]) => {
+    ;(window as unknown as { __actora: object }).__actora = { ui: router.runUiAction, chat: run.say }
   })
 }
 

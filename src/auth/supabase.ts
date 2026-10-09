@@ -34,7 +34,7 @@ export async function signInWithGoogle(): Promise<void> {
   const { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}${window.location.pathname}`,
+      redirectTo: config.authRedirectUrl || `${window.location.origin}${window.location.pathname}`,
       queryParams: { prompt: 'select_account' },
     },
   })

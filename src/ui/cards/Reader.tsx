@@ -1,7 +1,7 @@
 import { useShallow } from 'zustand/react/shallow'
 import { useAgent } from '../../stores/agent'
 import { ui } from '../../stores/ui'
-import { toolLabel } from '../format'
+import { Activity } from '../Activity'
 import { LazyMarkdown } from '../LazyMarkdown'
 import { stableMarkdown } from '../markdownText'
 import { Panel } from './Panel'
@@ -26,18 +26,13 @@ export function Reader() {
         busy: s.awaitingTurn || s.turnId !== null,
         phase: s.phase,
         tool: s.toolName,
+        doing: s.steps.findLast((x) => x.status === 'running')?.doing ?? null,
         botName: s.botName,
       }
     }),
   )
   const text = a.busy && a.streaming !== null ? stableMarkdown(a.streaming) : a.answer
-  const kicker = a.busy
-    ? a.phase === 'tool'
-      ? `${toolLabel(a.tool)}…`
-      : a.streaming
-        ? 'Writing…'
-        : 'Thinking…'
-    : 'Latest answer'
+  const kicker = a.busy ? (a.phase === 'tool' ? 'Working…' : a.streaming ? 'Writing…' : 'Thinking…') : 'Latest answer'
 
   return (
     <Panel lead layoutId="reader" accent={ROLE.wendy} kicker={kicker} title={a.botName} onClose={ui.closeReader}>
@@ -49,6 +44,10 @@ export function Reader() {
       {text ? (
         <div className="text-[16px] text-text">
           <LazyMarkdown text={text} />
+        </div>
+      ) : a.busy ? (
+        <div className="display grid min-h-[40%] place-items-center py-10 text-center text-[24px] text-strong">
+          <Activity />
         </div>
       ) : (
         <p className="text-muted">Nothing yet — tap an option below and Wendy's full answer lands here.</p>

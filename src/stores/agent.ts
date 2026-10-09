@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { EmotionVector, MoodState, ReactionBus } from '../aelora/protocol'
 import type { SocketStatus } from '../aelora/socket'
+import type { StepIcon } from '../aelora/activity'
 
 export type OrbPhase = 'offline' | 'idle' | 'thinking' | 'speaking' | 'tool'
 
@@ -32,6 +33,17 @@ export interface Notice {
  * What the Wendy line (her voice above the grid) is showing:
  * the welcome greeting, her latest reply, a notification, or a one-off message.
  */
+/** One thing Wendy did during a turn (a tool call), for the activity line. */
+export interface Step {
+  id: string
+  name: string
+  doing: string
+  done: string
+  icon: StepIcon
+  detail: string | null
+  status: 'running' | 'done' | 'failed'
+}
+
 export type LineMode = 'greeting' | 'reply' | 'notice' | 'message'
 
 export interface AgentState {
@@ -55,6 +67,10 @@ export interface AgentState {
   /** A `chat` was sent and its `chat.start` hasn't arrived yet. */
   awaitingTurn: boolean
   streaming: string | null
+  /** What she's done this turn, newest last (reset when a turn starts). */
+  steps: Step[]
+  /** Date.now() when the current turn was sent. */
+  turnAt: number | null
   messages: ChatBubble[]
   /** Paging backwards through the thread (conversation.open beforeSeq). */
   history: { hasMore: boolean; cursor: number | null }
@@ -83,6 +99,8 @@ export const useAgent = create<AgentState>(() => ({
   conversationId: null,
   turnId: null,
   awaitingTurn: false,
+  steps: [],
+  turnAt: null,
   streaming: null,
   messages: [],
   history: { hasMore: false, cursor: null },

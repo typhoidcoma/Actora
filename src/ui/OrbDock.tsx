@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useAnimationFrame, useMotionValue, useReducedMotion } from 'motion/react'
 import { useRef, useState } from 'react'
 import { toggleVoice } from '../options/run'
-import { useAgent } from '../stores/agent'
+import { useAgent, orbSignals } from '../stores/agent'
 import { useMetrics } from '../stores/metrics'
 import { useOptionsStore } from '../stores/options'
 import { ui, useUi } from '../stores/ui'
@@ -56,7 +56,9 @@ export function OrbDock() {
   const fx = useMotionValue(0)
   const fy = useMotionValue(0)
   const breath = useMotionValue(1)
+  const halo = useMotionValue(0.35)
   const settle = useRef(0)
+  const pulse = useRef({ amp: 0.02, glow: 0.35 })
   useAnimationFrame((t) => {
     const s = t / 1000
     // Ease the float in and out as the orb docks/undocks instead of snapping.
@@ -64,7 +66,26 @@ export function OrbDock() {
     const amp = reduced ? 0 : settle.current
     fx.set(Math.sin(s * 0.53) * 3.5 * amp)
     fy.set(Math.sin(s * 0.37 + 1.2) * 2.5 * amp)
-    breath.set(1 + Math.sin((s / 5) * Math.PI * 2) * (reduced ? 0.01 : 0.02) * Math.max(0.3, settle.current))
+
+    // The pulse says what she's doing: a slow breath at rest, a steady pulse
+    // while thinking, a heartbeat while she works a tool, and a throb that
+    // follows the words while she talks. Amplitudes ease between phases.
+    const p = pulse.current
+    const target = PULSE[listening ? 'listening' : phase]
+    p.amp += (target.amp - p.amp) * 0.05
+    p.glow += (target.glow - p.glow) * 0.05
+    const k = reduced ? 0.3 : 1
+    let wave: number
+    if (phase === 'tool') {
+      const q = (s % 1.1) / 1.1 // heartbeat: two quick beats, then rest
+      wave = Math.exp(-(((q - 0.08) / 0.06) ** 2)) + 0.65 * Math.exp(-(((q - 0.3) / 0.06) ** 2))
+    } else if (phase === 'speaking') {
+      wave = Math.min(1, orbSignals.energy * 1.6) * 0.8 + (Math.sin(s * 6) + 1) * 0.1
+    } else {
+      wave = (Math.sin((s / target.period) * Math.PI * 2) + 1) / 2
+    }
+    breath.set(1 + wave * p.amp * k * Math.max(0.3, settle.current))
+    halo.set(p.glow * (0.6 + 0.4 * wave * k))
   })
 
   // The orb is the microphone: tap to talk (tap again to stop), hold to open the chat.
@@ -94,7 +115,14 @@ export function OrbDock() {
       transition={pressed ? { type: 'spring', stiffness: 700, damping: 30 } : glide}
     >
       <motion.div className="absolute inset-0" style={{ x: fx, y: fy, scale: breath }}>
+        <motion.span
+          aria-hidden
+          className="absolute inset-[8%] rounded-full blur-2xl"
+          style={{ opacity: halo, background: 'radial-gradient(closest-side, var(--mood-1), transparent)' }}
+        />
         <Orb />
+        <ThinkingRipples on={!listening && phase === 'thinking'} />
+        <ToolArc on={!listening && phase === 'tool'} />
         <ListeningRings on={listening} />
         <MicHint on={hover && !listening && phase !== 'offline'} />
       </motion.div>
@@ -123,6 +151,59 @@ export function OrbDock() {
 
 const HOLD_MS = 450
 
+const PULSE: Record<string, { amp: number; glow: number; period: number }> = {
+  offline: { amp: 0, glow: 0.1, period: 6 },
+  idle: { amp: 0.025, glow: 0.3, period: 4.5 },
+  thinking: { amp: 0.05, glow: 0.6, period: 1.4 },
+  tool: { amp: 0.055, glow: 0.7, period: 1.1 },
+  speaking: { amp: 0.07, glow: 0.65, period: 1 },
+  listening: { amp: 0.04, glow: 0.75, period: 1.2 },
+}
+
+/** Slow ripples rolling off the orb while she thinks. */
+function ThinkingRipples({ on }: { on: boolean }) {
+  return (
+    <AnimatePresence>
+      {on &&
+        [0, 1, 2].map((i) => (
+          <motion.span
+            key={i}
+            aria-hidden
+            className="absolute inset-[20%] rounded-full"
+            style={{ boxShadow: '0 0 0 1.5px var(--mood-2, var(--role-accent))' }}
+            initial={{ opacity: 0, scale: 1 }}
+            animate={{ opacity: [0, 0.55, 0], scale: [0.98, 1.22, 1.38] }}
+            exit={{ opacity: 0, transition: { duration: 0.3 } }}
+            transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.8, ease: 'easeOut' }}
+          />
+        ))}
+    </AnimatePresence>
+  )
+}
+
+/** A comet of light circling the orb while a tool runs. */
+function ToolArc({ on }: { on: boolean }) {
+  return (
+    <AnimatePresence>
+      {on && (
+        <motion.span
+          aria-hidden
+          className="absolute inset-[15%] rounded-full"
+          style={{
+            background: 'conic-gradient(from 0deg, transparent 0 62%, var(--role-accent) 92%, transparent 100%)',
+            mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px))',
+            WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px))',
+          }}
+          initial={{ opacity: 0, rotate: 0 }}
+          animate={{ opacity: 1, rotate: 360 }}
+          exit={{ opacity: 0, transition: { duration: 0.3 } }}
+          transition={{ rotate: { duration: 1.2, repeat: Infinity, ease: 'linear' }, opacity: { duration: 0.3 } }}
+        />
+      )}
+    </AnimatePresence>
+  )
+}
+
 /** Soft rings breathing out from the blob while the mic is open. */
 function ListeningRings({ on }: { on: boolean }) {
   return (
@@ -133,7 +214,7 @@ function ListeningRings({ on }: { on: boolean }) {
             key={i}
             aria-hidden
             className="absolute inset-[20%] rounded-full"
-            style={{ boxShadow: 'inset 0 0 0 2px var(--mood-1, #5F9B8C)' }}
+            style={{ boxShadow: 'inset 0 0 0 2px var(--mood-1, var(--role-accent))' }}
             initial={{ opacity: 0, scale: 1 }}
             animate={{ opacity: [0.7, 0], scale: [1, 1.45] }}
             exit={{ opacity: 0 }}

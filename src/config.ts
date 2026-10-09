@@ -11,4 +11,6 @@ export const config = {
   mock: env.VITE_AELORA_MOCK === '1' || !baseUrl,
   supabaseUrl: env.VITE_SUPABASE_URL?.trim() || null,
   supabaseAnonKey: env.VITE_SUPABASE_ANON_KEY?.trim() || null,
+  /** Where Google sends the user back (must be an allowed Supabase redirect URL). */
+  authRedirectUrl: env.VITE_SUPABASE_AUTH_REDIRECT_URL?.trim() || null,
 } as const

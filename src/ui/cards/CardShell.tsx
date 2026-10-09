@@ -1,5 +1,6 @@
 import { motion } from 'motion/react'
 import type { KeyboardEvent, ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { useMetrics } from '../../stores/metrics'
 import { jelly, morph } from '../motion'
 import { sheen } from '../sheen'
@@ -36,6 +37,7 @@ export function CardShell({
       onOpen()
     }
   }
+  const intro = useIntro()
   return (
     <motion.div
       layout
@@ -47,8 +49,14 @@ export function CardShell({
       onKeyDown={onKey}
       whileTap={jelly}
       {...sheen}
-      animate={{ opacity: hidden ? 0 : 1 }}
-      transition={{ ...morph, scale: jelly.transition }}
+      // First paint only: the four boxes rise in one after another (panel morphs skip it).
+      initial={intro ? { opacity: 0, y: 22, scale: 0.95 } : false}
+      animate={{ opacity: hidden ? 0 : 1, y: 0, scale: 1 }}
+      transition={{
+        ...morph,
+        scale: jelly.transition,
+        ...(intro ? { delay: 0.15 + corner * 0.07, type: 'spring', stiffness: 220, damping: 24 } : {}),
+      }}
       className={`glass ${NOTCH[corner]} relative cursor-pointer overflow-hidden text-left outline-none focus-visible:ring-2 focus-visible:ring-accent/50`}
       style={{ borderRadius: radius }}
     >
@@ -64,4 +72,16 @@ export function CardShell({
       </motion.div>
     </motion.div>
   )
+}
+
+let introOver = false
+/** True only while the app's first paint is playing (the first ~1.5 s). */
+function useIntro(): boolean {
+  const [on] = useState(() => !introOver)
+  useEffect(() => {
+    if (!on) return
+    const t = setTimeout(() => (introOver = true), 1500)
+    return () => clearTimeout(t)
+  }, [on])
+  return on
 }
