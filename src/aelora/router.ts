@@ -3,11 +3,13 @@ import {
   forgetFindsThread,
   handleFindsFrame,
   hunt,
+  isFindsThread,
   setFinds,
   unseenCount,
   useFinds,
 } from '../finds/finds'
 import { adoptGreetingUser } from './greeting'
+import { adoptMainUser, recallMain, rememberMain } from './mainThread'
 import { actOption, sayOption } from '../options/types'
 import { resubscribe } from '../push/push'
 import { agent, useAgent, type Reaction } from '../stores/agent'
@@ -357,6 +359,7 @@ function announce(n: Notification): void {
 function threadGone(id: string | null): void {
   if (!id) return
   forgetFindsThread(id)
+  if (recallMain() === id) rememberMain(null)
   if (useAgent.getState().conversationId === id) {
     useAgent.setState({ conversationId: null, messages: [], history: { hasMore: false, cursor: null } })
   }
@@ -365,6 +368,7 @@ function threadGone(id: string | null): void {
 /** Every thread was deleted (deleteAll, account wipe, or an admin purge). */
 function threadsPurged(): void {
   forgetFindsThread()
+  rememberMain(null)
   useAgent.setState({ conversationId: null, messages: [], history: { hasMore: false, cursor: null } })
 }
 
@@ -428,6 +432,7 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
       // Per-user caches (fun finds, welcome line) must not leak across accounts on a shared device.
       adoptFindsUser(userId)
       adoptGreetingUser(userId)
+      adoptMainUser(userId)
       useAgent.setState({
         userId,
         botName: typeof f.botName === 'string' ? f.botName : 'Wendy',
@@ -439,9 +444,16 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
     }
 
     case 'conversation.active': {
-      const id = typeof f.conversationId === 'string' ? f.conversationId : null
+      // The server's "active" is just its most recent thread; after a finds hunt
+      // that's the Fun finds thread. Never adopt it: use the user's own thread.
+      let id = typeof f.conversationId === 'string' ? f.conversationId : null
+      if (id && isFindsThread(id)) id = null
+      id ??= recallMain()
       useAgent.setState({ conversationId: id })
-      if (id) void request(bus, { type: 'conversation.open', conversationId: id, limit: 40 }, 'conversation.messages')
+      if (id) {
+        rememberMain(id)
+        void request(bus, { type: 'conversation.open', conversationId: id, limit: 40 }, 'conversation.messages')
+      }
       return
     }
     case 'conversation.messages':

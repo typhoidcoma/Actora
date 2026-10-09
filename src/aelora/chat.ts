@@ -2,6 +2,8 @@ import { orbSignals, useAgent, type ChatBubble } from '../stores/agent'
 import type { MoodState, ServerFrame, TranscriptMessage } from './protocol'
 import type { FrameBus } from './socket'
 import { describeTool, toolDetail } from './activity'
+import { isFindsThread } from '../finds/finds'
+import { rememberMain } from './mainThread'
 import type { Step } from '../stores/agent'
 
 let stepSeq = 0
@@ -31,6 +33,9 @@ function endStep(steps: Step[], name: string, failed: boolean): Step[] {
 // frames carry only channelId "system:<userId>" and no conversationId.
 
 const TURN_TIMEOUT_MS = 120_000 // the server has no turn timeout of its own
+/** A message waiting for its new thread (sendChat with no main thread yet). */
+let pendingMessage: string | null = null
+let pendingBus: FrameBus | null = null
 let seq = 0
 let turnTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -48,12 +53,19 @@ export function sendChat(bus: FrameBus, text: string): boolean {
   const s = get()
   if (!message || s.awaitingTurn || s.turnId) return false
 
-  const sent = bus.send({
-    type: 'chat',
-    message,
-    ...(s.conversationId ? { conversationId: s.conversationId } : {}),
-  })
+  // Always address the user's own thread. Without an id the server would use its
+  // most recent thread, which after a finds hunt is the "Fun finds" one: the reply
+  // would be swallowed there and the turn would time out. No thread yet? Make one
+  // first and send the message once it exists.
+  const target = s.conversationId && !isFindsThread(s.conversationId) ? s.conversationId : null
+  const sent = target
+    ? bus.send({ type: 'chat', message, conversationId: target })
+    : bus.send({ type: 'conversation.new' })
   if (!sent) return false
+  if (!target) {
+    pendingMessage = message
+    pendingBus = bus
+  }
 
   set({
     messages: [...s.messages, { id: bubbleId(), role: 'user', text: message }],
@@ -134,8 +146,16 @@ export function handleChatFrame(f: ServerFrame): boolean {
 
   switch (f.type) {
     case 'conversation.created':
-      // Either an implicit new thread for our pending turn, or conversation.new.
-      if (cid) set({ conversationId: cid })
+      // The finds thread's own creation is claimed before this (finds.ts).
+      if (!cid) return true
+      set({ conversationId: cid })
+      rememberMain(cid)
+      if (pendingMessage && pendingBus) {
+        // The thread we made for a waiting message: send it there now.
+        pendingBus.send({ type: 'chat', message: pendingMessage, conversationId: cid })
+        pendingMessage = null
+        pendingBus = null
+      }
       return true
 
     case 'chat.start':
@@ -181,6 +201,11 @@ export function handleChatFrame(f: ServerFrame): boolean {
       if (code !== 'llm_failed' && code !== 'conversation_failed') return false
       if (cid && !mine) return true
       if (!s.turnId && !s.awaitingTurn) return true
+      // The thread is gone: start a fresh one next time instead of failing again.
+      if (code === 'conversation_failed') {
+        rememberMain(null)
+        set({ conversationId: null })
+      }
       failTurn()
       return true
     }
@@ -230,6 +255,8 @@ export function loadTranscript(
 
 function failTurn(): void {
   clearTimeout(turnTimer)
+  pendingMessage = null
+  pendingBus = null
   const s = get()
   set({
     messages: [...s.messages, { id: bubbleId(), role: 'error', text: `${s.botName} couldn't answer that. Try again.` }],

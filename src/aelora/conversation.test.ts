@@ -92,3 +92,33 @@ describe('per-user caches', () => {
     expect(useFinds.getState().items.map((f) => f.title)).toEqual(['Mine'])
   })
 })
+
+describe('main thread vs the Fun finds thread', () => {
+  const F = 'ffffffff-ffff-ffff-ffff-ffffffffffff'
+  const M = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+  const sent: Array<Record<string, unknown>> = []
+  const spy = { send: (m: Record<string, unknown>) => (sent.push(m), true), subscribe: () => () => {} }
+
+  it("never adopts the finds thread as the user's conversation, and recalls their own", async () => {
+    const { adoptMainUser, rememberMain } = await import('./mainThread')
+    mem.set('actora.finds.thread.v1', JSON.stringify({ id: F, owner: 'u9' }))
+    adoptFindsUser('u9')
+    adoptMainUser('u9')
+    rememberMain(M)
+    useAgent.setState({ conversationId: null })
+    // After a hunt, the server's "active" thread is the finds one.
+    routeFrame({ type: 'conversation.active', conversationId: F }, spy as never)
+    expect(useAgent.getState().conversationId).toBe(M)
+  })
+
+  it('a message with no thread makes one first, then goes there (never to "active")', async () => {
+    const { sendChat } = await import('./chat')
+    useAgent.setState({ conversationId: F, turnId: null, awaitingTurn: false, messages: [] })
+    sent.length = 0
+    expect(sendChat(spy as never, 'Plan my day')).toBe(true)
+    expect(sent).toEqual([{ type: 'conversation.new' }])
+    routeFrame({ type: 'conversation.created', conversationId: M }, spy as never)
+    expect(sent.at(-1)).toEqual({ type: 'chat', message: 'Plan my day', conversationId: M })
+    expect(useAgent.getState().conversationId).toBe(M)
+  })
+})

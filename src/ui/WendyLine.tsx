@@ -93,7 +93,7 @@ export function WendyLine() {
             initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, y: -8, filter: 'blur(4px)', transition: { duration: 0.2 } }}
-            transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 30, filter: { duration: 0.3, ease: 'easeOut' } }}
             className="display px-1 text-center text-strong"
             style={{ fontSize: size, lineHeight: 1.22 }}
           >

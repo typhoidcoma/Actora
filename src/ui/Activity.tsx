@@ -27,7 +27,7 @@ export function Activity({ compact = false }: { compact?: boolean }) {
           initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           exit={{ opacity: 0, y: -10, filter: 'blur(4px)', transition: { duration: 0.18 } }}
-          transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+          transition={{ type: 'spring', stiffness: 320, damping: 28, filter: { duration: 0.3, ease: 'easeOut' } }}
         >
           <ActivityIcon icon={icon} size={compact ? 18 : 24} />
           <span className="text-sweep truncate">{label}</span>

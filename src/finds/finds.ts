@@ -230,6 +230,9 @@ function writeThread(id: string | null) {
   }
 }
 
+/** Is this the "Fun finds" thread (never the user's own conversation)? */
+export const isFindsThread = (id: string | null | undefined): boolean => !!id && id === threadId
+
 /** The finds thread was deleted (or everything was purged): start a new one next hunt. */
 export function forgetFindsThread(id?: string): void {
   if (!id || id === threadId) writeThread(null)
@@ -308,14 +311,18 @@ export function handleFindsFrame(f: ServerFrame): boolean {
     writeThread(cid)
     bus?.send({ type: 'conversation.rename', conversationId: cid, title: 'Fun finds' })
     const main = useAgent.getState().conversationId
-    // conversation.new made the finds thread active; switch back (or start a fresh main thread).
+    // conversation.new made the finds thread active; switch back to the user's own.
+    // (With none yet, their first message creates it: chat.ts never relies on "active".)
     if (main) bus?.send({ type: 'conversation.open', conversationId: main, limit: 40 })
-    else bus?.send({ type: 'conversation.new' })
     sendHunt()
     return true
   }
   if (!cid || cid !== threadId) return false
   switch (f.type) {
+    case 'conversation.active':
+    case 'conversation.messages':
+      // Thread-level state belongs to the router (which never adopts this thread).
+      return false
     case 'token':
       buffer += String(f.delta ?? '')
       useFinds.setState({ progress: buffer.slice(-80) })
