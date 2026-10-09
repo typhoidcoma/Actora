@@ -7,7 +7,7 @@ import { optionsStore } from '../stores/options'
 import { snoozePushOffer } from '../stores/push'
 import { ui, useUi } from '../stores/ui'
 import { isLargeQuestion } from '../ui/markdownText'
-import { listen } from '../voice/speech'
+import { listen, speechProblem } from '../voice/speech'
 import type { LocalAct, Option } from './types'
 
 let stopVoice: (() => void) | null = null
@@ -28,7 +28,12 @@ export function toggleVoice(): void {
     onEnd: (error) => {
       stopVoice = null
       optionsStore.voice(false, '')
-      if (error === 'unsupported' || error === 'not-allowed' || error === 'service-not-allowed') ui.keyboard(true)
+      // Say why nothing happened (blocked mic, no mic, offline, no voice in this browser…).
+      const why = speechProblem(error)
+      if (why) agent.showMessage(why)
+      // No voice possible here: the keyboard is the way to talk instead.
+      if (error === 'unsupported' || error === 'not-allowed' || error === 'service-not-allowed' || error === 'insecure')
+        ui.keyboard(true)
     },
   })
 }

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { listen, type Recognizer } from '../voice/speech'
+import { describe, expect, it, vi } from 'vitest'
+import { listen, speechProblem, type Recognizer } from '../voice/speech'
 import { b64url, subscribeMessage, urlBase64ToUint8Array } from './push'
 
 describe('push encoding', () => {
@@ -48,13 +48,18 @@ class FakeRecognizer implements Recognizer {
 }
 
 describe('speech', () => {
-  it('streams interim text and delivers the final transcript once', () => {
+  const micOk = async () => undefined
+  const tick = () => new Promise((r) => setTimeout(r, 0))
+
+  it('streams interim text and delivers the whole thing once', async () => {
     const rec = new FakeRecognizer()
     const seen: string[] = []
     let final = ''
     let ends = 0
-    listen({ onInterim: (t) => seen.push(t), onFinal: (t) => (final = t), onEnd: () => ends++ }, () => rec)
+    listen({ onInterim: (t) => seen.push(t), onFinal: (t) => (final = t), onEnd: () => ends++ }, () => rec, micOk)
+    await tick()
     expect(rec.started).toBe(true)
+    expect(rec.continuous).toBe(true) // keeps listening across short pauses
     rec.emit('plan my', false)
     rec.emit('plan my day', true)
     rec.onend?.()
@@ -64,12 +69,33 @@ describe('speech', () => {
     expect(ends).toBe(1)
   })
 
-  it('reports unsupported and no-speech', () => {
-    const errors: Array<string | undefined> = []
-    listen({ onInterim: () => {}, onFinal: () => {}, onEnd: (e) => errors.push(e) }, () => null)
+  it('finishes on its own after a pause in speech', async () => {
+    vi.useFakeTimers()
     const rec = new FakeRecognizer()
-    listen({ onInterim: () => {}, onFinal: () => {}, onEnd: (e) => errors.push(e) }, () => rec)
+    let final = ''
+    listen({ onInterim: () => {}, onFinal: (t) => (final = t), onEnd: () => {} }, () => rec, micOk)
+    await vi.advanceTimersByTimeAsync(0)
+    rec.emit('what is next', true)
+    await vi.advanceTimersByTimeAsync(1700)
+    expect(final).toBe('what is next')
+    vi.useRealTimers()
+  })
+
+  it('reports why when nothing usable was heard', async () => {
+    const errors: Array<string | undefined> = []
+    const on = { onInterim: () => {}, onFinal: () => {}, onEnd: (e?: string) => errors.push(e) }
+    listen(on, () => null, micOk)
+    listen(
+      on,
+      () => new FakeRecognizer(),
+      async () => 'not-allowed',
+    )
+    const rec = new FakeRecognizer()
+    listen(on, () => rec, micOk)
+    await tick()
     rec.onend?.()
-    expect(errors).toEqual(['unsupported', 'no-speech'])
+    expect(errors).toEqual(['unsupported', 'not-allowed', 'no-speech'])
+    expect(speechProblem('not-allowed')).toMatch(/blocked/)
+    expect(speechProblem('aborted')).toBeNull()
   })
 })
