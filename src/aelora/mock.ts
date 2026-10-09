@@ -1,0 +1,322 @@
+// In-browser stand-in for the Aelora server, used when VITE_AELORA_MOCK=1 or no
+// backend is configured. It speaks the same frames as the real protocol,
+// including the quirks: broadcast echoes, tool.progress, emotion, avatar.react.
+
+import type { CalendarOccurrence, ClientMessage, Goal, Notification, ServerFrame, Task } from './protocol'
+import type { WebSocketLike } from './socket'
+
+const iso = (d: Date) => d.toISOString()
+/** Local calendar date, YYYY-MM-DD (not UTC, or evenings roll into tomorrow). */
+const day = (offset: number) => {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const at = (hoursFromNow: number) => new Date(Date.now() + hoursFromNow * 3_600_000)
+const uid = () => crypto.randomUUID()
+
+function seed() {
+  const now = iso(new Date())
+  const g1 = uid()
+  const g2 = uid()
+  const g3 = uid()
+  const goal = (id: string, title: string, timeframe: Goal['timeframe']): Goal => ({
+    id,
+    title,
+    timeframe,
+    description: null,
+    status: 'active',
+    vault_id: null,
+    created_at: now,
+    updated_at: now,
+  })
+  const task = (title: string, due: number | null, goal_id: string | null, status: Task['status'] = 'todo'): Task => ({
+    id: uid(),
+    title,
+    status,
+    goal_id,
+    vault_id: null,
+    due_date: due === null ? null : day(due),
+    estimated_minutes: 25,
+    committed_at: null,
+    completed_at: status === 'done' ? now : null,
+    created_at: now,
+    updated_at: now,
+  })
+  const event = (title: string, startH: number, durH: number, location: string | null = null): CalendarOccurrence => ({
+    id: uid(),
+    title,
+    start_time: iso(at(startH)),
+    end_time: iso(at(startH + durH)),
+    all_day: false,
+    location,
+    is_recurring: false,
+  })
+  const note = (title: string, body: string, minsAgo: number, read = false): Notification => {
+    const t = iso(new Date(Date.now() - minsAgo * 60_000))
+    return {
+      id: uid(),
+      origin_type: 'wendy',
+      title,
+      body,
+      scheduled_for: t,
+      sent_at: t,
+      read_at: read ? t : null,
+      created_at: t,
+    }
+  }
+  return {
+    goals: [
+      goal(g1, 'Ship Actora v1', 'month'),
+      goal(g2, 'Run a sub-25 5K', 'semester'),
+      goal(g3, 'Read 2 books', 'month'),
+    ],
+    tasks: [
+      task('Wire the orb shader', 0, g1),
+      task('Review backend docs', 0, g1, 'done'),
+      task('Tempo run 4 km', 0, g2),
+      task('Morph tiles on tap', 1, g1),
+      task('Chapter 6 — Dune', 1, g3),
+      task('Book physio', 2, null),
+      task('Interval session', 3, g2, 'done'),
+    ],
+    events: [
+      event('Design sync', 0.6, 0.5, 'Studio'),
+      event('Gym — legs', 3, 1),
+      event('Dinner w/ Sam', 6, 2, 'Nopa'),
+      event('Sprint planning', 24 + 1, 1, 'Zoom'),
+      event('Dentist', 48 + 2, 0.75),
+    ],
+    notifications: [
+      note('Tempo run today', 'You planned 4 km at threshold pace.', 12),
+      note('Design sync in 40 min', 'Bring the tile morph prototype.', 3),
+      note('Nice streak', 'Five days in a row on Actora.', 180, true),
+    ],
+  }
+}
+
+const REPLIES: Array<[RegExp, string, string?]> = [
+  [
+    /plan|today|day/i,
+    "Here's your shape for today:\n\n- **Design sync** in under an hour\n- Two tasks for *Ship Actora v1*\n- Tempo run before dinner\n\nWant me to block focus time after the sync?",
+    'list_tasks',
+  ],
+  [
+    /calendar|event|schedule/i,
+    "You've got **Design sync** next, then the gym at 3h out and dinner with Sam tonight.",
+    'list_events',
+  ],
+  [/goal/i, '*Ship Actora v1* is moving — one of three tasks done. The 5K goal needs a run today.', 'list_goals'],
+  [/add.*task|remind/i, 'Done — added it to your tasks for today.', 'create_task'],
+]
+
+export class MockWebSocket implements WebSocketLike {
+  readyState = 0
+  onopen: WebSocketLike['onopen'] = null
+  onmessage: WebSocketLike['onmessage'] = null
+  onclose: WebSocketLike['onclose'] = null
+  onerror: WebSocketLike['onerror'] = null
+
+  private static db = seed()
+  private timers = new Set<ReturnType<typeof setTimeout>>()
+  private conversationId = uid()
+  private transcript: Array<{ role: 'user' | 'assistant'; content: string }> = [
+    { role: 'assistant', content: "Morning. You've got a light day — want a quick plan?" },
+  ]
+
+  constructor() {
+    this.later(350, () => {
+      this.readyState = 1
+      this.onopen?.(new Event('open'))
+      this.emit({
+        type: 'hello',
+        userId: 'mock-user',
+        email: 'you@example.com',
+        isAdmin: false,
+        model: 'mock',
+        persona: 'wendy',
+        botName: 'Wendy',
+        uptime: 1,
+        mood: { emotion: 'trust', intensity: 'mid', updatedAt: iso(new Date()) },
+      })
+      this.later(120, () => this.emit({ type: 'conversation.active', conversationId: this.conversationId }))
+      this.scheduleInboxDrip()
+    })
+  }
+
+  send(raw: string): void {
+    const msg = JSON.parse(raw) as ClientMessage
+    const db = MockWebSocket.db
+    switch (msg.type) {
+      case 'ping':
+        return this.reply({ type: 'pong' })
+      case 'task.list':
+        return this.reply({ type: 'task.list', tasks: db.tasks })
+      case 'goal.list':
+        return this.reply({ type: 'goal.list', goals: db.goals })
+      case 'notification.list':
+        return this.reply({ type: 'notification.list', notifications: db.notifications })
+      case 'calendar.list':
+        return this.reply({ type: 'calendar.list', events: db.events })
+      case 'conversation.open':
+        return this.reply({
+          type: 'conversation.messages',
+          conversationId: this.conversationId,
+          messages: this.transcript.map((m, i) => ({ seq: i + 1, ...m, createdAt: iso(new Date()) })),
+          nextBeforeSeq: null,
+          hasMore: false,
+        })
+      case 'task.complete': {
+        const t = db.tasks.find((x) => x.id === msg.id)
+        if (!t) return this.reply({ type: 'error', code: 'not_found', message: 'not found' })
+        Object.assign(t, { status: 'done', completed_at: iso(new Date()), updated_at: iso(new Date()) })
+        this.reply({ type: 'task.completed', task: { ...t } })
+        // Broadcasts echo to the sender too — the client must dedupe by id.
+        return this.reply({ type: 'event', event: 'task', data: { type: 'task:completed', task: { ...t } } })
+      }
+      case 'notification.read': {
+        const n = db.notifications.find((x) => x.id === msg.id)
+        if (!n) return
+        n.read_at = iso(new Date())
+        this.reply({ type: 'notification.marked', notification: { ...n } })
+        return this.reply({
+          type: 'event',
+          event: 'notification',
+          data: { type: 'notification:read', notification: { ...n } },
+        })
+      }
+      case 'chat':
+        return this.chat(String(msg.message ?? ''))
+    }
+  }
+
+  close(code = 1000): void {
+    for (const t of this.timers) clearTimeout(t)
+    this.timers.clear()
+    if (this.readyState === 3) return
+    this.readyState = 3
+    this.onclose?.({ code } as CloseEvent)
+  }
+
+  private chat(message: string): void {
+    const cid = this.conversationId
+    const [, text, tool] = REPLIES.find(([re]) => re.test(message)) ?? [
+      /./,
+      `Got it. I'm here whenever you want to go deeper on "${message.slice(0, 40)}".`,
+      undefined,
+    ]
+    this.transcript.push({ role: 'user', content: message })
+    let t = 250
+    this.later(t, () => this.emit({ type: 'chat.start', conversationId: cid, channelId: cid }))
+    this.later(t + 50, () =>
+      this.event('emotion', { anticipation: 0.7, joy: 0.4, trust: 0.5, source: 'stream', conversationId: cid }),
+    )
+
+    if (tool) {
+      t += 300
+      this.later(t, () =>
+        this.emit({ type: 'tool.progress', conversationId: cid, channelId: cid, phase: 'called', name: tool }),
+      )
+      t += 900
+      this.later(t, () => {
+        this.emit({ type: 'tool.progress', conversationId: cid, channelId: cid, phase: 'succeeded', name: tool })
+        if (tool === 'create_task') {
+          const title = message.replace(/^.*?(add( a)? task( to)?|remind me to)\s*/i, '').trim() || 'New task'
+          const task: Task = {
+            id: uid(),
+            title: title[0].toUpperCase() + title.slice(1),
+            status: 'todo',
+            goal_id: null,
+            vault_id: null,
+            due_date: day(0),
+            estimated_minutes: null,
+            committed_at: null,
+            completed_at: null,
+            created_at: iso(new Date()),
+            updated_at: iso(new Date()),
+          }
+          MockWebSocket.db.tasks.push(task)
+          this.event('task', { type: 'task:created', task })
+        }
+        if (tool === 'list_events') this.event('agent_command', { command: { type: 'open_app', id: 'calendar' } })
+      })
+    }
+
+    const words = text.split(/(?<=\s)/)
+    t += 350
+    words.forEach((w, i) => {
+      this.later(t + i * 38, () => this.emit({ type: 'token', conversationId: cid, channelId: cid, delta: w }))
+      if (i === Math.floor(words.length / 3)) {
+        this.later(t + i * 38, () =>
+          this.event('agent_command', {
+            command: {
+              type: 'avatar.react',
+              trigger: 'good_news',
+              bus: 'positive',
+              state: 'happy',
+              intensity: 0.7,
+              holdMs: 1600,
+              returnTo: 'idle',
+            },
+          }),
+        )
+      }
+    })
+    t += words.length * 38 + 120
+    this.later(t, () => {
+      this.transcript.push({ role: 'assistant', content: text })
+      const mood = { emotion: 'joy', intensity: 'mid', updatedAt: iso(new Date()) }
+      this.emit({ type: 'done', conversationId: cid, channelId: cid, text, mood })
+      this.event('emotion', { joy: 0.6, trust: 0.6, anticipation: 0.3, source: 'llm', conversationId: cid })
+    })
+  }
+
+  private scheduleInboxDrip(): void {
+    const drips = [
+      ['Hydrate', 'Quick water break — it has been a while.'],
+      ['Sprint planning tomorrow', 'Want me to draft an agenda?'],
+      ['Run window', 'Weather is clear for the next 2 hours.'],
+    ]
+    let i = 0
+    const tick = () => {
+      if (i >= drips.length) return
+      const [title, body] = drips[i++]
+      const t = iso(new Date())
+      const notification: Notification = {
+        id: uid(),
+        origin_type: 'wendy',
+        title,
+        body,
+        scheduled_for: t,
+        sent_at: t,
+        read_at: null,
+        created_at: t,
+      }
+      MockWebSocket.db.notifications.push(notification)
+      this.event('notification', { type: 'notification:created', notification })
+      this.later(45_000, tick)
+    }
+    this.later(20_000, tick)
+  }
+
+  private event(event: string, data: Record<string, unknown>): void {
+    this.emit({ type: 'event', event, data })
+  }
+
+  private reply(frame: ServerFrame): void {
+    this.later(60 + Math.random() * 120, () => this.emit(frame))
+  }
+
+  private emit(frame: ServerFrame): void {
+    if (this.readyState !== 1) return
+    this.onmessage?.({ data: JSON.stringify(frame) } as MessageEvent)
+  }
+
+  private later(ms: number, fn: () => void): void {
+    const t = setTimeout(() => {
+      this.timers.delete(t)
+      fn()
+    }, ms)
+    this.timers.add(t)
+  }
+}

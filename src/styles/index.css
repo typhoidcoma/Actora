@@ -1,0 +1,311 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+
+/* Luminora house palette (Aelora docs/design/art-direction.md) on a dark glass ground. */
+@theme {
+  --color-ink: #07080b;
+  --color-ink-2: #0d0f14;
+  --color-glass: rgb(22 25 33 / 0.62);
+  --color-line: rgb(255 255 255 / 0.08);
+  --color-text: #eceae0;
+  --color-muted: #8b90a0;
+  --color-faint: #5a5f6e;
+
+  --color-lime: #cde04a;
+  --color-coral: #ff5566;
+  --color-sky: #8fc4f0;
+  --color-cobalt: #2f4fcf;
+  --color-violet: #7b5ea7;
+  --color-lilac: #b39ae6;
+  --color-cream: #efede0;
+
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', monospace;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root {
+  color-scheme: dark;
+  /* Grid geometry, shared by the grid, the notches and the orb. */
+  --gap: clamp(8px, 1.6vmin, 16px);
+  --grid: min(
+    calc(100vw - 2rem - env(safe-area-inset-left) - env(safe-area-inset-right)),
+    calc(100dvh - 8.5rem),
+    56rem
+  );
+  --orb: calc(var(--grid) * 0.3);
+  --notch: calc(var(--orb) / 2 + var(--gap));
+  --radius: clamp(18px, 3.2vmin, 32px);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ink);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-feature-settings: 'ss01', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+  overflow: hidden;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+input,
+textarea {
+  user-select: text;
+  font-size: 16px; /* prevents iOS focus zoom */
+}
+
+button {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+  letter-spacing: -0.04em;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* ── Ambient backdrop: pre-blurred blobs, animated with transforms only ── */
+.ambient {
+  position: fixed;
+  inset: -20vmax;
+  pointer-events: none;
+  filter: blur(70px) saturate(1.2);
+  opacity: 0.55;
+  transform: translateZ(0);
+}
+.ambient > i {
+  position: absolute;
+  width: 55vmax;
+  height: 55vmax;
+  border-radius: 50%;
+  will-change: transform;
+  animation: drift 28s ease-in-out infinite alternate;
+}
+.ambient > i:nth-child(1) {
+  left: 10%;
+  top: 5%;
+  background: radial-gradient(circle, rgb(47 79 207 / 0.55), transparent 65%);
+}
+.ambient > i:nth-child(2) {
+  right: 5%;
+  top: 30%;
+  background: radial-gradient(circle, rgb(123 94 167 / 0.5), transparent 65%);
+  animation-duration: 34s;
+  animation-delay: -9s;
+}
+.ambient > i:nth-child(3) {
+  left: 30%;
+  bottom: 0;
+  background: radial-gradient(circle, rgb(205 224 74 / 0.16), transparent 65%);
+  animation-duration: 40s;
+  animation-delay: -17s;
+}
+@keyframes drift {
+  from {
+    transform: translate3d(-6%, -4%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(6%, 5%, 0) scale(1.15);
+  }
+}
+
+/* Fine grain over everything (art direction: "subtle grain"). */
+.grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@layer components {
+  /* ── Glass surface (no backdrop-filter: cheap on iPad Safari) ── */
+  .glass {
+    position: relative;
+    background: linear-gradient(160deg, rgb(255 255 255 / 0.06), rgb(255 255 255 / 0) 42%), var(--color-glass);
+    border-radius: var(--radius);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.07),
+      0 24px 60px -24px rgb(0 0 0 / 0.7);
+    isolation: isolate;
+  }
+  /* 1px gradient hairline */
+  .glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(150deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0.03) 40%, rgb(255 255 255 / 0.1));
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Inner-corner notch that cradles the orb; centred exactly on the grid centre. */
+  .notch-br {
+    -webkit-mask: radial-gradient(
+      circle at calc(100% + var(--gap) / 2) calc(100% + var(--gap) / 2),
+      transparent var(--notch),
+      #000 calc(var(--notch) + 0.5px)
+    );
+    mask: radial-gradient(
+      circle at calc(100% + var(--gap) / 2) calc(100% + var(--gap) / 2),
+      transparent var(--notch),
+      #000 calc(var(--notch) + 0.5px)
+    );
+  }
+  .notch-bl {
+    -webkit-mask: radial-gradient(
+      circle at calc(var(--gap) / -2) calc(100% + var(--gap) / 2),
+      transparent var(--notch),
+      #000 calc(var(--notch) + 0.5px)
+    );
+    mask: radial-gradient(
+      circle at calc(var(--gap) / -2) calc(100% + var(--gap) / 2),
+      transparent var(--notch),
+      #000 calc(var(--notch) + 0.5px)
+    );
+  }
+  .notch-tr {
+    -webkit-mask: radial-gradient(
+      circle at calc(100% + var(--gap) / 2) calc(var(--gap) / -2),
+      transparent var(--notch),
+      #000 calc(var(--notch) + 0.5px)
+    );
+    mask: radial-gradient(
+      circle at calc(100% + var(--gap) / 2) calc(var(--gap) / -2),
+      transparent var(--notch),
+      #000 calc(var(--notch) + 0.5px)
+    );
+  }
+  .notch-tl {
+    -webkit-mask: radial-gradient(
+      circle at calc(var(--gap) / -2) calc(var(--gap) / -2),
+      transparent var(--notch),
+      #000 calc(var(--notch) + 0.5px)
+    );
+    mask: radial-gradient(
+      circle at calc(var(--gap) / -2) calc(var(--gap) / -2),
+      transparent var(--notch),
+      #000 calc(var(--notch) + 0.5px)
+    );
+  }
+}
+
+.scroll-y {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.scroll-y::-webkit-scrollbar {
+  display: none;
+}
+
+/* Wendy's Markdown */
+.md {
+  font-size: 0.975rem;
+  line-height: 1.55;
+}
+.md p {
+  margin: 0 0 0.6em;
+}
+.md p:last-child {
+  margin-bottom: 0;
+}
+.md ul,
+.md ol {
+  margin: 0.3em 0 0.6em;
+  padding-left: 1.2em;
+}
+.md ul {
+  list-style: none;
+  padding-left: 0.9em;
+}
+.md ul > li::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin: 0 0.6em 0.15em -0.9em;
+  border-radius: 1px;
+  background: var(--color-lime);
+  transform: rotate(45deg);
+}
+.md ol {
+  list-style: decimal;
+}
+.md a {
+  color: var(--color-sky);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgb(143 196 240 / 0.4);
+}
+.md strong {
+  color: #fff;
+  font-weight: 600;
+}
+.md code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  padding: 0.1em 0.35em;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.07);
+}
+.md pre {
+  overflow-x: auto;
+  padding: 0.8em;
+  border-radius: 12px;
+  background: rgb(0 0 0 / 0.35);
+}
+.md img {
+  max-width: 100%;
+  max-height: 220px;
+  border-radius: 12px;
+  margin: 0.4em 0;
+}
+.md table {
+  border-collapse: collapse;
+  font-size: 0.9em;
+  margin: 0.4em 0;
+}
+.md th,
+.md td {
+  border-bottom: 1px solid var(--color-line);
+  padding: 0.35em 0.6em;
+  text-align: left;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient > i {
+    animation: none;
+  }
+}
