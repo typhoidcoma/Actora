@@ -5,6 +5,7 @@ import type { Find } from '../finds/finds'
 import type { PriorityItem } from '../priority/score'
 import type { PushState } from '../stores/push'
 import { actOption, sayOption, type Option } from './types'
+import { shortLabel } from './label'
 
 // Instant, deterministic options for every context. They render immediately
 // and are then refined (not replaced wholesale) by Wendy-written options.
@@ -67,7 +68,8 @@ const localDate = (d: Date) =>
 
 const tomorrow = (now: number) => localDate(new Date(now + 86_400_000))
 
-const short = (s: string, n = 22) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s)
+/** A title cut to whole words for a pill (never an ellipsis: the pill shortener does the rest). */
+const short = (s: string, n = 22) => shortLabel(s, n)
 
 const isOpen = (t: Task) => t.status !== 'done' && t.status !== 'skipped'
 
@@ -255,6 +257,14 @@ function finds(key: string, s: Snapshot): Option[] {
 }
 
 export function localOptions(key: string, s: Snapshot): Option[] {
+  // Her last turn failed: one tap sends the same thing again, wherever the user is.
+  const last = s.agent.messages.at(-1)
+  const retry = last?.role === 'error' && !s.agent.turnId && !s.agent.awaitingTurn
+  const base = forContext(key, s)
+  return retry ? [{ ...actOption('Try again', { type: 'retry' }), pin: true }, ...base] : base
+}
+
+function forContext(key: string, s: Snapshot): Option[] {
   if (key === 'home') return home(s)
   if (key === 'vault')
     return [

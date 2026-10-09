@@ -127,6 +127,12 @@ function runAct(act: LocalAct): void {
       return
     case 'askDelete':
       return ui.askDelete(act.item)
+    case 'retry': {
+      // Send the last thing the user said again.
+      const lastSaid = useAgent.getState().messages.findLast((m) => m.role === 'user')
+      if (lastSaid) say(lastSaid.text)
+      return
+    }
   }
 }
 

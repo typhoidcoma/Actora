@@ -12,6 +12,7 @@ import { jelly } from './motion'
 import { useNow } from './tiles/data'
 import { ROLE } from './brand'
 import { useMetrics } from '../stores/metrics'
+import { connectGoogle, disconnectGoogle, googleHint, googleNeedsAction, syncGoogle, useGoogle } from '../google/google'
 
 function useStatus(): { text: string; tone: 'ok' | 'busy' | 'warn' } {
   const connection = useAgent((s) => s.connection)
@@ -95,6 +96,7 @@ function Sheet({
   const now = useNow(10_000)
   const sky = useSky()
   const compact = useMetrics((m) => m.compact)
+  const google = useGoogle((g) => g.status)
   const email = useAgent((s) => s.email)
   const theme = useUi((s) => s.theme)
   const push = usePush((s) => s.status)
@@ -183,6 +185,18 @@ function Sheet({
         </Item>
       )}
       {push === 'denied' && <Item hint="Blocked in browser settings">Reminders</Item>}
+      {/* Google: Wendy's email and invites need it; connected, a tap syncs the calendar. */}
+      {google?.configured && (
+        <>
+          <Item
+            onClick={() => void (googleNeedsAction(google) ? connectGoogle() : syncGoogle()).then(close)}
+            hint={googleHint(google)}
+          >
+            Google
+          </Item>
+          {google.connected && <Item onClick={() => void disconnectGoogle().then(close)}>Disconnect Google</Item>}
+        </>
+      )}
       {onSignOut && <Item onClick={onSignOut}>Sign out</Item>}
     </motion.div>
   )

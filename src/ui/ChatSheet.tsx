@@ -11,7 +11,11 @@ import { LazyMarkdown as Markdown } from './LazyMarkdown'
 import { copyableText, stableMarkdown } from './markdownText'
 import { glide, morph, press } from './motion'
 import { OptionRail } from './OptionRail'
+import { PendingBody } from './cards/PendingCard'
+import { usePendingAction } from '../stores/pending'
 import { sheen } from './sheen'
+import { runOption } from '../options/run'
+import { actOption } from '../options/types'
 
 export function ChatSheet() {
   const open = useUi((s) => s.chatOpen)
@@ -69,12 +73,24 @@ function Sheet() {
         >
           <SheetHeader onPointerDown={(e) => drag.start(e)} />
           <Transcript />
+          <PendingStrip />
           <div className="shrink-0 border-t border-line px-3 pt-1 pb-[max(8px,env(safe-area-inset-bottom))]">
             <OptionRail contextKey="chat" />
           </div>
         </motion.div>
       </motion.div>
     </>
+  )
+}
+
+/** In the chat, what's waiting for the user's OK sits right above the answers (Send / Change it / Discard). */
+function PendingStrip() {
+  const p = usePendingAction()
+  if (!p) return null
+  return (
+    <div className="mx-3 mb-2 shrink-0 rounded-[8px] border border-urgent/30 bg-urgent/6 px-4 py-3">
+      <PendingBody p={p} compact />
+    </div>
   )
 }
 
@@ -221,7 +237,17 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
     )
   }
   if (bubble.role === 'error') {
-    return <div className="self-start text-sm text-urgent">{bubble.text}</div>
+    return (
+      <div className="flex items-center gap-3 self-start text-sm text-urgent">
+        {bubble.text}
+        <button
+          onClick={() => runOption(actOption('Try again', { type: 'retry' }))}
+          className="glass-pill h-9 rounded-[6px] px-3 text-[13px] font-semibold text-strong"
+        >
+          Try again
+        </button>
+      </div>
+    )
   }
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="group max-w-[88%] self-start text-text">

@@ -28,6 +28,18 @@ const writes = /create|add|update|edit|move|reschedule|delete|remove|complete|se
 export function describeTool(name: string): ToolWords {
   const n = name.toLowerCase()
   const w = writes.test(n)
+  // Email and invites first ("propose_calendar_invite" isn't a calendar check).
+  // Anything that waits for the user's OK says so.
+  if (n === 'confirm_action') return { doing: 'Sending it', done: 'Sent it', icon: 'note' }
+  if (n === 'discard_action') return { doing: 'Discarding it', done: 'Discarded it', icon: 'note' }
+  if (/propose_calendar_invite|propose_invite_change/.test(n))
+    return { doing: 'Preparing an invite for your OK', done: 'Invite ready for your OK', icon: 'calendar' }
+  if (/draft_email|forward_email|propose_email_change/.test(n))
+    return { doing: 'Drafting an email for your OK', done: 'Email ready for your OK', icon: 'note' }
+  if (/search_email|read_email|email_thread|email_attachment|email_labels|email_settings/.test(n))
+    return { doing: 'Reading your email', done: 'Read your email', icon: 'read' }
+  if (/modify_email|email_label|untrash_email|email_filter/.test(n))
+    return { doing: 'Tidying your inbox', done: 'Tidied your inbox', icon: 'note' }
   if (/web_?search|search_?web|google|bing|news/.test(n))
     return { doing: 'Searching the web', done: 'Searched the web', icon: 'search' }
   if (/fetch|browse|read_?url|open_?url|scrape|page|web_?read|crawl/.test(n))

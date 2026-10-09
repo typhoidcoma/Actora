@@ -4,6 +4,8 @@ import type { FrameBus } from './socket'
 import { describeTool, describeUiAction, toolDetail, uiActionName } from './activity'
 import { sayLinks, scrubToolLeaks } from './scrub'
 import { strayAction } from './actions'
+import { connectGoogle, isGoogleError } from '../google/google'
+import { toast } from '../stores/toast'
 import { sayOption } from '../options/types'
 import { optionsStore } from '../stores/options'
 import { contextKeyOf, useUi } from '../stores/ui'
@@ -222,6 +224,13 @@ export function handleChatFrame(f: ServerFrame): boolean {
         set({ phase: 'tool', toolName: name, steps: startTool(s.steps, String(f.name ?? ''), f.argsSummary) })
       } else {
         set({ phase: 'thinking', toolName: null, steps: endStep(s.steps, name, f.phase === 'failed' && !stray) })
+        // Failed for want of Google (email, invites): offer to connect it right there.
+        if (f.phase === 'failed' && isGoogleError(`${String(f.error ?? '')} ${String(f.result ?? '')}`)) {
+          toast.error('Wendy needs your Google account for that.', {
+            action: { label: 'Connect', run: () => void connectGoogle() },
+            ms: 9000,
+          })
+        }
         orbSignals.bump(0.45) // a small flare as each step lands
       }
       return true

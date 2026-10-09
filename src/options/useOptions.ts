@@ -4,6 +4,7 @@ import { useAgent } from '../stores/agent'
 import { useEntities } from '../stores/entities'
 import { isStale, mergeOptions, useOptionsStore } from '../stores/options'
 import { usePush } from '../stores/push'
+import { approvalOptions, usePending, waiting } from '../stores/pending'
 import { contextKeyOf, useUi } from '../stores/ui'
 import { useNow } from '../ui/tiles/data'
 import { useFinds } from '../finds/finds'
@@ -43,12 +44,14 @@ export function useOptions(key: string): { options: Option[]; loading: boolean }
   const wendy = useOptionsStore((s) => s.byKey[key]?.wendy ?? EMPTY)
   const loading = useOptionsStore((s) => s.byKey[key]?.loading ?? false)
   const pushed = useOptionsStore((s) => (s.pushed?.key === key ? s.pushed.options : EMPTY))
+  // Anything waiting for the user's OK leads, wherever they are.
+  const approval = usePending(useShallow((s) => waiting(s.items)[0]))
 
   // Judged against history as it was when this set formed, so an option doesn't
   // vanish mid-look just because it was counted as shown.
   const options = useMemo(() => {
     const history = useOptionsStore.getState().history
-    return mergeOptions(local, wendy, pushed, 6, (o) => isStale(o, history, now))
-  }, [local, wendy, pushed, now])
+    return mergeOptions(local, wendy, [...approvalOptions(approval), ...pushed], 6, (o) => isStale(o, history, now))
+  }, [local, wendy, pushed, now, approval])
   return { options, loading }
 }

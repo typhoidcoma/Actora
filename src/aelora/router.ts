@@ -11,6 +11,8 @@ import {
 import { adoptGreetingUser } from './greeting'
 import { adoptMainUser, recallMain, rememberMain } from './mainThread'
 import { CATEGORIES, useVault, vault, type VaultEntry } from '../stores/vault'
+import { pending, usePending, waiting } from '../stores/pending'
+import { refreshGoogle } from '../google/google'
 import { actOption, sayOption } from '../options/types'
 import { notifyInBackground, resubscribe } from '../push/push'
 import { agent, useAgent, type Reaction } from '../stores/agent'
@@ -133,6 +135,8 @@ function screen() {
     vault: u.vault ? { open: true, query: v.query, category: v.category } : { open: false },
     theme: u.theme,
     reminders: usePush.getState().status,
+    // Prepared actions the user hasn't answered yet (they approve with a tap, in a later turn).
+    pending: waiting(usePending.getState().items).map((p) => ({ id: p.id, kind: p.kind })),
     priorities,
     box4,
     colors: describeScheme(useScheme.getState().scheme, useScheme.getState().source),
@@ -169,6 +173,7 @@ function bootstrap(bus: FrameBus): void {
   void request(bus, { type: 'goal.list' }, 'goal.list')
   void refreshCalendar(bus)
   void resubscribe()
+  void refreshGoogle()
 }
 
 let calendarRefetch: ReturnType<typeof setTimeout> | undefined
@@ -444,6 +449,10 @@ function routeEvent(bus: FrameBus, event: string, data: Record<string, unknown> 
       if (sub === 'goal:deleted') entities.removeGoal(String(data.id))
       else if (data.goal) entities.upsertGoal(data.goal as Goal)
       return
+    case 'pending_action':
+      // Something Wendy prepared that waits for the user's OK (an email, an invite…).
+      pending.apply(data)
+      return
     case 'vault':
       // Her remember/forget tools broadcast too; ignore ids we don't hold (forget_fact).
       if (sub === 'vault:deleted') vault.remove(String(data.id))
@@ -522,6 +531,7 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
       adoptGreetingUser(userId)
       adoptMainUser(userId)
       vault.reset()
+      pending.clear()
       useAgent.setState({
         userId,
         botName: typeof f.botName === 'string' ? f.botName : 'Wendy',

@@ -12,6 +12,11 @@ export type Verdict = 'apply' | 'drop' | 'refetch'
 const SCREEN = new Set(['agent_command', 'ui', 'mood', 'emotion', 'mindmap', 'persona.reloaded'])
 /** Data events whose payload may not name its owner: our own copy can be refetched. */
 const DATA = new Set(['task', 'goal', 'notification', 'vault', 'calendar'])
+/**
+ * The user's own approvals: Aelora no longer fans these out to admins' app
+ * sockets (#254), and hiding an admin's own pending email would be worse.
+ */
+const OWN = new Set(['pending_action', 'session'])
 
 const str = (v: unknown) => (typeof v === 'string' && v ? v : null)
 const ownerIn = (v: unknown) => (v && typeof v === 'object' ? str((v as { user_id?: unknown }).user_id) : null)
@@ -40,6 +45,7 @@ export function eventVerdict(
   const owner = ownerOf(frame, data)
   if (owner) return me && owner === me ? 'apply' : 'drop'
   if (!admin) return 'apply'
+  if (OWN.has(event)) return 'apply'
   if (SCREEN.has(event) || event.startsWith('kb')) return 'drop'
   if (DATA.has(event)) return 'refetch'
   // Thread events name a conversation id, which only matches if it's ours;

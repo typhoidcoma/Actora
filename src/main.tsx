@@ -21,6 +21,12 @@ if (import.meta.env.DEV) {
       ;(window as unknown as { __actora: object }).__actora = {
         ui: router.runUiAction,
         chat: run.say,
+        // Feed a server event in, e.g. __actora.event('pending_action', {type: 'pending_action:created', id, kind, summary})
+        event: (event: string, data: object) =>
+          router.routeFrame(
+            { type: 'event', event, data } as never,
+            { send: () => true, subscribe: () => () => {} } as never,
+          ),
         agent: a.useAgent,
       }
     },

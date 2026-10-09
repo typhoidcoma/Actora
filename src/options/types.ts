@@ -21,6 +21,7 @@ export type LocalAct =
   | { type: 'openFinds' }
   | { type: 'saveFind'; id: string }
   | { type: 'askDelete'; item: Selected }
+  | { type: 'retry' }
 
 /**
  * One tap target. `say` sends a chat turn to Wendy in the user's voice;

@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { deleteItem } from '../../aelora/client'
 import { useAgent } from '../../stores/agent'
 import { useTaskBrief } from '../../tasks/brief'
+import { usePriorities } from '../../priority/usePriorities'
 import { useShallow } from 'zustand/react/shallow'
 import { useEntities } from '../../stores/entities'
 import { ui, useUi, type Selected } from '../../stores/ui'
@@ -21,6 +22,9 @@ export function ItemPanel({ item }: { item: Selected }) {
   const taskGoal = task?.goal_id ? (e.goals[task.goal_id]?.title ?? null) : null
   const brief = useTaskBrief(task, taskGoal, !!task?.notes?.trim())
   const botName = useAgent((s) => s.botName)
+  // Why Wendy put this card where it is, in her words (when she ranked it).
+  const ranked = usePriorities().find((p) => p.key === `${item.kind}:${item.id}`)
+  const why = ranked?.whyFrom === 'wendy' ? ranked.why : null
   const seeAll = (
     <button
       onClick={() => ui.reveal(item)}
@@ -158,6 +162,11 @@ export function ItemPanel({ item }: { item: Selected }) {
         </div>
       }
     >
+      {why && (
+        <p className="mb-4 border-l-2 pl-3 text-[15px] text-text" style={{ borderColor: kind.color }}>
+          <span className="font-semibold text-strong">{botName}:</span> {why}
+        </p>
+      )}
       {body}
     </Panel>
   )

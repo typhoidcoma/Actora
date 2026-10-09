@@ -10,6 +10,8 @@ import { Panel } from './cards/Panel'
 import { PriorityCard } from './cards/PriorityCard'
 import { Reader } from './cards/Reader'
 import { FindsCard } from './cards/FindsCard'
+import { PendingCard } from './cards/PendingCard'
+import { usePendingAction } from '../stores/pending'
 import { FindsPanel } from './cards/FindsPanel'
 import { VaultPanel } from './cards/VaultPanel'
 import { glide } from './motion'
@@ -70,6 +72,7 @@ export function Grid() {
   const memories = useUi((s) => s.vault)
   const chatOpen = useUi((s) => s.chatOpen)
   const slots = useSlots()
+  const pendingAction = usePendingAction()
 
   const itemPanel = !focus && selected ? selected : null
   const openKey = finds ? 'wendy' : itemPanel ? `${itemPanel.kind}:${itemPanel.id}` : focus ? `list:${focus}` : null
@@ -97,7 +100,13 @@ export function Grid() {
           const corner = (m.stack ? 0 : i) as Corner
           // The open card unmounts so its layoutId can morph into the panel.
           if (slot.key === openKey) return <div key={slot.key} />
-          if (slot.type === 'wendy') return <FindsCard key="wendy" corner={corner} hidden={panelOpen} />
+          // Something waiting for the user's OK takes box 4 until it's answered.
+          if (slot.type === 'wendy')
+            return pendingAction ? (
+              <PendingCard key="pending" corner={corner} hidden={panelOpen} />
+            ) : (
+              <FindsCard key="wendy" corner={corner} hidden={panelOpen} />
+            )
           if (slot.type === 'item') {
             return (
               <PriorityCard
