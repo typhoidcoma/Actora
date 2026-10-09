@@ -57,16 +57,17 @@ const TOOLS = new Set([
 ])
 
 // name{…} or name(…) with no nested brackets: tool-call syntax, not prose.
-const CALL = /\b([a-z]+(?:_[a-z]+)*)\s*([({])([^(){}]*)[)}]/g
+const CALL = /\b([a-z]+(?:_[a-z]+)*)\s*([({])([^(){}]*)[)}]/gi
 // The same, still arriving at the very end of a stream.
-const OPEN = /\b([a-z]+(?:_[a-z]+)*)\s*[({][^(){}]*$/
+const OPEN = /\b([a-z]+(?:_[a-z]+)*)\s*[({][^(){}]*$/i
 
 /**
  * Braces after a snake_case or tool name are never prose. Parentheses count only
  * for multi-word tool names (ui_action(...)), or a one-word tool (remember) whose
  * contents look like arguments: "remember (it's important)" stays.
  */
-const isCall = (name: string, bracket: string, inner: string) => {
+const isCall = (raw: string, bracket: string, inner: string) => {
+  const name = raw.toLowerCase()
   if (bracket === '{') return TOOLS.has(name) || name.includes('_')
   if (!TOOLS.has(name)) return false
   return name.includes('_') || /[:=]/.test(inner)
@@ -93,12 +94,14 @@ export function sayLinks(text: string): Array<{ label: string; say: string }> {
 /** Reply text with leaked tool calls removed (and a half-arrived one held back while streaming). */
 export function scrubToolLeaks(text: string, streaming = false): string {
   if (!text) return text
+  // Markdown escapes (perform\_reaction\{…\}) render as the bare call, so match without them.
   let out = text
+    .replace(/\\([_{}()])/g, '$1')
     .replace(CALL, (m, name: string, bracket: string, inner: string) => (isCall(name, bracket, inner) ? ' ' : m))
     .replace(SAY_LINK, '')
   if (streaming) {
     const open = OPEN.exec(out)
-    if (open && (TOOLS.has(open[1]) || open[1].includes('_'))) out = out.slice(0, open.index)
+    if (open && (TOOLS.has(open[1].toLowerCase()) || open[1].includes('_'))) out = out.slice(0, open.index)
     // Hold back a last word that may be the start of a call ("perf", "perform_re"…):
     // it shows a token later if it was just a word.
     const tail = /[a-z_]+$/.exec(out)

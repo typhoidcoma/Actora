@@ -219,6 +219,8 @@ export function handleChatFrame(f: ServerFrame): boolean {
       const raw = String(f.text ?? rawReply)
       const bubble: ChatBubble = { id: bubbleId(), role: 'assistant', text: scrubToolLeaks(raw) }
       offerSayLinks(raw)
+      // A call that got past the scrubber: log the raw form so the pattern can be fixed.
+      if (/[a-z]+_[a-z_]+\W{0,3}[({]/i.test(bubble.text)) console.warn('[scrub] leak survived:', JSON.stringify(raw))
       set({
         messages: [...s.messages, bubble],
         streaming: null,

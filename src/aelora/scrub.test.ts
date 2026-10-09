@@ -17,7 +17,7 @@ describe('scrubToolLeaks', () => {
 
   it('lifts say: answer links out of the text', () => {
     const reply =
-      'want to keep this open for the team sync?\n\n[keep it open for the meeting](say:yes, keep this reader open)\n[close it, i\'ll review it later](say:close the reader for now)'
+      "want to keep this open for the team sync?\n\n[keep it open for the meeting](say:yes, keep this reader open)\n[close it, i'll review it later](say:close the reader for now)"
     expect(scrubToolLeaks(reply)).toBe('want to keep this open for the team sync?')
     expect(sayLinks(reply)).toEqual([
       { label: 'keep it open for the meeting', say: 'yes, keep this reader open' },
@@ -26,6 +26,13 @@ describe('scrubToolLeaks', () => {
     expect(scrubToolLeaks('open it?\n\n[keep it op', true)).toBe('open it?\n\n')
     expect(scrubToolLeaks('open it?\n\n[keep it](sa', true)).toBe('open it?\n\n')
     expect(scrubToolLeaks('see [the docs](https://x.dev) now')).toBe('see [the docs](https://x.dev) now')
+  })
+
+  it('catches calls written with Markdown escapes or a capital', () => {
+    const t =
+      'perform\\_reaction\\{anchor:overcast, wet pavement,intensity:low,trigger:decision\\_making\\}done. moody.'
+    expect(scrubToolLeaks(t)).toBe('done. moody.')
+    expect(scrubToolLeaks('Perform_reaction{anchor:x}Done.')).toBe('Done.')
   })
 
   it('never flashes the start of a call while streaming', () => {
