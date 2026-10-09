@@ -161,18 +161,21 @@ function DeleteButton({
   occurrence?: string
   onDelete: (occurrence?: string) => Promise<boolean>
 }) {
-  const [asking, setAsking] = useState(false)
+  const [tapped, setTapped] = useState(false)
   // "Delete…" from a list row or the rail opens the panel already asking.
   const deleting = useUi((s) => s.deleting)
-  useEffect(() => {
-    if (!deleting) return
-    setAsking(true)
-    useUi.setState({ deleting: false })
-  }, [deleting])
+  const asking = tapped || deleting
+  const setAsking = (v: boolean) => {
+    setTapped(v)
+    if (!v) useUi.setState({ deleting: false })
+  }
   // Left unanswered, the question quietly goes away.
   useEffect(() => {
     if (!asking) return
-    const t = setTimeout(() => setAsking(false), 5000)
+    const t = setTimeout(() => {
+      setTapped(false)
+      useUi.setState({ deleting: false })
+    }, 5000)
     return () => clearTimeout(t)
   }, [asking])
 
