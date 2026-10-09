@@ -4,6 +4,7 @@ import { useAgent } from '../stores/agent'
 import { clockTime, toolLabel } from './format'
 import { press } from './motion'
 import { useNow } from './tiles/data'
+import { useSky, type Sky } from '../weather/sky'
 
 function useStatus(): { text: string; tone: 'ok' | 'busy' | 'warn' } {
   const connection = useAgent((s) => s.connection)
@@ -17,6 +18,26 @@ function useStatus(): { text: string; tone: 'ok' | 'busy' | 'warn' } {
   if (phase === 'tool') return { text: `${botName} · ${toolLabel(tool).toLowerCase() || 'working'}`, tone: 'busy' }
   if (phase === 'speaking') return { text: `${botName} · speaking`, tone: 'busy' }
   return { text: `${botName} · online`, tone: 'ok' }
+}
+
+const SKY_LABEL: Record<Sky['kind'], [day: string, night: string]> = {
+  clear: ['Sunny', 'Clear'],
+  partly: ['Partly cloudy', 'Partly cloudy'],
+  cloudy: ['Overcast', 'Overcast'],
+  fog: ['Fog', 'Fog'],
+  rain: ['Rain', 'Rain'],
+  storm: ['Storms', 'Storms'],
+  snow: ['Snow', 'Snow'],
+}
+
+function Weather() {
+  const sky = useSky()
+  if (sky.source !== 'live' || sky.temp === null) return null
+  return (
+    <span className="num hidden text-[13px] text-muted sm:block">
+      <span className="text-text/90">{Math.round(sky.temp)}°</span> {SKY_LABEL[sky.kind][sky.isDay ? 0 : 1]}
+    </span>
+  )
 }
 
 const TONE = { ok: '#CDE04A', busy: '#8FC4F0', warn: '#FF5566' } as const
@@ -37,11 +58,12 @@ export function Header({ onSignOut }: { onSignOut?: () => void }) {
       </div>
 
       <div className="relative flex items-center gap-4">
+        <Weather />
         <span className="num hidden text-[13px] text-muted sm:block">{clockTime(now)}</span>
         <motion.button
           whileTap={press}
           onClick={() => setMenu((v) => !v)}
-          className="flex h-11 items-center gap-2 rounded-full border border-white/8 bg-white/4 px-4"
+          className="glass-pill flex h-11 items-center gap-2 rounded-full px-4"
           aria-label="Connection status"
         >
           <motion.span

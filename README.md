@@ -84,6 +84,17 @@ Protocol rules from Aelora's `FRONTEND.md` that the code depends on:
 - **`client_state`** advertises `ui.availableActions` (`tile.focus`, `tile.close`, `chat.open`, `chat.close`) and the
   orb's reaction states. That lets Wendy open a tile or the chat herself, and lets `avatar.react` beats play on the orb.
 
+### Liquid glass and weather
+
+- Surfaces use real backdrop blur and saturation over a tinted body, with a specular edge, a faint chromatic fringe and
+  a sheen that follows the finger (`src/ui/sheen.ts`, registered `@property` values so it glides). Tiles squish
+  and rebound on press. The orb's mood colour glows through the glass from behind the grid (`MoodLight`).
+- The background is random on every load and coloured by the **local weather**
+  (`src/weather/`). That means one browser location prompt and Open-Meteo's free forecast API: coordinates rounded to
+  about 1 km, refreshed every 20 minutes, cached in `localStorage`. Each of seven skies has a day and a night palette,
+  hot and cold temperatures tint it, and storms flash. If location is denied, it falls back to a clear day or night sky
+  based on the local time.
+
 ### Motion and performance
 
 - Geometry is computed once in `stores/metrics.ts` and mirrored to CSS variables. Every animation is a transform
@@ -92,6 +103,7 @@ Protocol rules from Aelora's `FRONTEND.md` that the code depends on:
   header. Its WebGL context is created once. Its uniforms are eased every frame from the agent state: idle, thinking,
   speaking (per-token energy), tool (orbit ring), offline (desaturated), plus mood colours and reaction beats. It pauses
   when the tab is hidden and caps DPR at 2.
-- Glass is drawn with gradients and hairlines, not `backdrop-filter`, which is expensive on iPad Safari.
-- Supabase and the Markdown renderer are code-split. The initial JS is about 145 KB gzipped.
+- Backdrop blur is limited to the few glass surfaces, and the ambient field behind them is pre-blurred and animated
+  only with transforms.
+- Supabase and the Markdown renderer are code-split. The initial JS is about 146 KB gzipped.
 - `prefers-reduced-motion` is respected throughout.

@@ -121,7 +121,9 @@ export function Orb() {
 
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame)
-      const dt = Math.min(0.05, (now - last) / 1000)
+      // rAF timestamps can precede the performance.now() taken at setup, so the
+      // first dt can be negative; that would make every ease diverge.
+      const dt = Math.max(0, Math.min(0.05, (now - last) / 1000))
       last = now
       const s = useAgent.getState()
       const tg = phaseTargets(s)

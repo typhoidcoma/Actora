@@ -5,21 +5,21 @@ import { watchMetrics } from '../stores/metrics'
 import { ui, useUi } from '../stores/ui'
 import { ChatSheet } from './ChatSheet'
 import { Grid } from './Grid'
+import { Ambient } from '../weather/Ambient'
 import { Header } from './Header'
+import { MoodLight } from './MoodLight'
 import { OrbDock, OrbSocket } from './OrbDock'
 
-export function Backdrop() {
+export function Backdrop({ grain = true }: { grain?: boolean }) {
   return (
     <>
-      <div className="ambient" aria-hidden>
-        <i />
-        <i />
-        <i />
-      </div>
-      <div className="grain" aria-hidden />
+      <Ambient />
+      {grain && <Grain />}
     </>
   )
 }
+
+const Grain = () => <div className="grain z-50" aria-hidden />
 
 export function Stage({ onSignOut }: { onSignOut?: () => void }) {
   const focus = useUi((s) => s.focus)
@@ -34,7 +34,8 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
 
   return (
     <MotionConfig reducedMotion="user">
-      <Backdrop />
+      <Backdrop grain={false} />
+      <MoodLight />
       <Header onSignOut={onSignOut} />
       {focus && <div className="fixed inset-0" onClick={() => ui.focus(null)} aria-hidden />}
       <LayoutGroup>
@@ -44,6 +45,8 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
         <OrbDock />
       </LayoutGroup>
       <AnimatePresence>{fatal && <FatalCard key="fatal" />}</AnimatePresence>
+      {/* Grain sits above the glass, as on a real render, rather than being blurred by it. */}
+      <Grain />
     </MotionConfig>
   )
 }

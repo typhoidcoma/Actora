@@ -7,6 +7,7 @@ import { ui, useUi } from '../stores/ui'
 import { toolLabel } from './format'
 import { stableMarkdown } from './markdownText'
 import { glide, morph, press } from './motion'
+import { sheen } from './sheen'
 
 // The Markdown stack is the heaviest dependency; load it with the first chat open.
 const LazyMarkdown = lazy(() => import('./Markdown'))
@@ -61,14 +62,14 @@ function Sheet() {
         dragConstraints={{ top: 0, bottom: 0 }}
         dragElastic={{ top: 0, bottom: 0.5 }}
         onDragEnd={onDragEnd}
-        className="glass fixed z-20 flex flex-col overflow-hidden"
+        {...sheen}
+        className="glass glass-thick fixed z-20 flex flex-col overflow-hidden"
         style={{
           left: m.sheet.x,
           top: m.sheet.y,
           width: m.sheet.w,
           height: m.sheet.h,
           borderRadius: m.sheet.radius,
-          background: 'linear-gradient(170deg, rgb(255 255 255 / 0.05), transparent 40%), rgb(13 15 20 / 0.96)',
         }}
         role="dialog"
         aria-label="Chat with Wendy"
@@ -128,7 +129,7 @@ function SheetHeader({ onPointerDown }: { onPointerDown: (e: React.PointerEvent)
         whileTap={press}
         onClick={ui.closeChat}
         aria-label="Close chat"
-        className="grid h-11 w-11 place-items-center rounded-full bg-white/6 text-muted"
+        className="glass-pill grid h-11 w-11 place-items-center rounded-full text-text/80"
       >
         <svg viewBox="0 0 16 16" className="h-4 w-4">
           <path
@@ -260,7 +261,7 @@ function Composer() {
                 input.current?.focus()
               }
             }}
-            className="h-10 shrink-0 rounded-full border border-white/10 bg-white/5 px-4 text-sm whitespace-nowrap text-text/90 transition-opacity disabled:opacity-40"
+            className="glass-pill h-10 shrink-0 rounded-full px-4 text-sm whitespace-nowrap text-text/90 transition-opacity disabled:opacity-40"
           >
             {c.label}
           </motion.button>
@@ -273,7 +274,7 @@ function Composer() {
           onChange={(e) => setText(e.target.value)}
           placeholder={offline ? 'Reconnecting…' : 'Message Wendy'}
           enterKeyHint="send"
-          className="h-12 min-w-0 flex-1 rounded-full border border-white/10 bg-ink/60 px-5 text-white placeholder:text-faint focus:border-lime/40 focus:outline-none"
+          className="glass-pill h-12 min-w-0 flex-1 rounded-full px-5 text-white placeholder:text-faint focus:shadow-[inset_0_0_0_1px_rgb(205_224_74/0.45)] focus:outline-none"
         />
         <motion.button
           whileTap={press}

@@ -2,7 +2,8 @@ import { AnimatePresence, motion, useDragControls, type PanInfo } from 'motion/r
 import type { ComponentType } from 'react'
 import { useMetrics } from '../stores/metrics'
 import { TILE_IDS, ui, useUi, type TileId } from '../stores/ui'
-import { glide, morph, press } from './motion'
+import { glide, jelly, morph, press } from './motion'
+import { sheen } from './sheen'
 import { CALENDAR_ACCENT, CalendarDetail, CalendarFace } from './tiles/Calendar'
 import type { Corner } from './tiles/Face'
 import { GOALS_ACCENT, GoalsDetail, GoalsFace } from './tiles/Goals'
@@ -73,9 +74,10 @@ function CollapsedTile({ id, corner, hidden }: { id: TileId; corner: Corner; hid
       layoutId={`tile-${id}`}
       aria-label={`Open ${label}`}
       onClick={() => ui.focus(id)}
-      whileTap={press}
+      whileTap={jelly}
+      {...sheen}
       animate={{ opacity: hidden ? 0 : 1 }}
-      transition={morph}
+      transition={{ ...morph, scale: jelly.transition }}
       className={`glass ${NOTCH[corner]} relative overflow-hidden text-left`}
       style={{ borderRadius: radius }}
     >
@@ -106,6 +108,7 @@ function ExpandedTile({ id }: { id: TileId }) {
       dragConstraints={{ top: 0, bottom: 0 }}
       dragElastic={{ top: 0, bottom: 0.45 }}
       onDragEnd={onDragEnd}
+      {...sheen}
       className="glass absolute inset-0 z-10 flex flex-col overflow-hidden"
       style={{ borderRadius: radius }}
     >
@@ -126,7 +129,7 @@ function ExpandedTile({ id }: { id: TileId }) {
           whileTap={press}
           onClick={() => ui.focus(null)}
           aria-label="Close"
-          className="grid h-11 w-11 place-items-center rounded-full bg-white/6 text-muted"
+          className="glass-pill grid h-11 w-11 place-items-center rounded-full text-text/80"
         >
           <svg viewBox="0 0 16 16" className="h-4 w-4">
             <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />

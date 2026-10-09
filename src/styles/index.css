@@ -87,41 +87,27 @@ button {
   color: var(--color-muted);
 }
 
-/* ── Ambient backdrop: pre-blurred blobs, animated with transforms only ── */
+/* ── Ambient backdrop: weather-tinted blobs, pre-blurred, animated with transforms only ── */
+@property --c {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: transparent;
+}
 .ambient {
   position: fixed;
   inset: -20vmax;
   pointer-events: none;
   filter: blur(70px) saturate(1.2);
-  opacity: 0.55;
+  opacity: 0.75;
   transform: translateZ(0);
 }
 .ambient > i {
   position: absolute;
-  width: 55vmax;
-  height: 55vmax;
   border-radius: 50%;
+  background: radial-gradient(circle, var(--c), transparent 65%);
   will-change: transform;
-  animation: drift 28s ease-in-out infinite alternate;
-}
-.ambient > i:nth-child(1) {
-  left: 10%;
-  top: 5%;
-  background: radial-gradient(circle, rgb(47 79 207 / 0.55), transparent 65%);
-}
-.ambient > i:nth-child(2) {
-  right: 5%;
-  top: 30%;
-  background: radial-gradient(circle, rgb(123 94 167 / 0.5), transparent 65%);
-  animation-duration: 34s;
-  animation-delay: -9s;
-}
-.ambient > i:nth-child(3) {
-  left: 30%;
-  bottom: 0;
-  background: radial-gradient(circle, rgb(205 224 74 / 0.16), transparent 65%);
-  animation-duration: 40s;
-  animation-delay: -17s;
+  animation: drift 30s ease-in-out infinite alternate;
+  transition: --c 3s ease;
 }
 @keyframes drift {
   from {
@@ -129,6 +115,26 @@ button {
   }
   to {
     transform: translate3d(6%, 5%, 0) scale(1.15);
+  }
+}
+/* Storms: a rare, soft sheet of lightning across the field. */
+.ambient.sky-storm {
+  animation: lightning 11s infinite;
+}
+@keyframes lightning {
+  0%,
+  91%,
+  100% {
+    filter: blur(70px) saturate(1.2) brightness(1);
+  }
+  92% {
+    filter: blur(70px) saturate(1.2) brightness(1.9);
+  }
+  93.5% {
+    filter: blur(70px) saturate(1.2) brightness(1.1);
+  }
+  94.5% {
+    filter: blur(70px) saturate(1.2) brightness(1.6);
   }
 }
 
@@ -142,25 +148,81 @@ button {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
+/* Animatable custom properties: the sheen glides instead of jumping. */
+@property --mx {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 28%;
+}
+@property --my {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+@property --press {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
 @layer components {
-  /* ── Glass surface (no backdrop-filter: cheap on iPad Safari) ── */
+  /*
+   * Liquid glass. Layers, back to front:
+   *   backdrop      blur + saturate whatever is behind (ambient, orb light spill)
+   *   tint          very low-alpha body so the backdrop reads through
+   *   sheen         radial highlight that follows the finger (--mx/--my, --press)
+   *   notch rim     specular ring on the cut-out around the orb
+   *   ::before      lensing edge: bright top-left, softer bottom-right echo
+   *   ::after       faint chromatic fringe, like light bending at the rim
+   */
   .glass {
+    --tint: 0.22;
+    --blur: 24px;
     position: relative;
-    background: linear-gradient(160deg, rgb(255 255 255 / 0.06), rgb(255 255 255 / 0) 42%), var(--color-glass);
-    border-radius: var(--radius);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.07),
-      0 24px 60px -24px rgb(0 0 0 / 0.7);
     isolation: isolate;
+    border-radius: var(--radius);
+    background:
+      radial-gradient(
+        circle at var(--nx, -100%) var(--ny, -100%),
+        transparent var(--notch),
+        rgb(255 255 255 / 0.32) calc(var(--notch) + 0.6px),
+        rgb(255 255 255 / 0.06) calc(var(--notch) + 3px),
+        transparent calc(var(--notch) + 14px)
+      ),
+      radial-gradient(
+        90% 70% at var(--mx) var(--my),
+        rgb(255 255 255 / calc(0.07 + var(--press) * 0.12)),
+        transparent 70%
+      ),
+      linear-gradient(160deg, rgb(255 255 255 / 0.09), rgb(255 255 255 / 0.015) 42%, rgb(255 255 255 / 0.04)),
+      rgb(16 18 26 / var(--tint));
+    -webkit-backdrop-filter: blur(var(--blur)) saturate(1.9) brightness(1.06);
+    backdrop-filter: blur(var(--blur)) saturate(1.9) brightness(1.06);
+    box-shadow:
+      inset 0 1px 0.5px rgb(255 255 255 / 0.4),
+      inset 0 -1px 0.5px rgb(255 255 255 / 0.08),
+      inset 0 14px 28px -16px rgb(255 255 255 / 0.12),
+      inset 0 -22px 34px -22px rgb(0 0 0 / 0.4),
+      0 30px 60px -30px rgb(0 0 0 / 0.8);
+    transition:
+      --mx 0.35s var(--ease-out-expo),
+      --my 0.35s var(--ease-out-expo),
+      --press 0.45s var(--ease-out-expo);
   }
-  /* 1px gradient hairline */
   .glass::before {
     content: '';
     position: absolute;
     inset: 0;
-    padding: 1px;
+    padding: 1.25px;
     border-radius: inherit;
-    background: linear-gradient(150deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0.03) 40%, rgb(255 255 255 / 0.1));
+    background: linear-gradient(
+      135deg,
+      rgb(255 255 255 / 0.6),
+      rgb(255 255 255 / 0.1) 22%,
+      rgb(255 255 255 / 0) 48%,
+      rgb(255 255 255 / 0.05) 70%,
+      rgb(255 255 255 / 0.32)
+    );
     -webkit-mask:
       linear-gradient(#000 0 0) content-box,
       linear-gradient(#000 0 0);
@@ -168,55 +230,97 @@ button {
     mask-composite: exclude;
     pointer-events: none;
   }
+  .glass::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow:
+      inset 1.5px 1.5px 1px -1px rgb(143 196 240 / 0.35),
+      inset -1.5px -1.5px 1px -1px rgb(255 85 102 / 0.22);
+    mix-blend-mode: screen;
+    pointer-events: none;
+  }
 
-  /* Inner-corner notch that cradles the orb; centred exactly on the grid centre. */
+  /* Thicker, darker glass for reading surfaces (chat). */
+  .glass-thick {
+    --tint: 0.62;
+    --blur: 40px;
+  }
+
+  /* Small controls: pills, chips, round buttons. */
+  .glass-pill {
+    position: relative;
+    background: linear-gradient(170deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0.03) 55%), rgb(20 22 30 / 0.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.8);
+    backdrop-filter: blur(16px) saturate(1.8);
+    box-shadow:
+      inset 0 1px 0.5px rgb(255 255 255 / 0.42),
+      inset 0 -1px 0.5px rgb(255 255 255 / 0.08),
+      inset 0 0 0 0.5px rgb(255 255 255 / 0.1),
+      0 8px 20px -10px rgb(0 0 0 / 0.6);
+  }
+
+  /* Inner-corner notch that cradles the orb, centred exactly on the grid centre. */
   .notch-br {
-    -webkit-mask: radial-gradient(
-      circle at calc(100% + var(--gap) / 2) calc(100% + var(--gap) / 2),
-      transparent var(--notch),
-      #000 calc(var(--notch) + 0.5px)
-    );
-    mask: radial-gradient(
-      circle at calc(100% + var(--gap) / 2) calc(100% + var(--gap) / 2),
-      transparent var(--notch),
-      #000 calc(var(--notch) + 0.5px)
-    );
+    --nx: calc(100% + var(--gap) / 2);
+    --ny: calc(100% + var(--gap) / 2);
   }
   .notch-bl {
-    -webkit-mask: radial-gradient(
-      circle at calc(var(--gap) / -2) calc(100% + var(--gap) / 2),
-      transparent var(--notch),
-      #000 calc(var(--notch) + 0.5px)
-    );
-    mask: radial-gradient(
-      circle at calc(var(--gap) / -2) calc(100% + var(--gap) / 2),
-      transparent var(--notch),
-      #000 calc(var(--notch) + 0.5px)
-    );
+    --nx: calc(var(--gap) / -2);
+    --ny: calc(100% + var(--gap) / 2);
   }
   .notch-tr {
-    -webkit-mask: radial-gradient(
-      circle at calc(100% + var(--gap) / 2) calc(var(--gap) / -2),
-      transparent var(--notch),
-      #000 calc(var(--notch) + 0.5px)
-    );
-    mask: radial-gradient(
-      circle at calc(100% + var(--gap) / 2) calc(var(--gap) / -2),
-      transparent var(--notch),
-      #000 calc(var(--notch) + 0.5px)
-    );
+    --nx: calc(100% + var(--gap) / 2);
+    --ny: calc(var(--gap) / -2);
   }
   .notch-tl {
+    --nx: calc(var(--gap) / -2);
+    --ny: calc(var(--gap) / -2);
+  }
+  .notch-br,
+  .notch-bl,
+  .notch-tr,
+  .notch-tl {
     -webkit-mask: radial-gradient(
-      circle at calc(var(--gap) / -2) calc(var(--gap) / -2),
+      circle at var(--nx) var(--ny),
       transparent var(--notch),
       #000 calc(var(--notch) + 0.5px)
     );
-    mask: radial-gradient(
-      circle at calc(var(--gap) / -2) calc(var(--gap) / -2),
-      transparent var(--notch),
-      #000 calc(var(--notch) + 0.5px)
+    mask: radial-gradient(circle at var(--nx) var(--ny), transparent var(--notch), #000 calc(var(--notch) + 0.5px));
+  }
+
+  /* Orb light spilling onto the glass from behind the grid. */
+  .spill {
+    position: fixed;
+    pointer-events: none;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      var(--mood-1, rgb(47 79 207)) 0%,
+      color-mix(in srgb, var(--mood-2, rgb(123 94 167)) 60%, transparent) 35%,
+      transparent 68%
     );
+    filter: blur(30px);
+    opacity: 0.32;
+    animation: breathe 6s ease-in-out infinite;
+    transition: background 1.2s;
+  }
+}
+
+@keyframes breathe {
+  50% {
+    transform: scale(1.08);
+    opacity: 0.42;
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    --tint: 0.72;
+  }
+  .glass-pill {
+    background-color: rgb(20 22 30 / 0.85);
   }
 }
 
@@ -305,7 +409,9 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ambient > i {
+  .ambient > i,
+  .ambient.sky-storm,
+  .spill {
     animation: none;
   }
 }
