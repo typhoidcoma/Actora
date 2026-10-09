@@ -30,7 +30,8 @@ export function OptionRail({
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <div className="scroll-y flex min-w-0 flex-1 items-center gap-2 overflow-x-auto px-1 py-2">
+      {/* Up to two centred rows; labels truncate rather than spill under the icons. */}
+      <div className="flex max-h-[108px] min-w-0 flex-1 flex-wrap content-center items-center justify-center gap-2 overflow-hidden px-1 py-1.5">
         <AnimatePresence mode="popLayout" initial={false}>
           {listening ? (
             <motion.button
@@ -41,13 +42,24 @@ export function OptionRail({
               exit={{ opacity: 0, scale: 0.96 }}
               transition={morph}
               onClick={toggleVoice}
-              className="glass-pill flex h-12 min-w-0 flex-1 items-center gap-3 rounded-[12px] px-5 text-left text-[15px] text-strong"
+              className="glass-pill flex h-12 w-full min-w-0 items-center gap-3 rounded-[12px] px-5 text-left text-[15px] text-strong"
             >
-              <motion.span
-                className="h-2.5 w-2.5 shrink-0 rounded-full bg-urgent"
-                animate={{ scale: [1, 1.35, 1], opacity: [1, 0.6, 1] }}
+              <motion.svg
+                viewBox="0 0 24 24"
+                className="h-[18px] w-[18px] shrink-0 text-urgent"
+                aria-hidden
+                animate={{ scale: [1, 1.15, 1], opacity: [1, 0.65, 1] }}
                 transition={{ duration: 1.1, repeat: Infinity }}
-              />
+              >
+                <rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor" />
+                <path
+                  d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+              </motion.svg>
               <span className="truncate">{interim || 'Listening…'}</span>
             </motion.button>
           ) : (
@@ -60,7 +72,7 @@ export function OptionRail({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="glass-pill shimmer h-12 w-24 shrink-0 rounded-[12px]"
+              className="glass-pill shimmer h-11 w-24 shrink-0 rounded-[12px]"
               aria-hidden
             />
           )}
@@ -105,16 +117,16 @@ function Chip({ option, index, disabled }: { option: Option; index: number; disa
       {...sheen}
       disabled={disabled}
       onClick={() => runOption(option)}
-      className={`glass-pill flex h-12 shrink-0 items-center gap-2 rounded-[12px] px-5 text-[15px] whitespace-nowrap transition-opacity disabled:opacity-40 ${
+      className={`glass-pill flex h-11 max-w-full min-w-0 items-center gap-2 rounded-[12px] px-4 text-[15px] whitespace-nowrap transition-opacity disabled:opacity-40 ${
         option.act ? 'font-medium text-strong' : 'text-text'
       }`}
     >
       {fromWendy && (
-        <span aria-hidden className="text-[11px] text-accent">
+        <span aria-hidden className="shrink-0 text-[11px] text-accent">
           ✦
         </span>
       )}
-      {option.label}
+      <span className="truncate">{option.label}</span>
     </motion.button>
   )
 }

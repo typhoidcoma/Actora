@@ -62,7 +62,6 @@ export function WendyCard({ corner, hidden }: { corner: Corner; hidden: boolean 
       <div className="relative flex h-full flex-col p-[max(12px,calc(var(--grid)*0.035))]">
         <div className="mb-1 flex items-center justify-end gap-2">
           <span className={`label ${a.busy ? 'shimmer rounded-full px-2' : ''}`}>{status}</span>
-          <span className="h-2 w-2 rounded-full" style={{ background: WENDY_TINT }} />
           <span className="display text-[15px] text-strong">{a.botName}</span>
         </div>
 

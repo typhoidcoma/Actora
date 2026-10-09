@@ -59,7 +59,8 @@ export function measure(): Metrics {
   // No top bar: Wendy's line starts just under the safe area.
   const headerH = safe.top + (short ? 10 : 18)
   const baseLineH = Math.round(short ? 46 : clamp(vh * 0.1, 72, 116))
-  const railH = Math.max(safe.bottom, 10) + 66
+  // Room for two rows of option chips.
+  const railH = Math.max(safe.bottom, 10) + 112
   const availW = vw - reserveX * 2
   const availH = vh - headerH - baseLineH - railH - 12
 
@@ -74,13 +75,16 @@ export function measure(): Metrics {
   const orb = Math.round(grid * (cellW < 260 ? 0.25 : 0.32))
   const radius = Math.round(clamp(grid * 0.02, 10, 14))
   const gridX = Math.round((vw - gridW) / 2)
-  // Spare height (tall phones) goes to Wendy's line rather than empty margins.
+  // Spare height: phones give some to Wendy's line (their cards are small);
+  // then the line + grid block is centred, so space splits evenly above and below.
   const spare = Math.max(0, availH - gridH)
-  const lineH = baseLineH + Math.round(Math.min(spare * 0.6, 160))
-  const gridY = Math.round(headerH + lineH + 6 + (spare - (lineH - baseLineH)) / 2)
+  const lineGrow = compact ? Math.round(Math.min(spare * 0.5, 140)) : 0
+  const lineH = baseLineH + lineGrow
+  const stackTop = Math.round(headerH + (spare - lineGrow) / 2)
+  const gridY = stackTop + lineH + 6
 
   const lineW = Math.round(Math.min(vw - reserveX * 2, Math.max(gridW, 720)))
-  const line = { x: Math.round((vw - lineW) / 2), y: headerH, w: lineW, h: lineH }
+  const line = { x: Math.round((vw - lineW) / 2), y: stackTop, w: lineW, h: lineH }
   const railW = Math.round(Math.min(vw - 16, 960))
   const rail = {
     x: Math.round((vw - railW) / 2),

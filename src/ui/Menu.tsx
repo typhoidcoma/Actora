@@ -64,13 +64,14 @@ export function MenuButton({ onSignOut }: { onSignOut?: () => void }) {
         aria-expanded={open}
         className="glass-pill relative grid h-10 w-10 place-items-center rounded-[12px] text-muted"
       >
-        <MenuIcon />
+        {/* Quiet when all is well; the icon itself tints and pulses only when something's off. */}
         <motion.span
-          className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full ring-2 ring-bg"
-          style={{ background: TONE[status.tone] }}
-          animate={status.tone === 'ok' ? { opacity: 1 } : { opacity: [1, 0.35, 1] }}
+          style={{ color: status.tone === 'ok' ? undefined : TONE[status.tone] }}
+          animate={status.tone === 'ok' ? { opacity: 1 } : { opacity: [1, 0.4, 1] }}
           transition={status.tone === 'ok' ? undefined : { duration: 1.2, repeat: Infinity }}
-        />
+        >
+          <MenuIcon />
+        </motion.span>
       </motion.button>
       <AnimatePresence>
         {open && <Sheet status={status} onSignOut={onSignOut} close={() => setOpen(false)} />}
@@ -123,9 +124,11 @@ function Sheet({
       className="glass glass-thick absolute right-0 bottom-[52px] z-50 w-72 origin-bottom-right p-2"
       style={{ borderRadius: 16 }}
     >
-      <div className="flex items-center gap-2 px-3 pt-2 pb-1">
-        <span className="h-2 w-2 rounded-full" style={{ background: TONE[status.tone] }} />
-        <span className="text-[14px] font-semibold text-strong">{status.text}</span>
+      <div
+        className="px-3 pt-2 pb-1 text-[14px] font-semibold"
+        style={{ color: status.tone === 'ok' ? undefined : TONE[status.tone] }}
+      >
+        <span className={status.tone === 'ok' ? 'text-strong' : ''}>{status.text}</span>
       </div>
       <div className="px-3 pb-2 text-xs text-muted">
         <span className="num">{clockTime(now)}</span>

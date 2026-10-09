@@ -28,10 +28,9 @@ export function Face({
         right ? 'items-end text-right' : 'items-start text-left'
       } ${bottom ? 'justify-end' : 'justify-start'}`}
     >
-      <div className={`flex items-center gap-2 ${right ? 'flex-row-reverse' : ''}`}>
-        <span className="h-2 w-2 rounded-full" style={{ background: accent }} />
-        <span className="label">{label}</span>
-      </div>
+      <span className="label" style={{ color: accent }}>
+        {label}
+      </span>
       <div className={`flex items-baseline gap-2 ${right ? 'flex-row-reverse' : ''}`}>
         <span className="display text-[calc(var(--grid)*0.125)] leading-[0.9] text-strong">{value}</span>
         {unit && <span className="text-[max(12px,calc(var(--grid)*0.026))] text-muted">{unit}</span>}

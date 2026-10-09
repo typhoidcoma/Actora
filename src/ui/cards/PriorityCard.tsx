@@ -32,18 +32,21 @@ export function PriorityCard({
   const bottom = corner === 2 || corner === 3
   const heat = urgencyColor(item.urgency)
   const rankLabel = rank === 1 && item.urgency >= 0.9 ? 'Now' : `#${rank}`
+  // Urgency lives in the card, not on a sticker: the glow warms from the kind's
+  // colour toward red as it gets pressing, and the rank text takes a soft tint.
+  const warmth = Math.round(Math.max(0, item.urgency - 0.4) * 110)
+  const glow = `color-mix(in srgb, ${heat} ${warmth}%, ${kind.color})`
+  const rankTint = `color-mix(in srgb, ${heat} ${Math.max(35, warmth)}%, var(--t-text))`
 
   const header = (
     <div className={`flex items-center justify-between gap-2 ${right ? 'flex-row-reverse' : ''}`}>
-      <div className={`flex min-w-0 items-center gap-2 ${right ? 'flex-row-reverse' : ''}`}>
-        <span
-          className="num rounded-md px-1.5 py-0.5 text-[11px] font-bold tracking-wide text-on-accent"
-          style={{ background: heat }}
-        >
+      <span className="label truncate">
+        <span className="num font-bold" style={{ color: rankTint }}>
           {rankLabel}
         </span>
-        <span className="label truncate">{kind.label}</span>
-      </div>
+        <span className="inline-block w-2" />
+        {kind.label}
+      </span>
       {item.primary && (
         <motion.button
           whileTap={press}
@@ -91,15 +94,6 @@ export function PriorityCard({
         boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${kind.color} 22%, transparent)`,
       }}
     >
-      {item.whyFrom === 'wendy' ? (
-        <span
-          aria-hidden
-          className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full"
-          style={{ background: 'radial-gradient(circle at 35% 30%, #F4EEE2, #EB7B59 45%, #A7C5BD 80%)' }}
-        />
-      ) : (
-        <span aria-hidden className="mt-1 h-2.5 w-[3px] shrink-0 rounded-full" style={{ background: kind.color }} />
-      )}
       <div className="min-w-0">
         <div className="text-[11px] font-bold" style={{ color: kind.color }}>
           {item.whyFrom === 'wendy' ? 'Wendy says' : 'Why now'}
@@ -115,7 +109,7 @@ export function PriorityCard({
     <CardShell
       layoutId={`card-${item.key}`}
       corner={corner}
-      accent={kind.color}
+      accent={glow}
       hidden={hidden}
       label={`${rankLabel}: ${item.title}`}
       onOpen={() => ui.open({ kind: item.kind, id: item.id })}

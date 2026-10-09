@@ -112,7 +112,7 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
           <motion.div
             key="rail"
             className="fixed z-30"
-            style={{ left: rail.x, top: rail.y, width: rail.w, paddingBottom: rail.padBottom }}
+            style={{ left: rail.x, bottom: 0, width: rail.w, paddingBottom: rail.padBottom }}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 12 }}

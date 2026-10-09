@@ -63,9 +63,8 @@ export function Panel({
       >
         <div className="min-w-0">
           {kicker && (
-            <div className="mb-1.5 flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: accent }} />
-              <span className="label">{kicker}</span>
+            <div className="label mb-1.5" style={{ color: accent }}>
+              {kicker}
             </div>
           )}
           <h2 className="display text-[clamp(22px,calc(var(--grid)*0.06),34px)] leading-[1.05] text-strong">{title}</h2>

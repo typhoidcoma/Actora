@@ -72,16 +72,9 @@ function NoteRow({ note: n, index, now }: { note: Notification; index: number; n
         onClick={() => ui.select({ kind: 'notification', id: n.id })}
         className="flex w-full items-start gap-3 py-3 text-left"
       >
-        <span
-          className="mt-2 h-2 w-2 shrink-0 rounded-full transition-all duration-300"
-          style={{
-            background: isUnread ? INBOX_ACCENT : 'transparent',
-            boxShadow: isUnread ? 'none' : 'inset 0 0 0 1.5px var(--t-faint)',
-          }}
-        />
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline justify-between gap-3">
-            <span className="truncate text-[16px] text-strong">{n.title}</span>
+            <span className={`truncate text-[16px] text-strong ${isUnread ? 'font-bold' : ''}`}>{n.title}</span>
             <span className="num shrink-0 text-xs text-faint">{ago(n.sent_at ?? n.created_at, now)}</span>
           </span>
           {n.body && <span className="mt-0.5 line-clamp-2 block text-sm text-muted">{n.body}</span>}
