@@ -85,3 +85,22 @@ describe('routeFrame respects the signed-in user', () => {
     expect(useUi.getState().vault).toBe(true)
   })
 })
+
+describe('a different user signing in', () => {
+  it("clears the last person's conversation; the same user reconnecting keeps what's waiting", async () => {
+    const { pending, usePending } = await import('../stores/pending')
+    const b = bus().bus
+    useAgent.setState({ userId: null })
+    routeFrame({ type: 'hello', userId: 'alice' }, b)
+    useAgent.setState({ messages: [{ id: 'm', role: 'assistant', text: "Alice's secret plan" }] })
+    pending.apply({ type: 'pending_action:created', id: 'p1', kind: 'send_email', summary: 'x' })
+    // Alice reconnects (sleep, network): her approval and chat stay.
+    routeFrame({ type: 'hello', userId: 'alice' }, b)
+    expect(usePending.getState().items.p1).toBeDefined()
+    expect(useAgent.getState().messages).toHaveLength(1)
+    // Bob signs in on the same app: nothing of Alice's is left.
+    routeFrame({ type: 'hello', userId: 'bob' }, b)
+    expect(useAgent.getState().messages).toEqual([])
+    expect(usePending.getState().items.p1).toBeUndefined()
+  })
+})

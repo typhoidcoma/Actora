@@ -40,6 +40,8 @@ export const optionsStore = {
     set((s) => ({ byKey: { ...s.byKey, [key]: { wendy: s.byKey[key]?.wendy ?? [], loading } } })),
   push: (key: string, options: Option[]) => set({ pushed: { key, options } }),
   clearPushed: () => set({ pushed: null }),
+  /** A different user: forget what the last one was shown and tapped (and their generated options). */
+  resetHistory: () => set({ history: { tapped: [], shown: {} }, byKey: {}, pushed: null }),
   voice: (listening: boolean, interim = '') => set({ listening, interim }),
   noteTapped: (o: Option) =>
     set((s) => ({

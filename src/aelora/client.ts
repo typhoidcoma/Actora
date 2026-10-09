@@ -1,6 +1,6 @@
 import { useVault, vault, type VaultEntry } from '../stores/vault'
 import { config } from '../config'
-import { useAgent } from '../stores/agent'
+import { agent, useAgent } from '../stores/agent'
 import { entities, useEntities } from '../stores/entities'
 import { ui, useUi } from '../stores/ui'
 import { abortTurnOnDisconnect, sendChat, sendGreeting } from './chat'
@@ -11,7 +11,7 @@ import type { ClientMessage, Goal, Notification, ServerFrame, Task } from './pro
 import { request } from './request'
 import { routeFrame, sendClientState } from './router'
 import { useScheme } from '../stores/scheme'
-import { toast, withUndo } from '../stores/toast'
+import { flushPendingCommits, toast, withUndo } from '../stores/toast'
 import { capture } from '../stores/captures'
 import { sessions, useSession } from '../stores/session'
 import { dueLabel } from '../ui/format'
@@ -105,12 +105,15 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
     offStatus()
     offUi()
     offScheme()
+    // Deletes still inside their Undo window go now, on this user's socket.
+    flushPendingCommits()
     sock.stop()
     if (socket === sock) {
       socket = null
       setTokenSource(null)
     }
     entities.reset()
+    agent.resetForUser()
   }
 }
 
@@ -150,6 +153,18 @@ export function ask<T extends ServerFrame = ServerFrame>(msg: ClientMessage, rep
   return socket ? request<T>(socket, msg, replyType) : Promise.resolve(null)
 }
 
+/** A reply about this item: the entity it carries, or its bare id (deletes). */
+const about =
+  (id: string) =>
+  (f: Record<string, unknown>): boolean => {
+    if (f.id === id) return true
+    for (const k of ['task', 'goal', 'event', 'notification', 'session']) {
+      const v = f[k] as { id?: unknown } | undefined
+      if (v && v.id === id) return true
+    }
+    return false
+  }
+
 const quote = (t: string) => `"${t.length > 40 ? `${t.slice(0, 38)}…` : t}"`
 
 /** Patch a task on the server; optimistic, put back (and said so) if it's refused. */
@@ -157,7 +172,7 @@ async function patchTask(id: string, patch: Partial<Task>, failText: string): Pr
   const before = useEntities.getState().tasks[id]
   if (!socket || !before) return false
   useEntities.setState((s) => ({ tasks: { ...s.tasks, [id]: { ...before, ...patch } } }))
-  const reply = await request(socket, { type: 'task.update', id, patch }, 'task.updated')
+  const reply = await request(socket, { type: 'task.update', id, patch }, 'task.updated', { match: about(id) })
   if (!reply) {
     useEntities.setState((s) => ({ tasks: { ...s.tasks, [id]: before } }))
     toast.error(failText)
@@ -185,7 +200,7 @@ export async function completeTask(id: string): Promise<void> {
   const optimistic: Task = { ...before, status: 'done', completed_at: new Date().toISOString() }
   useEntities.setState((s) => ({ tasks: { ...s.tasks, [id]: optimistic } }))
   toast.show(`Done: ${quote(before.title)}`, { undo: () => void reopenTask(id, before.status) })
-  const reply = await request(socket, { type: 'task.complete', id }, 'task.completed')
+  const reply = await request(socket, { type: 'task.complete', id }, 'task.completed', { match: about(id) })
   if (!reply) {
     useEntities.setState((s) => ({ tasks: { ...s.tasks, [id]: before } }))
     toast.error(`Couldn't mark ${quote(before.title)} done, so it's back.`)
@@ -207,7 +222,7 @@ export async function markNotificationRead(id: string): Promise<void> {
   if (!socket || !before || before.read_at) return
   const optimistic: Notification = { ...before, read_at: new Date().toISOString() }
   entities.upsertNotification(optimistic)
-  const reply = await request(socket, { type: 'notification.read', id }, 'notification.marked')
+  const reply = await request(socket, { type: 'notification.read', id }, 'notification.marked', { match: about(id) })
   if (!reply) {
     entities.upsertNotification(before)
     toast.error(`Couldn't mark ${quote(before.title)} read.`)
@@ -245,13 +260,13 @@ function hideItem(kind: Deletable, id: string, occurrenceStart?: string): () => 
 function sendDelete(kind: Deletable, id: string, occurrenceStart?: string) {
   if (!socket) return Promise.resolve(null)
   return kind === 'task'
-    ? request(socket, { type: 'task.delete', id }, 'task.deleted')
+    ? request(socket, { type: 'task.delete', id }, 'task.deleted', { match: about(id) })
     : kind === 'goal'
-      ? request(socket, { type: 'goal.delete', id }, 'goal.deleted')
+      ? request(socket, { type: 'goal.delete', id }, 'goal.deleted', { match: about(id) })
       : occurrenceStart
         ? // Cancelling one occurrence answers with the updated series.
-          request(socket, { type: 'calendar.delete', id, occurrenceStart }, 'calendar.updated')
-        : request(socket, { type: 'calendar.delete', id }, 'calendar.deleted')
+          request(socket, { type: 'calendar.delete', id, occurrenceStart }, 'calendar.updated', { match: about(id) })
+        : request(socket, { type: 'calendar.delete', id }, 'calendar.deleted', { match: about(id) })
 }
 
 /**
@@ -281,7 +296,9 @@ export async function setGoalStatus(id: string, status: Goal['status']): Promise
   if (!socket || !before || before.status === status) return
   const write = async (to: Goal['status'], quiet = false) => {
     entities.upsertGoal({ ...before, status: to })
-    const reply = await request(socket!, { type: 'goal.update', id, patch: { status: to } }, 'goal.updated')
+    const reply = await request(socket!, { type: 'goal.update', id, patch: { status: to } }, 'goal.updated', {
+      match: about(id),
+    })
     if (!reply) {
       entities.upsertGoal(before)
       if (!quiet) toast.error(`Couldn't update ${quote(before.title)}, so it's back.`)
@@ -373,7 +390,9 @@ export function newThread(): void {
 
 export async function deleteThread(id: string): Promise<boolean> {
   if (!socket) return false
-  const r = await request(socket, { type: 'conversation.delete', conversationId: id }, 'conversation.deleted')
+  const r = await request(socket, { type: 'conversation.delete', conversationId: id }, 'conversation.deleted', {
+    match: (f) => f.conversationId === id,
+  })
   if (!r) toast.error("Couldn't delete that chat.")
   return !!r
 }
@@ -416,6 +435,7 @@ export async function endFocus(): Promise<void> {
     socket,
     { type: 'session.end', id: cur.id },
     'session.ended',
+    { match: about(cur.id) },
   )
   if (!reply?.session) return void toast.error("Couldn't end the session.")
   sessions.apply(reply.session)
@@ -425,7 +445,8 @@ export async function endFocus(): Promise<void> {
 
 /** Quick capture: a thought straight onto the task list (queued if offline). */
 export function captureTask(title: string): Promise<void> {
-  return capture(socket, useAgent.getState().connection === 'open', title)
+  const a = useAgent.getState()
+  return capture(socket, a.connection === 'open', a.userId, title)
 }
 
 /** A task straight onto the list, no conversation (quick capture). */

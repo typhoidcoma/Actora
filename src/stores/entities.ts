@@ -52,6 +52,8 @@ function removeFrom(kind: 'tasks' | 'goals' | 'notifications', id: string): void
 
 export const entities = {
   reset: () => set(initial()),
+  /** A list that couldn't be loaded: count it as loaded (empty) so nothing waits on it forever. */
+  markHydrated: (kind: keyof EntitiesState['hydrated']) => set((s) => ({ hydrated: { ...s.hydrated, [kind]: true } })),
 
   setTasks: (list: Task[]) =>
     set((s) => ({ tasks: index(list, (t) => t.id), hydrated: { ...s.hydrated, tasks: true } })),

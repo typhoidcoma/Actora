@@ -80,6 +80,8 @@ export function withUndo(text: string, apply: () => void, commit: () => void, re
 
 /** Commits still inside their Undo window: sent right away if the page goes away. */
 const pending = new Set<() => void>()
-if (typeof window !== 'undefined') {
-  window.addEventListener('pagehide', () => [...pending].forEach((f) => f()))
+/** Send every commit still waiting out its Undo window (sign-out, page going away). */
+export function flushPendingCommits(): void {
+  for (const f of [...pending]) f()
 }
+if (typeof window !== 'undefined') window.addEventListener('pagehide', flushPendingCommits)

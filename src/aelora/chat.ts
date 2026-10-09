@@ -261,6 +261,10 @@ export function handleChatFrame(f: ServerFrame): boolean {
       if (code !== 'llm_failed' && code !== 'conversation_failed') return false
       if (cid && !mine) return true
       if (!s.turnId && !s.awaitingTurn) return true
+      // No thread named: it's ours only if we just sent a message and nothing has
+      // streamed yet. Otherwise it's some other conversation.* call failing (a
+      // finds rename, a Past chats list), and this turn carries on.
+      if (!cid && !s.awaitingTurn) return true
       // The thread is gone: start a fresh one next time instead of failing again.
       if (code === 'conversation_failed') {
         rememberMain(null)

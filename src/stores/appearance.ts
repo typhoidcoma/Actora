@@ -84,6 +84,8 @@ export function startAppearanceSync(sb: SupabaseClient): () => void {
     .getUser()
     .then(({ data }) => {
       if (stopped) return
+      // getUser resolves (not rejects) with no user on failure: treat that as unknown too.
+      if (!data.user) throw new Error('no user')
       // Someone else signed in on this browser: drop the last person's look first,
       // so a user with nothing saved gets the defaults, not theirs.
       const uid = data.user?.id
@@ -102,10 +104,14 @@ export function startAppearanceSync(sb: SupabaseClient): () => void {
         if (useScheme.getState().source === 'wendy') resetColors()
       }
     })
-    .catch(() => {})
-    .finally(() => {
-      applying = false
-    })
+    .then(
+      () => {
+        applying = false
+      },
+      // Couldn't tell whose account this is: don't save this browser's look into it
+      // (it may be the last person's). Changes still apply locally.
+      () => {},
+    )
 
   const offUi = useUi.subscribe((s, p) => {
     if (!applying && s.theme !== p.theme) push()

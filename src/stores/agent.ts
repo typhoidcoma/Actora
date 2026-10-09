@@ -116,6 +116,27 @@ export const useAgent = create<AgentState>(() => ({
 
 export const agent = {
   showGreeting: () => useAgent.setState({ line: 'greeting', notice: null, message: null }),
+  /** Another account (or signed out): nothing of the last person's conversation stays on screen or in prompts. */
+  resetForUser: () =>
+    useAgent.setState({
+      conversationId: null,
+      turnId: null,
+      awaitingTurn: false,
+      steps: [],
+      turnAt: null,
+      streaming: null,
+      messages: [],
+      history: { hasMore: false, cursor: null },
+      greeting: { text: '', streaming: false },
+      greetingPending: false,
+      line: 'greeting',
+      notice: null,
+      message: null,
+      mood: null,
+      emotion: {},
+      reaction: null,
+      toolName: null,
+    }),
   showReply: () => useAgent.setState({ line: 'reply' }),
   showNotice: (notice: Notice) => useAgent.setState({ line: 'notice', notice }),
   showMessage: (message: string) => useAgent.setState({ line: 'message', message }),

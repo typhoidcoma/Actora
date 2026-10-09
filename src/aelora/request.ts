@@ -4,19 +4,50 @@ import type { FrameBus } from './socket'
 // Aelora correlates replies by `type`, never by id. So:
 //  - requests that resolve to the same reply type are queued one at a time;
 //  - every request times out (in-flight requests are lost on reconnect);
-//  - an un-attributed `error` frame fails the most recently sent request.
+//  - a reply that turns up after its request timed out is swallowed, so it
+//    can't resolve the next request of that type (which would put every later
+//    one off by one); a request that knows its item's id also checks it;
+//  - an un-attributed `error` frame fails the most recently sent request, but
+//    only while that request is fresh (a late error can't fail a later one).
+
+export interface RequestOptions<T> {
+  timeoutMs?: number
+  /** Accept only a reply about this item (e.g. `f => f.task?.id === id`). */
+  match?: (frame: T) => boolean
+}
 
 const queues = new Map<string, Promise<unknown>>()
-const inflight: Array<{ fail: () => void }> = []
+const inflight: Array<{ fail: () => void; at: number }> = []
+/** Per reply type: when requests timed out unanswered (their replies may still come). */
+const late = new Map<string, number[]>()
+const LATE_TTL_MS = 30_000
+const ERROR_WINDOW_MS = 3_000
+
+function expectLate(type: string) {
+  late.set(type, [...(late.get(type) ?? []), Date.now()])
+}
+/** One reply of this type is probably a late one: count it off (forgetting stale guesses). */
+function takeLate(type: string): boolean {
+  const now = Date.now()
+  const live = (late.get(type) ?? []).filter((t) => now - t < LATE_TTL_MS)
+  if (!live.length) {
+    late.delete(type)
+    return false
+  }
+  live.shift()
+  late.set(type, live)
+  return true
+}
 
 export function request<T extends ServerFrame = ServerFrame>(
   bus: FrameBus,
   msg: ClientMessage,
   replyType: string,
-  timeoutMs = 12_000,
+  opts: number | RequestOptions<T> = {},
 ): Promise<T | null> {
+  const o = typeof opts === 'number' ? { timeoutMs: opts } : opts
   const prev = queues.get(replyType) ?? Promise.resolve()
-  const run = prev.then(() => once<T>(bus, msg, replyType, timeoutMs))
+  const run = prev.then(() => once<T>(bus, msg, replyType, o.timeoutMs ?? 12_000, o.match))
   queues.set(
     replyType,
     run.catch(() => null),
@@ -29,24 +60,32 @@ function once<T extends ServerFrame>(
   msg: ClientMessage,
   replyType: string,
   timeoutMs: number,
+  match?: (frame: T) => boolean,
 ): Promise<T | null> {
   return new Promise((resolve) => {
     let settled = false
-    const entry = { fail: () => finish(null) }
+    const entry = { fail: () => finish(null), at: Date.now() }
 
     const unsubscribe = bus.subscribe((frame) => {
       if (frame.type === replyType) {
-        finish(frame as T)
+        if (match) {
+          if (match(frame as T)) finish(frame as T)
+          else takeLate(replyType) // someone else's (late) reply: not ours
+        } else if (!takeLate(replyType)) finish(frame as T)
       } else if (
         frame.type === 'error' &&
         !frame.conversationId &&
         !CHAT_ERROR_CODES.has(String(frame.code)) &&
-        inflight[inflight.length - 1] === entry
+        inflight[inflight.length - 1] === entry &&
+        Date.now() - entry.at < ERROR_WINDOW_MS
       ) {
         finish(null)
       }
     })
-    const timer = setTimeout(() => finish(null), timeoutMs)
+    const timer = setTimeout(() => {
+      expectLate(replyType)
+      finish(null)
+    }, timeoutMs)
 
     function finish(value: T | null) {
       if (settled) return
@@ -61,4 +100,9 @@ function once<T extends ServerFrame>(
     inflight.push(entry)
     if (!bus.send(msg)) finish(null)
   })
+}
+
+/** Forget expected late replies (a new connection: the old socket's replies never come). */
+export function resetLateReplies(): void {
+  late.clear()
 }

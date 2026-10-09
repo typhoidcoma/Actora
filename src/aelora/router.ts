@@ -48,7 +48,7 @@ import {
   type Task,
   type TranscriptMessage,
 } from './protocol'
-import { request } from './request'
+import { request, resetLateReplies } from './request'
 import { describeScheme, type SchemeInput } from '../color/scheme'
 import { resetColors, setColors, useScheme } from '../stores/scheme'
 import type { FrameBus } from './socket'
@@ -167,17 +167,37 @@ function refreshCalendar(bus: FrameBus) {
   return request(bus, { type: 'calendar.list', from: from.toISOString(), to: to.toISOString() }, 'calendar.list')
 }
 
+/**
+ * A startup list, retried twice if it fails (a lost reply, a hiccup). If it still
+ * fails it counts as loaded, so the greeting and finds don't wait on it forever.
+ */
+async function loadList(
+  fetch: () => Promise<unknown>,
+  kind: 'tasks' | 'goals' | 'events' | 'notifications',
+): Promise<void> {
+  for (const wait of [0, 2000, 6000]) {
+    if (wait) await new Promise((r) => setTimeout(r, wait))
+    if (await fetch()) return
+  }
+  entities.markHydrated(kind)
+}
+
 /** Post-hello sequence (FRONTEND.md → "Reconnect checklist"). Different reply types may run concurrently. */
 function bootstrap(bus: FrameBus): void {
   bus.send({ type: 'tz.set', timezone: Intl.DateTimeFormat().resolvedOptions().timeZone })
   sendClientState(bus)
-  void request(bus, { type: 'notification.list', deliveredOnly: false }, 'notification.list')
-  void request(bus, { type: 'task.list' }, 'task.list')
-  void request(bus, { type: 'goal.list' }, 'goal.list')
-  void refreshCalendar(bus)
+  void loadList(
+    () => request(bus, { type: 'notification.list', deliveredOnly: false }, 'notification.list'),
+    'notifications',
+  )
+  // Offline thoughts go on once the list is in (so one already there isn't added twice).
+  void loadList(() => request(bus, { type: 'task.list' }, 'task.list'), 'tasks').then(() =>
+    flushCaptures(bus, useAgent.getState().userId),
+  )
+  void loadList(() => request(bus, { type: 'goal.list' }, 'goal.list'), 'goals')
+  void loadList(() => refreshCalendar(bus), 'events')
   void resubscribe()
   void refreshGoogle()
-  void flushCaptures(bus)
   void request(bus, { type: 'session.list' }, 'session.list')
 }
 
@@ -540,9 +560,19 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
       adoptFindsUser(userId)
       adoptGreetingUser(userId)
       adoptMainUser(userId)
-      vault.reset()
-      pending.clear()
-      sessions.clear()
+      resetLateReplies()
+      // Someone else now (or the first hello): drop the last person's state. The same
+      // user reconnecting keeps what's waiting for their OK, their focus session, the Vault.
+      const prev = useAgent.getState().userId
+      if (prev !== userId) {
+        if (prev !== null) agent.resetForUser()
+        vault.reset()
+        pending.clear()
+        sessions.clear()
+        optionsStore.resetHistory()
+      } else if (useUi.getState().vault) {
+        void import('./client').then((m) => m.loadVault())
+      }
       useAgent.setState({
         userId,
         botName: typeof f.botName === 'string' ? f.botName : 'Wendy',
@@ -557,10 +587,16 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
     case 'conversation.active': {
       // The server's "active" is just its most recent thread; after a finds hunt
       // that's the Fun finds thread. Never adopt it: use the user's own thread.
-      let id = typeof f.conversationId === 'string' ? f.conversationId : null
+      // The thread the user picked here (Past chats, New chat) wins over the server's latest.
+      let id = recallMain() ?? (typeof f.conversationId === 'string' ? f.conversationId : null)
       if (id && isFindsThread(id)) id = null
-      id ??= recallMain()
-      useAgent.setState({ conversationId: id })
+      const was = useAgent.getState().conversationId
+      // A different (or no) thread: its messages, not the previous one's.
+      useAgent.setState(
+        id === was
+          ? { conversationId: id }
+          : { conversationId: id, messages: [], history: { hasMore: false, cursor: null } },
+      )
       if (id) {
         rememberMain(id)
         void request(bus, { type: 'conversation.open', conversationId: id, limit: 40 }, 'conversation.messages')
