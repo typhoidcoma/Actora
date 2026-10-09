@@ -26,6 +26,8 @@ export interface Task {
   completed_at: string | null
   due_date: string | null
   estimated_minutes: number | null
+  /** What the task is about, written by Wendy (Aelora migration 052; absent on older servers). */
+  notes?: string | null
   created_at: string
   updated_at: string
 }

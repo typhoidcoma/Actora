@@ -490,6 +490,10 @@ export async function mockLlm(req: { prompt: string }, signal?: AbortSignal): Pr
     })
   })
   const p = req.prompt
+  if (p.includes('BRIEF THIS TASK')) {
+    const title = /Title: "([^"]*)"/.exec(p)?.[1] ?? 'this'
+    return `"${title}" is the piece that unblocks the rest of your week, so it's worth doing while your head is clear. Start by opening the file and writing down the one thing it has to do; the rest follows from there.`
+  }
   if (p.includes('RANK THESE CANDIDATES')) {
     const found = [...p.matchAll(/key: (\S+) \| (\w+) \| "([^"]*)"/g)].slice(0, 3)
     const whys: Record<string, string> = {

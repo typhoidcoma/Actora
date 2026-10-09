@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { deleteItem } from '../../aelora/client'
-import { agent } from '../../stores/agent'
+import { agent, useAgent } from '../../stores/agent'
+import { useTaskBrief } from '../../tasks/brief'
 import { useShallow } from 'zustand/react/shallow'
 import { useEntities } from '../../stores/entities'
 import { ui, useUi, type Selected } from '../../stores/ui'
@@ -15,6 +16,11 @@ export function ItemPanel({ item }: { item: Selected }) {
   )
   const kind = KIND[item.kind]
   const close = () => ui.select(null)
+  // A task's "about": its notes, or (until it has some) a brief Wendy writes for it.
+  const task = item.kind === 'task' ? (e.tasks[item.id] ?? null) : null
+  const taskGoal = task?.goal_id ? (e.goals[task.goal_id]?.title ?? null) : null
+  const brief = useTaskBrief(task, taskGoal, !!task?.notes?.trim())
+  const botName = useAgent((s) => s.botName)
   const seeAll = (
     <button
       onClick={() => ui.reveal(item)}
@@ -34,15 +40,19 @@ export function ItemPanel({ item }: { item: Selected }) {
     removable = { kind: 'task' }
     const goal = t.goal_id ? e.goals[t.goal_id] : null
     title = t.title
+    const notes = t.notes?.trim()
     body = (
-      <Facts
-        rows={[
-          ['Status', t.status.replace('_', ' ')],
-          ['Due', dueLabel(t.due_date) ?? 'No date'],
-          t.estimated_minutes ? ['Estimate', `${t.estimated_minutes} min`] : null,
-          goal ? ['Goal', goal.title] : null,
-        ]}
-      />
+      <>
+        <About text={notes || brief.text} byWendy={!notes} loading={!notes && brief.loading} botName={botName} />
+        <Facts
+          rows={[
+            ['Status', t.status.replace('_', ' ')],
+            ['Due', dueLabel(t.due_date) ?? 'No date'],
+            t.estimated_minutes ? ['Estimate', `${t.estimated_minutes} min`] : null,
+            goal ? ['Goal', goal.title] : null,
+          ]}
+        />
+      </>
     )
   } else if (item.kind === 'event') {
     const ev = Object.values(e.events).find((x) => x.id === item.id)
@@ -209,6 +219,36 @@ function DeleteButton({
     <button onClick={() => void run()} className={`${btn} bg-urgent text-white`}>
       Delete {noun}
     </button>
+  )
+}
+
+/** What the task is about: its notes, or Wendy's brief (labelled as hers) while it has none. */
+function About({
+  text,
+  byWendy,
+  loading,
+  botName,
+}: {
+  text: string | null
+  byWendy: boolean
+  loading: boolean
+  botName: string
+}) {
+  if (!text && !loading) return null
+  return (
+    <section className="mb-5">
+      <h3 className="mb-1.5 text-[12px] font-semibold tracking-wide text-muted uppercase">
+        {byWendy ? `${botName}'s take` : 'About'}
+      </h3>
+      {text ? (
+        <p className="selectable text-[16px] leading-relaxed text-strong">{text}</p>
+      ) : (
+        <div className="space-y-2" aria-label={`${botName} is writing this up`}>
+          <div className="shimmer h-3.5 w-full rounded bg-text/8" />
+          <div className="shimmer h-3.5 w-4/5 rounded bg-text/8" />
+        </div>
+      )}
+    </section>
   )
 }
 
