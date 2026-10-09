@@ -85,12 +85,16 @@ export function measure(): Metrics {
   const radius = Math.round(clamp(grid * 0.012, 6, 9))
   const gridX = Math.round((vw - gridW) / 2)
   // Spare height: phones give some to Wendy's line (their cards are small);
-  // then the line + grid block is centred, so space splits evenly above and below.
+  // then the line + grid block sits at the optical centre.
   const spare = Math.max(0, availH - gridH)
   const lineGrow = compact ? Math.round(Math.min(spare * 0.5, 140)) : 0
   const lineH = baseLineH + lineGrow
-  const stackTop = Math.round(headerH + (spare - lineGrow) / 2)
-  const gridY = stackTop + lineH + 6
+  // Optical centre: the pills and the dark finds card weigh the bottom down, so
+  // the block sits a little above true centre (38/62 of any spare space), and the
+  // grid lifts a touch into the roomy band around Wendy's line.
+  const stackTop = Math.round(headerH + (spare - lineGrow) * 0.38)
+  const lift = compact ? 0 : Math.round(clamp(vh * 0.022, 8, 20))
+  const gridY = stackTop + lineH + 6 - lift
 
   const lineW = Math.round(Math.min(vw - reserveX * 2, Math.max(gridW, 720)))
   // Her line owns the whole band above the cards; text is centred in it.
