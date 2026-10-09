@@ -32,7 +32,8 @@ export function Reader() {
     }),
   )
   const text = a.busy && a.streaming !== null ? stableMarkdown(a.streaming) : a.answer
-  const kicker = a.busy ? (a.phase === 'tool' ? 'Working…' : a.streaming ? 'Writing…' : 'Thinking…') : 'Latest answer'
+  // The body narrates her work while she's busy; the header only says so once words are arriving.
+  const kicker = a.busy ? (a.streaming ? 'Writing…' : null) : 'Latest answer'
 
   return (
     <Panel lead layoutId="reader" accent={ROLE.wendy} kicker={kicker} title={a.botName} onClose={ui.closeReader}>

@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAgent } from '../stores/agent'
-import { ui } from '../stores/ui'
+import { ui, useUi } from '../stores/ui'
 import { useMetrics } from '../stores/metrics'
 import { Activity } from './Activity'
 import { firstSentence, plainText } from './markdownText'
@@ -15,6 +15,8 @@ import { firstSentence, plainText } from './markdownText'
 export function WendyLine() {
   const m = useMetrics()
   const stalled = useStalled()
+  // With the reader open, the reader is her voice: the line steps back rather than echo it.
+  const quiet = useUi((s) => s.reader)
   const a = useAgent(
     useShallow((s) => ({
       line: s.line,
@@ -69,10 +71,14 @@ export function WendyLine() {
   )
 
   return (
-    <div
+    <motion.div
       className="pointer-events-none fixed z-10 flex flex-col justify-center"
       style={{ left: m.line.x, top: m.line.y, width: m.line.w, height: m.line.h }}
-      aria-live="polite"
+      initial={false}
+      animate={{ opacity: quiet ? 0 : 1, y: quiet ? -6 : 0, filter: quiet ? 'blur(4px)' : 'blur(0px)' }}
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      aria-live={quiet ? 'off' : 'polite'}
+      aria-hidden={quiet}
     >
       <div
         className="relative max-h-full overflow-hidden"
@@ -114,7 +120,7 @@ export function WendyLine() {
           </motion.div>
         </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
