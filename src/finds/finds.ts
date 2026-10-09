@@ -19,7 +19,7 @@ export interface Find {
   tag: string
 }
 
-export type FindsStatus = 'idle' | 'hunting' | 'ready' | 'error'
+export type FindsStatus = 'idle' | 'hunting' | 'ready' | 'error' | 'unavailable'
 
 interface FindsState {
   items: Find[]
@@ -40,33 +40,58 @@ const today = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function load(): Pick<FindsState, 'items' | 'day' | 'seen'> {
+// Everything cached here belongs to one signed-in user. Nothing is shown from
+// the cache until hello confirms who that is (adoptFindsUser), so a shared
+// device never flashes the previous person's finds or reuses their thread.
+let owner: string | null = null
+
+type Saved = Pick<FindsState, 'items' | 'day' | 'seen'> & { owner?: string | null }
+
+function load(): Saved | null {
   try {
-    const raw = JSON.parse(localStorage.getItem(STORE_KEY) ?? 'null') as Pick<
-      FindsState,
-      'items' | 'day' | 'seen'
-    > | null
-    if (raw && Array.isArray(raw.items)) return { items: raw.items, day: raw.day, seen: raw.seen ?? [] }
+    const raw = JSON.parse(localStorage.getItem(STORE_KEY) ?? 'null') as Saved | null
+    if (raw && Array.isArray(raw.items))
+      return { items: raw.items, day: raw.day, seen: raw.seen ?? [], owner: raw.owner }
   } catch {
     /* fall through */
   }
-  return { items: [], day: null, seen: [] }
+  return null
 }
 
 function save(s: Pick<FindsState, 'items' | 'day' | 'seen'>) {
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify({ items: s.items, day: s.day, seen: s.seen }))
+    localStorage.setItem(STORE_KEY, JSON.stringify({ items: s.items, day: s.day, seen: s.seen, owner }))
   } catch {
     /* private mode */
   }
 }
 
-const initial = load()
-export const useFinds = create<FindsState>(() => ({
-  ...initial,
-  status: initial.items.length ? 'ready' : 'idle',
-  progress: '',
-}))
+export const useFinds = create<FindsState>(() => ({ items: [], day: null, seen: [], status: 'idle', progress: '' }))
+
+/** Called on every hello: load this user's cache, or wipe another user's. */
+export function adoptFindsUser(userId: string | null): void {
+  if (owner === userId) return
+  owner = userId
+  const saved = load()
+  const thread = readThread()
+  if (saved && saved.owner === userId) {
+    useFinds.setState({
+      items: saved.items,
+      day: saved.day,
+      seen: saved.seen,
+      status: saved.items.length ? 'ready' : 'idle',
+    })
+  } else {
+    useFinds.setState({ items: [], day: null, seen: [], status: 'idle', progress: '' })
+    try {
+      localStorage.removeItem(STORE_KEY)
+    } catch {
+      /* private mode */
+    }
+  }
+  threadId = thread && thread.owner === userId ? thread.id : null
+  if (!threadId) writeThread(null)
+}
 
 /** How many finds the user hasn't looked at yet: the card's hero number. */
 export const unseenCount = (s: Pick<FindsState, 'items' | 'seen'>) =>
@@ -156,14 +181,17 @@ Reply ONLY with a JSON code block in exactly this shape, nothing else:
 // ── The hunt: a chat turn in the dedicated thread ───────────────────────────
 
 let bus: FrameBus | null = null
-let threadId: string | null = readThread()
+let threadId: string | null = null
 let creatingThread = false
+/** Set once the deploy answers conversations_disabled: no separate thread is possible. */
+let threadsOff = false
 let huntTimer: ReturnType<typeof setTimeout> | undefined
 let buffer = ''
 
-function readThread(): string | null {
+function readThread(): { id: string; owner: string | null } | null {
   try {
-    return localStorage.getItem(THREAD_KEY)
+    const raw = JSON.parse(localStorage.getItem(THREAD_KEY) ?? 'null') as { id?: string; owner?: string | null } | null
+    return raw?.id ? { id: raw.id, owner: raw.owner ?? null } : null
   } catch {
     return null
   }
@@ -172,16 +200,22 @@ function readThread(): string | null {
 function writeThread(id: string | null) {
   threadId = id
   try {
-    if (id) localStorage.setItem(THREAD_KEY, id)
+    if (id) localStorage.setItem(THREAD_KEY, JSON.stringify({ id, owner }))
     else localStorage.removeItem(THREAD_KEY)
   } catch {
     /* private mode */
   }
 }
 
+/** The finds thread was deleted (or everything was purged): start a new one next hunt. */
+export function forgetFindsThread(id?: string): void {
+  if (!id || id === threadId) writeThread(null)
+}
+
 function finish(items: Find[] | null) {
   clearTimeout(huntTimer)
   buffer = ''
+  creatingThread = false
   if (!items || !items.length) {
     useFinds.setState({ status: useFinds.getState().items.length ? 'ready' : 'error', progress: '' })
     return
@@ -200,6 +234,7 @@ function sendHunt() {
 /** Start a hunt now (the "Find me more" option, or the daily refresh). */
 export function hunt(): void {
   if (!bus || useFinds.getState().status === 'hunting') return
+  if (threadsOff) return useFinds.setState({ status: 'unavailable' })
   useFinds.setState({ status: 'hunting', progress: '' })
   clearTimeout(huntTimer)
   huntTimer = setTimeout(() => finish(null), HUNT_TIMEOUT_MS)
@@ -207,10 +242,7 @@ export function hunt(): void {
   // First hunt ever: create the "Fun finds" thread, then hand the socket's
   // active thread back to the user's conversation.
   creatingThread = true
-  if (!bus.send({ type: 'conversation.new' })) {
-    creatingThread = false
-    finish(null)
-  }
+  if (!bus.send({ type: 'conversation.new' })) finish(null)
 }
 
 /**
@@ -220,6 +252,17 @@ export function hunt(): void {
  */
 export function handleFindsFrame(f: ServerFrame): boolean {
   const cid = typeof f.conversationId === 'string' ? f.conversationId : null
+  if (f.type === 'error' && f.code === 'conversations_disabled') {
+    // Threading is off on this deploy: the only way to learn it. A hunt here
+    // would land in the user's own conversation, so finds stay off instead.
+    threadsOff = true
+    if (useFinds.getState().status === 'hunting' || creatingThread) {
+      clearTimeout(huntTimer)
+      creatingThread = false
+      useFinds.setState({ status: 'unavailable', progress: '' })
+    }
+    return false // the rest of the app may care too
+  }
   if (f.type === 'conversation.created' && creatingThread && cid) {
     creatingThread = false
     writeThread(cid)
@@ -245,27 +288,38 @@ export function handleFindsFrame(f: ServerFrame): boolean {
       if (f.code === 'conversation_failed') writeThread(null)
       finish(null)
       return true
-    case 'conversation.updated':
-    case 'conversation.messages':
-      return true
     case 'event':
       return false
     default:
-      // chat.start, tool.progress and the like: ours, nothing to render.
+      // chat.start, tool.progress, conversation.updated…: ours, nothing to render.
       return true
   }
 }
 
-/** Wire to the live socket; hunt once a day when the app is connected and loaded. */
+/**
+ * Wire to the live socket. Hunts once a day, only once the app is connected,
+ * loaded and the user isn't mid-conversation; a dropped connection resets an
+ * in-flight hunt so the next connect retries instead of waiting on a lost turn.
+ */
 export function startFinds(socket: FrameBus): () => void {
   bus = socket
   const maybeHunt = () => {
     const a = useAgent.getState()
     const loaded = Object.values(useEntities.getState().hydrated).every(Boolean)
     const s = useFinds.getState()
-    if (a.connection === 'open' && loaded && s.day !== today() && s.status !== 'hunting' && s.status !== 'error') hunt()
+    const idle = !a.turnId && !a.awaitingTurn
+    const due = s.day !== today() && s.status !== 'hunting' && s.status !== 'error' && s.status !== 'unavailable'
+    if (a.connection === 'open' && a.userId !== null && loaded && idle && due && !threadsOff) hunt()
   }
-  const offA = useAgent.subscribe(maybeHunt)
+  const offA = useAgent.subscribe((s, p) => {
+    if (s.connection !== 'open' && p.connection === 'open' && useFinds.getState().status === 'hunting') {
+      clearTimeout(huntTimer)
+      creatingThread = false
+      buffer = ''
+      useFinds.setState({ status: useFinds.getState().items.length ? 'ready' : 'idle', progress: '' })
+    }
+    maybeHunt()
+  })
   const offE = useEntities.subscribe(maybeHunt)
   maybeHunt()
   return () => {

@@ -27,6 +27,7 @@ export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean 
 
   const f = items.length ? items[index % items.length] : null
   const hunting = status === 'hunting'
+  const off = status === 'unavailable' && !items.length
 
   return (
     <CardShell
@@ -35,7 +36,7 @@ export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean 
       accent="#EB7B59"
       hidden={hidden}
       label={items.length ? `${unseen} fun things to see — open` : 'Find fun things for me'}
-      onOpen={() => (items.length ? ui.openFinds() : hunt())}
+      onOpen={() => (items.length ? ui.openFinds() : off ? undefined : hunt())}
     >
       <div className="relative h-full w-full" style={{ color: ON_IMAGE }}>
         {/* Image layer: crossfades with a slow push-in. */}
@@ -123,7 +124,11 @@ export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean 
               </motion.div>
             ) : (
               <motion.div key="empty" className="text-[max(13px,calc(var(--grid)*0.026))] opacity-90">
-                {hunting ? 'Searching the web for things you’ll like.' : 'Tap and Wendy will find you something fun.'}
+                {off
+                  ? 'Fun finds need separate conversations, which this server has turned off.'
+                  : hunting
+                    ? 'Searching the web for things you’ll like.'
+                    : 'Tap and Wendy will find you something fun.'}
               </motion.div>
             )}
           </AnimatePresence>

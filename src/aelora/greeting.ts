@@ -95,11 +95,19 @@ interface Cached {
   text: string
   at: number
   part: Part
+  owner?: string | null
 }
 
+// The cached line belongs to one signed-in user; it is only used once hello
+// confirms that user (adoptGreetingUser), so a shared device never shows the
+// previous person's greeting.
+let owner: string | null | undefined
+
 function readCache(): Cached | null {
+  if (owner === undefined) return null
   try {
-    return JSON.parse(localStorage.getItem(CACHE_KEY) ?? 'null') as Cached | null
+    const c = JSON.parse(localStorage.getItem(CACHE_KEY) ?? 'null') as Cached | null
+    return c && c.owner === owner ? c : null
   } catch {
     return null
   }
@@ -107,7 +115,7 @@ function readCache(): Cached | null {
 
 function writeCache(text: string) {
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ text, at: Date.now(), part: partOfDay() }))
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ text, at: Date.now(), part: partOfDay(), owner }))
   } catch {
     /* private mode */
   }
@@ -117,19 +125,35 @@ export function shouldRegenerate(c: Cached | null, now = Date.now()): boolean {
   return !c || now - c.at > STALE_MS || c.part !== partOfDay(new Date(now))
 }
 
-/** Seed the line (cache or local), then ask Wendy once the socket and data are ready. */
-export function startGreeting(): () => void {
+/** Called on every hello: show this user's cached line, or drop another user's. */
+export function adoptGreetingUser(userId: string | null): void {
+  if (owner === userId) return
+  owner = userId
   const cached = readCache()
-  useAgent.setState({ greeting: { text: cached?.text ?? localGreeting(), streaming: false } })
+  if (cached) {
+    useAgent.setState({ greeting: { text: cached.text, streaming: false } })
+    return
+  }
+  try {
+    localStorage.removeItem(CACHE_KEY)
+  } catch {
+    /* private mode */
+  }
+}
+
+/** Seed the line locally, then ask Wendy once the socket, user and data are ready. */
+export function startGreeting(): () => void {
+  useAgent.setState({ greeting: { text: localGreeting(), streaming: false } })
   let asked = false
 
   const tryAsk = () => {
     if (asked) return
     const a = useAgent.getState()
     const hydrated = Object.values(useEntities.getState().hydrated).every(Boolean)
-    if (a.connection !== 'open' || !hydrated) return
+    if (a.connection !== 'open' || a.userId === null || !hydrated) return
     asked = true
-    if (!shouldRegenerate(readCache())) return
+    const cached = readCache()
+    if (!shouldRegenerate(cached)) return
     // Refresh the local line with real counts while Wendy writes hers.
     if (!cached) useAgent.setState({ greeting: { text: localGreeting(), streaming: false } })
     greet(greetingDirective(), (text) => text.trim() && writeCache(text.trim()))

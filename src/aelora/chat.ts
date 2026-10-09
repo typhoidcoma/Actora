@@ -162,12 +162,27 @@ export function handleChatFrame(f: ServerFrame): boolean {
   return false
 }
 
-export function loadTranscript(messages: TranscriptMessage[]): void {
+/**
+ * A page of conversation.messages (always ascending by seq). Paging goes
+ * backwards, so a page older than what we hold is prepended; anything else is
+ * a fresh read of the newest messages and replaces the transcript.
+ */
+export function loadTranscript(
+  messages: TranscriptMessage[],
+  page: { hasMore?: boolean; nextBeforeSeq?: number | null } = {},
+): void {
   const bubbles: ChatBubble[] = messages
     .filter((m) => m.role === 'user' || m.role === 'assistant')
-    .map((m) => ({ id: `m${m.seq}`, role: m.role as 'user' | 'assistant', text: m.content }))
-  // Keep a turn that is mid-flight; replace the settled history.
-  set({ messages: bubbles })
+    .map((m) => ({ id: `m${m.seq}`, seq: m.seq, role: m.role as 'user' | 'assistant', text: m.content }))
+  const history = { hasMore: !!page.hasMore, cursor: page.nextBeforeSeq ?? null }
+  const s = get()
+  const oldestHeld = s.messages.find((b) => b.seq !== undefined)?.seq
+  const firstNew = messages[0]?.seq
+  if (oldestHeld !== undefined && firstNew !== undefined && firstNew < oldestHeld) {
+    set({ messages: [...bubbles.filter((b) => (b.seq ?? 0) < oldestHeld), ...s.messages], history })
+  } else {
+    set({ messages: bubbles, history })
+  }
 }
 
 function failTurn(): void {

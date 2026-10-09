@@ -1,4 +1,5 @@
-import { handleFindsFrame, hunt, unseenCount, useFinds } from '../finds/finds'
+import { adoptFindsUser, forgetFindsThread, handleFindsFrame, hunt, unseenCount, useFinds } from '../finds/finds'
+import { adoptGreetingUser } from './greeting'
 import { actOption, sayOption } from '../options/types'
 import { resubscribe } from '../push/push'
 import { agent, useAgent, type Reaction } from '../stores/agent'
@@ -292,6 +293,24 @@ function announce(n: Notification): void {
   agent.react('positive', 0.45, 1400)
 }
 
+/**
+ * A thread was deleted (here or on another device). If it was the one we're in,
+ * forget it so the next message starts fresh instead of failing on a dead id.
+ */
+function threadGone(id: string | null): void {
+  if (!id) return
+  forgetFindsThread(id)
+  if (useAgent.getState().conversationId === id) {
+    useAgent.setState({ conversationId: null, messages: [], history: { hasMore: false, cursor: null } })
+  }
+}
+
+/** Every thread was deleted (deleteAll, account wipe, or an admin purge). */
+function threadsPurged(): void {
+  forgetFindsThread()
+  useAgent.setState({ conversationId: null, messages: [], history: { hasMore: false, cursor: null } })
+}
+
 function routeEvent(bus: FrameBus, event: string, data: Record<string, unknown> & { type?: string }): void {
   const sub = data.type
   switch (event) {
@@ -331,8 +350,10 @@ function routeEvent(bus: FrameBus, event: string, data: Record<string, unknown> 
           { type: 'conversation.open', conversationId: s.conversationId, limit: 40 },
           'conversation.messages',
         )
+      } else if (sub === 'conversation:deleted') {
+        threadGone(typeof data.conversationId === 'string' ? data.conversationId : null)
       } else if (sub === 'conversation:purged') {
-        useAgent.setState({ messages: [] })
+        threadsPurged()
       }
       return
     }
@@ -345,14 +366,20 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
   if (handleChatFrame(f)) return
 
   switch (f.type) {
-    case 'hello':
+    case 'hello': {
+      const userId = typeof f.userId === 'string' ? f.userId : null
+      // Per-user caches (fun finds, welcome line) must not leak across accounts on a shared device.
+      adoptFindsUser(userId)
+      adoptGreetingUser(userId)
       useAgent.setState({
+        userId,
         botName: typeof f.botName === 'string' ? f.botName : 'Wendy',
         email: typeof f.email === 'string' ? f.email : null,
         ...(f.mood && typeof f.mood === 'object' ? { mood: f.mood as MoodState } : {}),
       })
       bootstrap(bus)
       return
+    }
 
     case 'conversation.active': {
       const id = typeof f.conversationId === 'string' ? f.conversationId : null
@@ -361,12 +388,18 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
       return
     }
     case 'conversation.messages':
-      if (f.conversationId === useAgent.getState().conversationId && !f.requestBeforeSeq) {
-        loadTranscript((f.messages as TranscriptMessage[]) ?? [])
+      if (f.conversationId === useAgent.getState().conversationId) {
+        loadTranscript((f.messages as TranscriptMessage[]) ?? [], {
+          hasMore: f.hasMore === true,
+          nextBeforeSeq: typeof f.nextBeforeSeq === 'number' ? f.nextBeforeSeq : null,
+        })
       }
       return
+    case 'conversation.deleted':
+      threadGone(typeof f.conversationId === 'string' ? f.conversationId : null)
+      return
     case 'conversation.purged':
-      useAgent.setState({ messages: [] })
+      threadsPurged()
       return
     case 'account.wiped':
       window.location.reload()

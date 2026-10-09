@@ -1,5 +1,6 @@
 import { AnimatePresence, motion, useDragControls, type PanInfo } from 'motion/react'
 import { useEffect, useLayoutEffect, useRef } from 'react'
+import { loadEarlier } from '../aelora/client'
 import { useAgent, type ChatBubble } from '../stores/agent'
 import { useMetrics } from '../stores/metrics'
 import { ui, useUi } from '../stores/ui'
@@ -138,20 +139,43 @@ function Transcript() {
   const ref = useRef<HTMLDivElement>(null)
   const first = useRef(true)
 
+  const history = useAgent((s) => s.history)
+  const newest = messages.at(-1)?.id
+  const oldest = messages[0]?.id
+  const prev = useRef({ newest, oldest, height: 0 })
+
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
-    el.scrollTo({ top: el.scrollHeight, behavior: first.current || streaming ? 'auto' : 'smooth' })
+    const p = prev.current
+    if (oldest !== p.oldest && newest === p.newest && p.height) {
+      // Older page prepended ("Load earlier"): keep the reader's place.
+      el.scrollTop += el.scrollHeight - p.height
+    } else {
+      el.scrollTo({ top: el.scrollHeight, behavior: first.current || streaming ? 'auto' : 'smooth' })
+    }
     first.current = false
-  }, [messages, streaming])
+    prev.current = { newest, oldest, height: el.scrollHeight }
+  }, [messages, streaming, newest, oldest])
 
   return (
     <div ref={ref} className="scroll-y min-h-0 flex-1 px-5 pt-1 pb-4">
+      {history.hasMore && (
+        <div className="mb-3 flex justify-center">
+          <motion.button
+            whileTap={press}
+            onClick={loadEarlier}
+            className="glass-pill h-10 rounded-[12px] px-4 text-[14px] font-medium text-muted"
+          >
+            Load earlier
+          </motion.button>
+        </div>
+      )}
       {messages.length === 0 && !awaiting && (
         <p className="display pt-10 text-center text-2xl text-muted">Tap anything below to start.</p>
       )}
       <div className="flex flex-col gap-3">
-        {messages.slice(-60).map((b) => (
+        {messages.map((b) => (
           <Bubble key={b.id} bubble={b} />
         ))}
         {awaiting && (

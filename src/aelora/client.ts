@@ -69,9 +69,24 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
       sendClientState(sock)
   })
 
+  // CONVERSATIONS-CLIENT.md: re-open the active thread on return to the app,
+  // which covers a phone that was backgrounded rather than disconnected.
+  const onVisible = () => {
+    const a = useAgent.getState()
+    if (document.visibilityState !== 'visible' || sock.status !== 'open') return
+    if (!a.conversationId || a.turnId || a.awaitingTurn) return
+    void request(
+      sock,
+      { type: 'conversation.open', conversationId: a.conversationId, limit: 40 },
+      'conversation.messages',
+    )
+  }
+  document.addEventListener('visibilitychange', onVisible)
+
   sock.start()
   const offFinds = startFinds(sock)
   return () => {
+    document.removeEventListener('visibilitychange', onVisible)
     offFinds()
     offFrames()
     offStatus()
@@ -93,6 +108,17 @@ export function reconnectAelora(): void {
 
 export function chat(text: string): boolean {
   return socket ? sendChat(socket, text) : false
+}
+
+/** Older messages for the open thread (paging backwards; the page is prepended). */
+export function loadEarlier(): void {
+  const a = useAgent.getState()
+  if (!socket || !a.conversationId || !a.history.hasMore || a.history.cursor === null) return
+  void request(
+    socket,
+    { type: 'conversation.open', conversationId: a.conversationId, limit: 40, beforeSeq: a.history.cursor },
+    'conversation.messages',
+  )
 }
 
 /** Welcome line over system_chat (an app event, not a user turn). */

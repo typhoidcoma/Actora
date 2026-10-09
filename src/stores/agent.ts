@@ -6,6 +6,8 @@ export type OrbPhase = 'offline' | 'idle' | 'thinking' | 'speaking' | 'tool'
 
 export interface ChatBubble {
   id: string
+  /** Server sequence number, for paging (absent on bubbles created locally). */
+  seq?: number
   role: 'user' | 'assistant' | 'error'
   text: string
 }
@@ -38,6 +40,8 @@ export interface AgentState {
   toolName: string | null
   botName: string
   email: string | null
+  /** Supabase user id from hello; scopes per-user caches on shared devices. */
+  userId: string | null
   /** First name from the sign-in profile, for greetings. */
   userName: string | null
   mood: MoodState | null
@@ -52,6 +56,8 @@ export interface AgentState {
   awaitingTurn: boolean
   streaming: string | null
   messages: ChatBubble[]
+  /** Paging backwards through the thread (conversation.open beforeSeq). */
+  history: { hasMore: boolean; cursor: number | null }
 
   /** Welcome line, streamed over system_chat. */
   greeting: { text: string; streaming: boolean }
@@ -69,6 +75,7 @@ export const useAgent = create<AgentState>(() => ({
   toolName: null,
   botName: 'Wendy',
   email: null,
+  userId: null,
   userName: null,
   mood: null,
   emotion: {},
@@ -78,6 +85,7 @@ export const useAgent = create<AgentState>(() => ({
   awaitingTurn: false,
   streaming: null,
   messages: [],
+  history: { hasMore: false, cursor: null },
   greeting: { text: '', streaming: false },
   greetingPending: false,
   line: 'greeting',
