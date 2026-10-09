@@ -2,6 +2,7 @@ import { AnimatePresence, LayoutGroup, motion, MotionConfig } from 'motion/react
 import { useEffect } from 'react'
 import { markNotificationRead } from '../aelora/client'
 import { startGreeting } from '../aelora/greeting'
+import { startIdleHome } from './idleHome'
 import { useContextKey } from '../options/useOptions'
 import { startWendyOptions } from '../options/wendy'
 import { startRanking } from '../priority/rank'
@@ -59,6 +60,7 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
   useEffect(() => startRanking(), [])
   useEffect(() => startAutoReader(), [])
   useEffect(() => startGreeting(), [])
+  useEffect(() => startIdleHome(), [])
   useEffect(() => {
     void initPush()
     return setNotificationOpener(openNotification)
@@ -113,8 +115,10 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
         {!chatOpen && (
           <motion.div
             key="rail"
-            className="fixed z-30"
-            style={{ left: rail.x, bottom: 0, width: rail.w, paddingBottom: rail.padBottom }}
+            // The band from the cards' bottom to the screen edge; the pills sit centred in it,
+            // so the space above and below them matches whatever the rows are.
+            className="fixed z-30 flex flex-col justify-center"
+            style={{ left: rail.x, top: rail.top, bottom: 0, width: rail.w, paddingBottom: rail.padBottom }}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 12 }}

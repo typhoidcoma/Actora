@@ -55,7 +55,7 @@ export function OptionRail({
         ref={row}
         className={
           narrow
-            ? 'scroll-x flex min-w-0 snap-x items-center gap-2 overflow-x-auto px-1 py-1 [&>*]:shrink-0 [&>*]:snap-start'
+            ? 'scroll-x flex min-w-0 snap-x scroll-pl-3 items-center gap-2 overflow-x-auto py-1 pr-5 pl-3 [&>*]:shrink-0 [&>*]:snap-start'
             : 'flex max-h-[108px] min-w-0 flex-1 flex-wrap content-center items-center justify-center gap-2 overflow-hidden px-1 py-1.5'
         }
         style={narrow ? { maskImage: FADE_EDGES, WebkitMaskImage: FADE_EDGES } : undefined}

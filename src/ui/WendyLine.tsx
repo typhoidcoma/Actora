@@ -25,7 +25,9 @@ export function WendyLine() {
   const m = useMetrics()
   const stalled = useStalled()
   // With the reader open, the reader is her voice: the line steps back rather than echo it.
-  const quiet = useUi((s) => s.reader)
+  // On phones every panel takes the full screen, so the line steps back for all of them.
+  const stack = useMetrics((s) => s.stack)
+  const quiet = useUi((s) => s.reader || (stack && (s.focus !== null || s.selected !== null || s.finds)))
   const a = useAgent(
     useShallow((s) => ({
       line: s.line,

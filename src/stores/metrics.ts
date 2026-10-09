@@ -31,9 +31,11 @@ export interface Metrics {
   cellH: number
   /** Wendy's line, between the header and the grid. */
   line: { x: number; y: number; w: number; h: number }
-  /** Option rail, docked to the bottom edge. */
-  rail: { x: number; y: number; w: number; h: number; padBottom: number }
+  /** Option rail, docked to the bottom edge. `top` is where its band starts (the grid's bottom): pills centre in it. */
+  rail: { x: number; y: number; w: number; h: number; padBottom: number; top: number }
   sheet: { x: number; y: number; w: number; h: number; radius: number }
+  /** Where open panels (reader, lists, items, finds) sit: the grid, or on phones nearly the whole screen. */
+  panel: { x: number; y: number; w: number; h: number }
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
@@ -95,7 +97,8 @@ export function measure(): Metrics {
   const line = { x: Math.round((vw - lineW) / 2), y: safe.top, w: lineW, h: Math.max(lineH, gridY - safe.top) }
 
   const sheetW = compact ? vw : Math.min(700, vw - 48)
-  const sheetH = compact ? Math.round(vh * 0.9) : Math.min(vh - 80, 840)
+  // Phones: the conversation takes the whole height below the status bar.
+  const sheetH = compact ? Math.round(vh - safe.top - 8) : Math.min(vh - 80, 840)
   const sheet = {
     w: sheetW,
     h: sheetH,
@@ -108,7 +111,9 @@ export function measure(): Metrics {
     y: vh - railH,
     w: Math.round(Math.min(vw - 16, 960)),
     h: railH,
-    padBottom: Math.max(safe.bottom, 10),
+    // Only a real safe area (home indicator); the band centring balances the rest.
+    padBottom: safe.bottom,
+    top: vh - railH,
   }
 
   // Portrait phone: orb on top, then her line, then the cards in one column.
@@ -142,7 +147,9 @@ export function measure(): Metrics {
       stack: true,
       cellH,
       line: { x: sGridX, y: lineY, w: sGridW, h: lineH },
-      rail: rail,
+      // Open panels use the whole screen between the status bar and the option rail.
+      panel: { x: sGridX, y: safe.top + 8, w: sGridW, h: rail.y - (safe.top + 8) - 4 },
+      rail: { ...rail, top: sGridY + sGridH },
       sheet: sheet,
     }
   }
@@ -165,7 +172,8 @@ export function measure(): Metrics {
     stack: false,
     cellH: 0,
     line,
-    rail: rail,
+    panel: { x: gridX, y: gridY, w: gridW, h: gridH },
+    rail: { ...rail, top: gridY + gridH },
     sheet: sheet,
   }
 }

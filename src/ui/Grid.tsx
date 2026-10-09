@@ -124,12 +124,18 @@ export function Grid() {
           )
         })}
       </div>
-      <AnimatePresence>
-        {focus && <ListPanel key={`list-${focus}`} id={focus} />}
-        {itemPanel && <ItemPanel key={`item-${itemPanel.kind}:${itemPanel.id}`} item={itemPanel} />}
-        {reader && <Reader key="reader" />}
-        {finds && <FindsPanel key="finds" />}
-      </AnimatePresence>
+      {/* Panels fill the panel box: the grid itself, or on phones nearly the whole screen. */}
+      <div
+        className="pointer-events-none absolute"
+        style={{ left: m.panel.x - m.gridX, top: m.panel.y - m.gridY, width: m.panel.w, height: m.panel.h }}
+      >
+        <AnimatePresence>
+          {focus && <ListPanel key={`list-${focus}`} id={focus} />}
+          {itemPanel && <ItemPanel key={`item-${itemPanel.kind}:${itemPanel.id}`} item={itemPanel} />}
+          {reader && <Reader key="reader" />}
+          {finds && <FindsPanel key="finds" />}
+        </AnimatePresence>
+      </div>
     </motion.div>
   )
 }

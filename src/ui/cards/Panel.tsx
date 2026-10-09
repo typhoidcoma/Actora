@@ -47,7 +47,7 @@ export function Panel({
       dragElastic={{ top: 0, bottom: 0.45 }}
       onDragEnd={onDragEnd}
       {...sheen}
-      className="glass glass-thick absolute inset-0 z-10 flex flex-col overflow-hidden"
+      className="glass glass-thick pointer-events-auto absolute inset-0 z-10 flex flex-col overflow-hidden"
       style={{ borderRadius: radius + 1 }}
     >
       <div

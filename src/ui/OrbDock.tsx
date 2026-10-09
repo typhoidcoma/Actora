@@ -41,8 +41,8 @@ export function OrbDock() {
   } else if (focus) {
     // Any open panel (reader, list, item, finds): she leads the header, in front of its title.
     blob = PANEL_ORB
-    cx = m.gridX + 24 + blob / 2
-    cy = m.gridY + 20 + blob / 2
+    cx = m.panel.x + 24 + blob / 2
+    cy = m.panel.y + 20 + blob / 2
   }
   const scale = (blob / m.orb) * (pressed ? 0.9 : 1)
   const resting = !chatOpen && !focus
