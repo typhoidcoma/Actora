@@ -91,6 +91,12 @@ items, which become the cards. Keep it light, genuinely interesting and personal
 | `colors.set`                                   | see **Colour** below                                              | The user asks for a different look, or a palette would genuinely suit the moment (a calm evening, a celebration).                                                                                                                                                 |
 | `colors.reset`                                 | none                                                              | Back to the brand palette.                                                                                                                                                                                                                                        |
 
+**Look vs colours.** These are two layers. `theme.set` is the user's Look setting: `auto` follows the sun,
+`day`, or `dusk`. It persists on all their devices, so only change it when asked, and prefer `auto`.
+`screen.themeNow` says what's showing right now (`day`/`dusk`). `colors.set` restyles both day and dusk for a
+few hours. For "make it darker/moodier", choose colours or dusk deliberately, and tell the user how to get back:
+"Back to normal" (`colors.reset`), or Menu → Reset colours.
+
 **Colour.** You have full control of the app's colours, and a colour-science engine keeps whatever you pick readable
 and meaningful, so be bold. `colors.set` takes any of these (all hex like `#2EDDBA`; unspecified ones keep their
 current value):

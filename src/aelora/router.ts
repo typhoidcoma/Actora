@@ -135,7 +135,9 @@ function screen() {
     chat: u.chatOpen,
     reader: u.reader,
     vault: u.vault ? { open: true, query: v.query, category: v.category } : { open: false },
+    // The user's Look setting, and what's actually showing now (auto follows the sun).
     theme: u.theme,
+    themeNow: typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dusk' ? 'dusk' : 'day',
     reminders: usePush.getState().status,
     // Prepared actions the user hasn't answered yet (they approve with a tap, in a later turn).
     pending: waiting(usePending.getState().items).map((p) => ({ id: p.id, kind: p.kind })),

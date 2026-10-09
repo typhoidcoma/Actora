@@ -17,11 +17,24 @@ export interface Sky {
   sunset?: string | null
 }
 
-/** Is the sun up right now? Uses today's sunrise/sunset when known, else the last reading. */
+/** Minutes past midnight of a local "YYYY-MM-DDTHH:MM" (Open-Meteo's sunrise/sunset), or null. */
+const minuteOfDay = (iso: string): number | null => {
+  const m = /T(\d{2}):(\d{2})/.exec(iso)
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null
+}
+
+/**
+ * Is the sun up right now? Compares the time of day with sunrise and sunset,
+ * not their dates: a reading kept from yesterday (no fresh forecast yet, or
+ * offline) still gives the right answer today, instead of "after yesterday's
+ * sunset" all day long.
+ */
 export function isDaylight(sky: Sky, now = new Date()): boolean {
-  if (sky.sunrise && sky.sunset) {
-    const t = now.getTime()
-    return t >= new Date(sky.sunrise).getTime() && t < new Date(sky.sunset).getTime()
+  const rise = sky.sunrise ? minuteOfDay(sky.sunrise) : null
+  const set = sky.sunset ? minuteOfDay(sky.sunset) : null
+  if (rise !== null && set !== null) {
+    const t = now.getHours() * 60 + now.getMinutes()
+    return t >= rise && t < set
   }
   if (sky.source === 'clock') {
     const h = now.getHours()

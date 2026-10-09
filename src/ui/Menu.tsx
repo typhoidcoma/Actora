@@ -13,6 +13,8 @@ import { jelly } from './motion'
 import { useNow } from './tiles/data'
 import { ROLE } from './brand'
 import { useMetrics } from '../stores/metrics'
+import { resetColors, useScheme } from '../stores/scheme'
+import { toast } from '../stores/toast'
 import { connectGoogle, disconnectGoogle, googleHint, googleNeedsAction, syncGoogle, useGoogle } from '../google/google'
 
 function useStatus(): { text: string; tone: 'ok' | 'busy' | 'warn' } {
@@ -98,6 +100,8 @@ function Sheet({
   const sky = useSky()
   const compact = useMetrics((m) => m.compact)
   const google = useGoogle((g) => g.status)
+  const wendyColors = useScheme((s) => s.source === 'wendy')
+  const wendyUntil = useScheme((s) => s.until)
   const email = useAgent((s) => s.email)
   const theme = useUi((s) => s.theme)
   const push = usePush((s) => s.status)
@@ -164,6 +168,18 @@ function Sheet({
       <Item onClick={() => ui.setTheme(THEME_NEXT[theme])} hint={THEME_LABEL[theme]}>
         Look
       </Item>
+      {/* Wendy's palette sits on top of Look (it restyles day and dusk alike); say so, and offer the way back. */}
+      {wendyColors && (
+        <Item
+          onClick={go(() => {
+            resetColors()
+            toast.show('Back to the Actora colours')
+          })}
+          hint={wendyUntil ? `Wendy's · until ${clockTime(new Date(wendyUntil).toISOString())}` : "Wendy's"}
+        >
+          Reset colours
+        </Item>
+      )}
       <Item onClick={go(() => ui.openVault())}>Vault</Item>
       <Item onClick={go(() => ui.pastChats(true))}>Past chats</Item>
       {/* Phones have no keyboard button on the rail; typing lives here. */}
