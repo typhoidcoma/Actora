@@ -81,9 +81,18 @@ export function Grid() {
       animate={{ scale: chatOpen ? 0.94 : 1, opacity: chatOpen ? 0.3 : 1 }}
       transition={glide}
     >
-      <div className="grid h-full w-full grid-cols-2 grid-rows-2" style={{ gap: m.gap }}>
+      <div
+        className={
+          m.stack
+            ? 'scroll-y grid h-full w-full grid-cols-1 content-start'
+            : 'grid h-full w-full grid-cols-2 grid-rows-2'
+        }
+        // Stacked: one column, most important first, each card a fixed height.
+        style={m.stack ? { gap: m.gap, gridAutoRows: m.cellH } : { gap: m.gap }}
+      >
         {slots.map((slot, i) => {
-          const corner = i as Corner
+          // Stacked cards all read the same way (no orb notch, left-aligned).
+          const corner = (m.stack ? 0 : i) as Corner
           // The open card unmounts so its layoutId can morph into the panel.
           if (slot.key === openKey) return <div key={slot.key} />
           if (slot.type === 'wendy') return <FindsCard key="wendy" corner={corner} hidden={panelOpen} />

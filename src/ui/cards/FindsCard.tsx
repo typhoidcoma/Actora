@@ -2,6 +2,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { hunt, unseenCount, useFinds } from '../../finds/finds'
 import { ui } from '../../stores/ui'
+import { useMetrics } from '../../stores/metrics'
 import type { Corner } from '../tiles/Face'
 import { CardShell } from './CardShell'
 import { ROLE } from '../brand'
@@ -26,6 +27,7 @@ export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean 
     return () => clearInterval(t)
   }, [hidden, reduced, items.length])
 
+  const stack = useMetrics((m) => m.stack)
   const f = items.length ? items[index % items.length] : null
   const hunting = status === 'hunting'
   const off = status === 'unavailable' && !items.length
@@ -73,7 +75,10 @@ export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean 
             <div
               className="display num leading-[0.85]"
               style={{
-                fontSize: 'clamp(40px, calc(var(--grid) * 0.15), 84px)',
+                // Short, wide stacked card on phones: a smaller count leaves room for the find.
+                fontSize: stack
+                  ? 'clamp(30px, calc(var(--grid) * 0.11), 44px)'
+                  : 'clamp(40px, calc(var(--grid) * 0.15), 84px)',
                 fontWeight: 700,
                 letterSpacing: '-0.05em',
               }}
@@ -109,7 +114,7 @@ export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean 
                   </span>
                 </div>
                 <div
-                  className="display line-clamp-2"
+                  className={`display ${stack ? 'line-clamp-1' : 'line-clamp-2'}`}
                   style={{
                     fontSize: 'clamp(17px, calc(var(--grid) * 0.052), 28px)',
                     fontWeight: 700,
@@ -119,7 +124,7 @@ export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean 
                 >
                   {f.title}
                 </div>
-                {f.why && (
+                {f.why && !stack && (
                   <div className="mt-1 line-clamp-1 text-[max(12px,calc(var(--grid)*0.024))] opacity-85">{f.why}</div>
                 )}
               </motion.div>

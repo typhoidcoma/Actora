@@ -22,6 +22,13 @@ export interface Metrics {
   cy: number
   compact: boolean
   short: boolean
+  /**
+   * Portrait phones: the orb sits small at the top, Wendy's line under it, and
+   * the four cards stack in one column by importance (scrolling if needed).
+   */
+  stack: boolean
+  /** Card height in the stack (0 when not stacked). */
+  cellH: number
   /** Wendy's line, between the header and the grid. */
   line: { x: number; y: number; w: number; h: number }
   /** Option rail, docked to the bottom edge. */
@@ -86,14 +93,6 @@ export function measure(): Metrics {
   const lineW = Math.round(Math.min(vw - reserveX * 2, Math.max(gridW, 720)))
   // Her line owns the whole band above the cards; text is centred in it.
   const line = { x: Math.round((vw - lineW) / 2), y: safe.top, w: lineW, h: Math.max(lineH, gridY - safe.top) }
-  const railW = Math.round(Math.min(vw - 16, 960))
-  const rail = {
-    x: Math.round((vw - railW) / 2),
-    y: vh - railH,
-    w: railW,
-    h: railH,
-    padBottom: Math.max(safe.bottom, 10),
-  }
 
   const sheetW = compact ? vw : Math.min(700, vw - 48)
   const sheetH = compact ? Math.round(vh * 0.9) : Math.min(vh - 80, 840)
@@ -103,6 +102,49 @@ export function measure(): Metrics {
     x: Math.round((vw - sheetW) / 2),
     y: compact ? vh - sheetH : Math.round((vh - sheetH) / 2),
     radius: 10,
+  }
+  const rail = {
+    x: Math.round((vw - Math.min(vw - 16, 960)) / 2),
+    y: vh - railH,
+    w: Math.round(Math.min(vw - 16, 960)),
+    h: railH,
+    padBottom: Math.max(safe.bottom, 10),
+  }
+
+  // Portrait phone: orb on top, then her line, then the cards in one column.
+  if (compact && !short && vh >= vw * 1.15) {
+    const orbS = Math.round(clamp(vw * 0.16, 56, 72))
+    const orbTop = safe.top + 12
+    const lineY = orbTop + orbS + 2
+    const lineH = Math.round(clamp(vh * 0.12, 80, 124))
+    const sGap = 10
+    const sGridX = Math.round(reserveX)
+    const sGridW = Math.round(vw - reserveX * 2)
+    const sGridY = lineY + lineH + 4
+    const sGridH = Math.max(200, vh - railH - sGridY - 6)
+    const cellH = Math.round(clamp((sGridH - sGap * 3) / 4, 118, 200))
+    return {
+      vw,
+      vh,
+      // Type scale for card faces: keep titles in proportion to the short, wide cards.
+      grid: Math.round(Math.min(sGridW, cellH * 2.4)),
+      gridW: sGridW,
+      gridH: sGridH,
+      gap: sGap,
+      orb: orbS,
+      radius: Math.round(clamp(sGridW * 0.02, 6, 9)),
+      gridX: sGridX,
+      gridY: sGridY,
+      cx: vw / 2,
+      cy: orbTop + orbS / 2,
+      compact,
+      short,
+      stack: true,
+      cellH,
+      line: { x: sGridX, y: lineY, w: sGridW, h: lineH },
+      rail: rail,
+      sheet: sheet,
+    }
   }
 
   return {
@@ -120,9 +162,11 @@ export function measure(): Metrics {
     cy: gridY + gridH / 2,
     compact,
     short,
+    stack: false,
+    cellH: 0,
     line,
-    rail,
-    sheet,
+    rail: rail,
+    sheet: sheet,
   }
 }
 
@@ -133,7 +177,8 @@ function writeCssVars(m: Metrics) {
   s.setProperty('--grid', `${m.grid}px`)
   s.setProperty('--gap', `${m.gap}px`)
   s.setProperty('--orb', `${m.orb}px`)
-  s.setProperty('--notch', `${m.orb / 2 + m.gap}px`)
+  // Stacked cards don't sit around the orb, so they have no cut-out.
+  s.setProperty('--notch', m.stack ? '0px' : `${m.orb / 2 + m.gap}px`)
   s.setProperty('--radius', `${m.radius}px`)
 }
 

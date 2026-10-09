@@ -626,3 +626,12 @@ button {
 :root[data-theme='dusk'] .orb-halo {
   mix-blend-mode: plus-lighter;
 }
+
+/* Horizontal swipe rows (phone option rail): no visible scrollbar. */
+.scroll-x {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.scroll-x::-webkit-scrollbar {
+  display: none;
+}

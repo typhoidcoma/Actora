@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { runOption, toggleVoice } from '../options/run'
 import type { Option } from '../options/types'
 import { useOptions } from '../options/useOptions'
@@ -8,6 +8,10 @@ import { optionsStore, useOptionsStore } from '../stores/options'
 import { ui } from '../stores/ui'
 import { jelly, morph } from './motion'
 import { sheen } from './sheen'
+import { useMetrics } from '../stores/metrics'
+
+/** Soft fade at the ends of the swipeable phone row, so it reads as scrollable. */
+const FADE_EDGES = 'linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 20px), transparent)'
 
 /**
  * The user's voice: what they can say or do next, always. Context-aware chips
@@ -28,8 +32,14 @@ export function OptionRail({
   const offline = useAgent((s) => s.connection !== 'open')
   const listening = useOptionsStore((s) => s.listening)
   const interim = useOptionsStore((s) => s.interim)
+  const narrow = useMetrics((s) => s.compact)
   // Count what the user actually got to see (settled, not mid-turn), for staleness.
   const shownIds = options.map((o) => o.id).join('|')
+  // A new set of options (Wendy's arriving in front) starts the swipe row at its first, most relevant pill.
+  const row = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (narrow) row.current?.scrollTo({ left: 0, behavior: 'smooth' })
+  }, [shownIds, narrow])
   useEffect(() => {
     if (busy || loading || !shownIds) return
     const t = setTimeout(() => optionsStore.noteShown(options), 1500)
@@ -38,9 +48,18 @@ export function OptionRail({
   }, [shownIds, busy, loading])
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      {/* Up to two centred rows; labels truncate rather than spill under the icons. */}
-      <div className="flex max-h-[108px] min-w-0 flex-1 flex-wrap content-center items-center justify-center gap-2 overflow-hidden px-1 py-1.5">
+    <div className={`flex gap-2 ${narrow ? 'flex-col items-stretch' : 'items-center'} ${className}`}>
+      {/* Wide: up to two centred rows; labels truncate rather than spill under the icons.
+          Phone: one row you swipe through, so nothing wraps or gets clipped. */}
+      <div
+        ref={row}
+        className={
+          narrow
+            ? 'scroll-x flex min-w-0 snap-x items-center gap-2 overflow-x-auto px-1 py-1 [&>*]:shrink-0 [&>*]:snap-start'
+            : 'flex max-h-[108px] min-w-0 flex-1 flex-wrap content-center items-center justify-center gap-2 overflow-hidden px-1 py-1.5'
+        }
+        style={narrow ? { maskImage: FADE_EDGES, WebkitMaskImage: FADE_EDGES } : undefined}
+      >
         <AnimatePresence mode="popLayout" initial={false}>
           {listening ? (
             <motion.button
@@ -88,7 +107,7 @@ export function OptionRail({
         </AnimatePresence>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5 pr-1">
+      <div className={`flex shrink-0 items-center gap-1.5 pr-1 ${narrow ? 'justify-end' : ''}`}>
         {contextKey !== 'chat' && (
           <motion.button
             whileTap={jelly}
