@@ -69,15 +69,18 @@ export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean 
         </AnimatePresence>
         <div aria-hidden className="absolute inset-0" style={{ background: SCRIM }} />
 
-        <div className="relative flex h-full flex-col justify-between p-[max(14px,calc(var(--grid)*0.038))]">
+        <div
+          className={`relative flex h-full flex-col justify-between ${stack ? 'p-3' : 'p-[max(14px,calc(var(--grid)*0.038))]'}`}
+        >
           {/* Hero count, top right (the orb's notch is top left). */}
-          <div className="text-right">
+          {/* Stacked phones: count and label share one line so the find keeps its room. */}
+          <div className={stack ? 'flex items-baseline justify-end gap-2' : 'text-right'}>
             <div
               className="display num leading-[0.85]"
               style={{
                 // Short, wide stacked card on phones: a smaller count leaves room for the find.
                 fontSize: stack
-                  ? 'clamp(30px, calc(var(--grid) * 0.11), 44px)'
+                  ? 'clamp(26px, calc(var(--grid) * 0.09), 36px)'
                   : 'clamp(40px, calc(var(--grid) * 0.15), 84px)',
                 fontWeight: 700,
                 letterSpacing: '-0.05em',
@@ -85,7 +88,7 @@ export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean 
             >
               {hunting && !items.length ? '…' : items.length ? unseen || items.length : '+'}
             </div>
-            <div className="mt-1 text-[max(13px,calc(var(--grid)*0.026))] font-semibold opacity-90">
+            <div className={`${stack ? '' : 'mt-1'} text-[max(13px,calc(var(--grid)*0.026))] font-semibold opacity-90`}>
               {hunting && !items.length
                 ? 'Wendy is hunting…'
                 : !items.length

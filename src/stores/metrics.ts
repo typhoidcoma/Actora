@@ -122,17 +122,22 @@ function measure(): Metrics {
 
   // Portrait phone: orb on top, then her line, then the cards in one column.
   if (compact && !short && vh >= vw * 1.15) {
-    const orbS = Math.round(clamp(vw * 0.16, 56, 72))
-    const orbTop = safe.top + 12
+    // Short phones (in-app browsers, toolbars): the orb and her line give up room
+    // first, so all four cards fit without scrolling.
+    const tall = vh >= 760
+    const sGap = tall ? 10 : 8
+    const minCell = 96
+    const orbS = Math.round(tall ? clamp(vw * 0.16, 56, 72) : clamp(vh * 0.07, 44, 56))
+    const orbTop = safe.top + (tall ? 12 : 8)
     const lineY = orbTop + orbS + 2
-    const lineH = Math.round(clamp(vh * 0.12, 80, 124))
-    const sGap = 10
+    const lineRoom = vh - railH - 6 - (lineY + 4) - (minCell * 4 + sGap * 3)
+    const lineH = Math.round(clamp(Math.min(vh * 0.12, lineRoom), 60, 124))
     const sGridX = Math.round(reserveX)
     const sGridW = Math.round(vw - reserveX * 2)
     const sGridY = lineY + lineH + 4
     const sGridH = Math.max(200, vh - railH - sGridY - 6)
-    // Below ~100 px the cards can't hold their text; tiny phones scroll the column instead.
-    const cellH = Math.round(clamp((sGridH - sGap * 3) / 4, 100, 200))
+    // Below ~96 px the cards can't hold their text; tiny phones scroll the column instead.
+    const cellH = Math.round(clamp((sGridH - sGap * 3) / 4, minCell, 200))
     return {
       vw,
       vh,

@@ -31,6 +31,8 @@ export function PriorityCard({
   const kind = KIND[item.kind]
   // Short phones: cards squeeze to fit all four, so trim the padding and spacing.
   const tight = useMetrics((m) => m.stack && m.cellH < 118)
+  // The shortest cards keep the title to one line so the meta line still fits.
+  const oneLine = useMetrics((m) => m.stack && m.cellH < 106)
   const right = corner === 1 || corner === 3
   const bottom = corner === 2 || corner === 3
   const heat = urgencyColor(item.urgency)
@@ -70,7 +72,7 @@ export function PriorityCard({
   const body = (
     <div className={`min-w-0 ${right ? 'text-right' : ''}`}>
       <div
-        className={`display text-strong ${compact ? 'line-clamp-2' : 'line-clamp-3'}`}
+        className={`display text-strong ${oneLine ? 'line-clamp-1' : compact ? 'line-clamp-2' : 'line-clamp-3'}`}
         style={{
           fontSize: compact
             ? 'clamp(17px, calc(var(--grid) * 0.072), 24px)'

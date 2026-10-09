@@ -108,7 +108,12 @@ export function WendyLine() {
   const hidden = quiet || faded
 
   const size = Math.round(
-    m.compact ? Math.min(26, Math.max(20, m.line.h * 0.11)) : Math.max(18, Math.min(26, m.grid * 0.04)),
+    // Stacked phones: three lines fill the band, so a short band gets smaller words.
+    m.stack
+      ? Math.min(21, Math.max(17, m.line.h / 3.7))
+      : m.compact
+        ? Math.min(26, Math.max(20, m.line.h * 0.11))
+        : Math.max(18, Math.min(26, m.grid * 0.04)),
   )
 
   return (
