@@ -38,6 +38,8 @@ interface UiState {
   back: TileId | null
   /** The task whose day is being picked ("Pick a day…"). */
   picking: string | null
+  /** The Past chats sheet (from the menu). */
+  pastChats: boolean
   /** Hidden text fallback (behind the mic chip). */
   keyboardOpen: boolean
 }
@@ -61,6 +63,7 @@ export const useUi = create<UiState>(() => ({
   deleting: false,
   back: null,
   picking: null,
+  pastChats: false,
   keyboardOpen: false,
 }))
 
@@ -124,6 +127,7 @@ export const ui = {
   setTheme: (theme: ThemeMode) => useUi.setState({ theme }),
   keyboard: (open: boolean) => useUi.setState({ keyboardOpen: open }),
   pickDay: (taskId: string | null) => useUi.setState({ picking: taskId }),
+  pastChats: (open: boolean) => useUi.setState({ pastChats: open }),
 }
 
 /** Aelora canvas app ids ↔ our tiles (WEBSOCKET.md → "Canvas commands"). Legacy `tasks` folds into `goals`. */

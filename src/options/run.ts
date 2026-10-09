@@ -8,6 +8,8 @@ import {
   setGoalStatus,
   snoozeNotification,
   startTask,
+  moveOverdueToToday,
+  startFocus,
 } from '../aelora/client'
 import { delivered } from '../aelora/protocol'
 import { hunt, useFinds } from '../finds/finds'
@@ -148,6 +150,10 @@ function runAct(act: LocalAct): void {
       return
     case 'askDelete':
       return ui.askDelete(act.item)
+    case 'moveOverdue':
+      return void moveOverdueToToday(act.today)
+    case 'startFocus':
+      return void startFocus(act.anchor)
     case 'reopen':
       return void reopenTask(act.id)
     case 'startTask':

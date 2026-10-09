@@ -4,6 +4,7 @@ import { useAgent } from '../stores/agent'
 import { useEntities } from '../stores/entities'
 import { isStale, mergeOptions, useOptionsStore } from '../stores/options'
 import { usePush } from '../stores/push'
+import { useSession } from '../stores/session'
 import { approvalOptions, usePending, waiting } from '../stores/pending'
 import { contextKeyOf, useUi } from '../stores/ui'
 import { useNow } from '../ui/tiles/data'
@@ -36,10 +37,11 @@ export function useOptions(key: string): { options: Option[]; loading: boolean }
   const now = useNow(60_000)
   const cards = usePriorities()
   const finds = useFinds((s) => s.items)
+  const focusing = useSession((s) => s.active !== null)
 
   const local = useMemo(
-    () => localOptions(key, { entities, agent, push, now, cards, finds }),
-    [key, entities, agent, push, now, cards, finds],
+    () => localOptions(key, { entities, agent, push, now, cards, finds, focusing }),
+    [key, entities, agent, push, now, cards, finds, focusing],
   )
   const wendy = useOptionsStore((s) => s.byKey[key]?.wendy ?? EMPTY)
   const loading = useOptionsStore((s) => s.byKey[key]?.loading ?? false)

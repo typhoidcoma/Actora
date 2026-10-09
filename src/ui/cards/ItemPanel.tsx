@@ -3,6 +3,7 @@ import { deleteItem } from '../../aelora/client'
 import { useAgent } from '../../stores/agent'
 import { useTaskBrief } from '../../tasks/brief'
 import { usePriorities } from '../../priority/usePriorities'
+import { clashes } from '../tiles/data'
 import { useShallow } from 'zustand/react/shallow'
 import { useEntities } from '../../stores/entities'
 import { ui, useUi, type Selected } from '../../stores/ui'
@@ -62,6 +63,7 @@ export function ItemPanel({ item }: { item: Selected }) {
     // The tapped occurrence of a repeating event, not just the first one with this id.
     const all = Object.values(e.events).filter((x) => x.id === item.id)
     const ev = (item.occurrence && all.find((x) => x.occurrence_start === item.occurrence)) || all[0]
+    const clashWith = ev ? clashes(Object.values(e.events)).get(`${ev.id}@${ev.occurrence_start ?? ''}`) : undefined
     if (ev) {
       title = ev.title
       removable = {
@@ -82,6 +84,7 @@ export function ItemPanel({ item }: { item: Selected }) {
               ev.location ? ['Where', ev.location] : null,
               ev.is_recurring ? ['Repeats', repeatLabel(ev.rrule)] : null,
               ev.has_guests ? ['Guests', 'Others are invited'] : null,
+              clashWith ? ['Clashes with', clashWith] : null,
             ]}
           />
           {ev.description && <p className="mt-4 text-[15px] leading-relaxed text-text">{ev.description}</p>}

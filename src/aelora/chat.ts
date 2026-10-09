@@ -282,6 +282,19 @@ export function handleChatFrame(f: ServerFrame): boolean {
         }
         return true
       }
+      // After a turn she quietly remembers things about the user: say so, with an Undo.
+      if (f.event === 'mindmap' && data?.type === 'fact:extracted' && data.conversationId === s.conversationId) {
+        const facts = (data as { facts?: unknown }).facts
+        const fact = Array.isArray(facts) && typeof facts[0] === 'string' ? facts[0].trim() : ''
+        if (fact) {
+          const more = (facts as unknown[]).length - 1
+          toast.show(`Noted: ${fact.length > 90 ? `${fact.slice(0, 88)}…` : fact}${more > 0 ? ` (+${more})` : ''}`, {
+            ms: 7000,
+            undo: () => void import('./client').then((m) => m.forgetByText(fact)),
+          })
+        }
+        return true
+      }
       if (f.event === 'mindmap' && data?.type === 'tool:working' && data.conversationId === s.turnId) {
         rawReply = ''
         set({ streaming: '', phase: 'tool' })

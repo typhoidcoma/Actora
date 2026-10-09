@@ -4,7 +4,7 @@ import { ui } from '../../stores/ui'
 import { AnimatedNumber } from '../AnimatedNumber'
 import { clockTime, countdownParts, dayLabel, until } from '../format'
 import { morph } from '../motion'
-import { useAgenda, useNow, useSelected } from './data'
+import { clashes, useAgenda, useNow, useSelected } from './data'
 import { Face, type Corner } from './Face'
 import { Empty, Loading, Section, SelectedWash } from './parts'
 import { ROLE } from '../brand'
@@ -51,6 +51,7 @@ export function CalendarDetail() {
   if (!hydrated) return <Loading />
   if (!upcoming.length) return <Empty text="Your next two weeks are open." />
 
+  const clash = clashes(upcoming)
   const groups = new Map<string, CalendarOccurrence[]>()
   for (const e of upcoming) {
     const key = dayLabel(e.occurrence_start ?? e.start_time)
@@ -61,7 +62,13 @@ export function CalendarDetail() {
       {[...groups].map(([day, events]) => (
         <Section key={day} title={day} count={events.length}>
           {events.map((e, i) => (
-            <EventRow key={`${e.id}@${e.occurrence_start ?? ''}`} event={e} index={i} now={now} />
+            <EventRow
+              key={`${e.id}@${e.occurrence_start ?? ''}`}
+              event={e}
+              index={i}
+              now={now}
+              clashWith={clash.get(`${e.id}@${e.occurrence_start ?? ''}`)}
+            />
           ))}
         </Section>
       ))}
@@ -69,7 +76,17 @@ export function CalendarDetail() {
   )
 }
 
-function EventRow({ event: e, index, now }: { event: CalendarOccurrence; index: number; now: number }) {
+function EventRow({
+  event: e,
+  index,
+  now,
+  clashWith,
+}: {
+  event: CalendarOccurrence
+  index: number
+  now: number
+  clashWith?: string
+}) {
   const start = Date.parse(e.start_time)
   const live = start <= now
   const occurrence = e.occurrence_start ?? undefined
@@ -96,6 +113,9 @@ function EventRow({ event: e, index, now }: { event: CalendarOccurrence; index: 
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[16px] text-strong">{e.title}</span>
           {e.location && <span className="block truncate text-sm text-muted">{e.location}</span>}
+          {clashWith && (
+            <span className="block truncate text-xs font-semibold text-urgent">Clashes with {clashWith}</span>
+          )}
         </span>
         <span className={`num shrink-0 self-center text-xs ${live ? 'font-medium text-accent' : 'text-faint'}`}>
           {live ? 'now' : until(start - now)}

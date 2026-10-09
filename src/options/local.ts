@@ -19,6 +19,8 @@ export interface Snapshot {
   now: number
   /** The three priority cards on screen, in order; home options act on them by name. */
   cards?: Array<Pick<PriorityItem, 'kind' | 'id' | 'title' | 'urgency'>>
+  /** A focus session is running (no "Focus" pill then). */
+  focusing?: boolean
   /** Today's fun finds, for Discover options. */
   finds?: Array<Pick<Find, 'id' | 'title' | 'url'>>
 }
@@ -124,7 +126,51 @@ function home(s: Snapshot): Option[] {
     ]
   }
   if (line === 'reply' && s.agent.messages.at(-1)?.role === 'assistant') return followUps(s)
+  // The top card's own action still leads; the day's moments come right after it.
+  const base = homeBase(s)
+  return s.cards?.length ? [base[0], ...moments(s), ...base.slice(1)] : [...moments(s), ...base]
+}
 
+/**
+ * The day's moments, pinned ahead of the usual home pills: overdue work to
+ * pull forward, a plan in the morning, a wrap-up in the evening, and a focus
+ * session on the top card.
+ */
+function moments(s: Snapshot): Option[] {
+  const out: Option[] = []
+  const now = new Date(s.now)
+  const today = localDate(now)
+  const open = openTasks(s)
+  const overdue = open.filter((t) => t.due_date !== null && t.due_date < today).length
+  if (overdue > 0) {
+    out.push({
+      ...actOption(overdue === 1 ? 'Move overdue to today' : `Move ${overdue} overdue to today`, {
+        type: 'moveOverdue',
+        today,
+      }),
+      pin: true,
+    })
+  }
+  const hour = now.getHours()
+  if (hour >= 5 && hour < 11) out.push({ ...sayOption('Plan my day'), pin: true })
+  if (hour >= 17) {
+    const dueToday = Object.values(s.entities.tasks).filter((t) => t.due_date === today)
+    const done = dueToday.filter((t) => t.status === 'done').length
+    out.push({
+      ...sayOption(
+        dueToday.length ? `Wrap up · ${done} of ${dueToday.length} done` : 'Wrap up my day',
+        'Help me wrap up today.',
+      ),
+      pin: true,
+    })
+  }
+  const top = s.cards?.[0]
+  if (top && !s.focusing && hour >= 6 && hour < 22)
+    out.push(actOption('Focus on this', { type: 'startFocus', anchor: top.title }))
+  return out
+}
+
+function homeBase(s: Snapshot): Option[] {
   if (s.cards?.length) {
     // Act on what is on screen. Only the top card is pinned; the rest compete with
     // Wendy's ideas, and each card's alternates fill in when its first idea is stale.

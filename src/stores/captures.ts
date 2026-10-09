@@ -36,7 +36,11 @@ export async function capture(bus: FrameBus | null, online: boolean, title: stri
   const text = title.trim().slice(0, 200)
   if (!text) return
   if (bus && online) {
-    const reply = await request<{ type: string; task?: Task }>(bus, { type: 'task.create', title: text }, 'task.created')
+    const reply = await request<{ type: string; task?: Task }>(
+      bus,
+      { type: 'task.create', title: text },
+      'task.created',
+    )
     if (reply?.task) {
       entities.upsertTask(reply.task)
       return void toast.show(`Added "${text}" to your tasks`)

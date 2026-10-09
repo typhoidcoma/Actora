@@ -105,7 +105,26 @@ describe('local options', () => {
   })
 })
 
+/** The day's moment pills (time-of-day dependent), set aside where a test is about the cards. */
+const MOMENT = new Set(['Wrap up my day', 'Focus on this'])
+
 describe('card-aware home options', () => {
+  it("the top card still leads; the day's moments come right after it", () => {
+    const s = snap()
+    s.cards = [{ kind: 'event', id: 'e', title: 'Standup', urgency: 0.95 }]
+    const labels = localOptions('home', s).map((o) => o.label)
+    expect(labels[0]).toBe('Prep: Standup')
+    expect(labels.slice(1, 3)).toEqual(['Wrap up my day', 'Focus on this'])
+    s.focusing = true
+    expect(localOptions('home', s).map((o) => o.label)).not.toContain('Focus on this')
+  })
+
+  it('offers to move overdue work to today, in one tap', () => {
+    const s = snap({ tasks: { a: task('a', { due_date: '2026-10-01' }), b: task('b', { due_date: '2026-10-02' }) } })
+    const move = localOptions('home', s).find((o) => o.act?.type === 'moveOverdue')
+    expect(move).toMatchObject({ label: 'Move 2 overdue to today', act: { type: 'moveOverdue', today: '2026-10-08' } })
+  })
+
   it('names each card, in rank order, phrased for its kind, and pins them ahead of Wendy', () => {
     const s = snap()
     s.cards = [
@@ -113,7 +132,7 @@ describe('card-aware home options', () => {
       { kind: 'task', id: 't', title: 'Write the report', urgency: 0.6 },
       { kind: 'notification', id: 'n', title: 'Stretch', urgency: 0.7 },
     ]
-    const opts = localOptions('home', s)
+    const opts = localOptions('home', s).filter((o) => !MOMENT.has(o.label))
     // Each card's best idea in rank order, then the day, then each card's alternates.
     expect(opts.map((o) => o.label).slice(0, 4)).toEqual([
       'Prep: Standup',

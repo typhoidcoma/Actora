@@ -145,6 +145,8 @@ export class MockWebSocket implements WebSocketLike {
   }))
   private timers = new Set<ReturnType<typeof setTimeout>>()
   private conversationId = uid()
+  private sessions: Array<{ id: string; started_at: string; ended_at: string | null; anchor_response: string | null }> =
+    []
   private transcript: Array<{ role: 'user' | 'assistant'; content: string }> = [
     { role: 'assistant', content: "Morning. You've got a light day — want a quick plan?" },
   ]
@@ -226,6 +228,48 @@ export class MockWebSocket implements WebSocketLike {
         })
       case 'system_chat':
         return this.systemChat()
+      case 'session.list':
+        return this.reply({ type: 'session.list', sessions: this.sessions })
+      case 'session.start': {
+        const s = {
+          id: uid(),
+          started_at: iso(new Date()),
+          ended_at: null,
+          anchor_response: typeof msg.anchor === 'string' ? msg.anchor : null,
+        }
+        this.sessions.push(s)
+        return this.reply({ type: 'session.started', session: { ...s } })
+      }
+      case 'session.end': {
+        const s = this.sessions.find((x) => x.id === msg.id)
+        if (!s) return this.reply({ type: 'error', code: 'not_found', message: 'not found' })
+        s.ended_at = iso(new Date())
+        return this.reply({ type: 'session.ended', session: { ...s } })
+      }
+      case 'conversation.list':
+        return this.reply({
+          type: 'conversation.list',
+          conversations: [
+            {
+              id: this.conversationId,
+              title: 'Planning the week',
+              messageCount: this.transcript.length,
+              lastMessageAt: iso(new Date()),
+              startedAt: iso(new Date()),
+            },
+            {
+              id: 'old-thread',
+              title: 'Guitar strings and Saturday',
+              messageCount: 6,
+              lastMessageAt: iso(new Date(Date.now() - 86_400_000)),
+              startedAt: iso(new Date(Date.now() - 86_400_000)),
+            },
+          ],
+          nextBefore: null,
+          requestBefore: null,
+        })
+      case 'conversation.delete':
+        return this.reply({ type: 'conversation.deleted', conversationId: msg.conversationId })
       case 'goal.update': {
         const g = db.goals.find((x) => x.id === msg.id)
         if (!g) return this.reply({ type: 'error', code: 'not_found', message: 'not found' })

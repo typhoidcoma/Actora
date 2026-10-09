@@ -165,6 +165,7 @@ function Sheet({
         Look
       </Item>
       <Item onClick={go(() => ui.openVault())}>Vault</Item>
+      <Item onClick={go(() => ui.pastChats(true))}>Past chats</Item>
       {/* Phones have no keyboard button on the rail; typing lives here. */}
       {compact && <Item onClick={go(() => ui.keyboard(true))}>Type instead</Item>}
       {push === 'on' && (

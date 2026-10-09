@@ -22,6 +22,8 @@ export type LocalAct =
   | { type: 'saveFind'; id: string }
   | { type: 'askDelete'; item: Selected }
   | { type: 'retry' }
+  | { type: 'moveOverdue'; today: string }
+  | { type: 'startFocus'; anchor: string | null }
   | { type: 'reopen'; id: string }
   | { type: 'startTask'; id: string }
   | { type: 'pickDay'; id: string }

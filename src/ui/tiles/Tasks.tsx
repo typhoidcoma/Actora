@@ -105,9 +105,7 @@ function TaskRow({ task }: { task: Task }) {
         className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left"
       >
         <span className="min-w-0 flex-1">
-          <span
-            className={`block truncate text-[16px] text-strong ${isDone ? 'line-through decoration-faint' : ''}`}
-          >
+          <span className={`block truncate text-[16px] text-strong ${isDone ? 'line-through decoration-faint' : ''}`}>
             {task.title}
           </span>
           {/* What it's part of, and whether it's under way. */}

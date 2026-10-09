@@ -2,9 +2,10 @@ import { useVault, vault, type VaultEntry } from '../stores/vault'
 import { config } from '../config'
 import { useAgent } from '../stores/agent'
 import { entities, useEntities } from '../stores/entities'
-import { useUi } from '../stores/ui'
+import { ui, useUi } from '../stores/ui'
 import { abortTurnOnDisconnect, sendChat, sendGreeting } from './chat'
-import { startFinds } from '../finds/finds'
+import { isFindsThread, startFinds } from '../finds/finds'
+import { rememberMain } from './mainThread'
 import { setTokenSource } from './http'
 import type { ClientMessage, Goal, Notification, ServerFrame, Task } from './protocol'
 import { request } from './request'
@@ -12,6 +13,7 @@ import { routeFrame, sendClientState } from './router'
 import { useScheme } from '../stores/scheme'
 import { toast, withUndo } from '../stores/toast'
 import { capture } from '../stores/captures'
+import { sessions, useSession } from '../stores/session'
 import { dueLabel } from '../ui/format'
 import { AeloraSocket, type WebSocketLike } from './socket'
 
@@ -337,6 +339,96 @@ const whenLabel = (d: Date) => {
   return `${d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}, ${time}`
 }
 
+// ── Past chats ──────────────────────────────────────────────────────────────────────
+
+export interface ThreadSummary {
+  id: string
+  title: string | null
+  messageCount: number
+  lastMessageAt: string | null
+  startedAt: string
+}
+
+/** One page of the user's threads, newest first (the Fun finds thread left out). */
+export async function listThreads(before?: string): Promise<{ threads: ThreadSummary[]; next: string | null } | null> {
+  if (!socket) return null
+  const r = await request<{ type: string; conversations?: ThreadSummary[]; nextBefore?: string | null }>(
+    socket,
+    { type: 'conversation.list', limit: 30, ...(before ? { before } : {}) },
+    'conversation.list',
+  )
+  if (!r) return null
+  return { threads: (r.conversations ?? []).filter((c) => !isFindsThread(c.id)), next: r.nextBefore ?? null }
+}
+
+/** Make a past thread the conversation, load it, and open the chat. */
+export function openThread(id: string): void {
+  if (!socket) return
+  rememberMain(id)
+  useAgent.setState({ conversationId: id, messages: [], history: { hasMore: false, cursor: null } })
+  void request(socket, { type: 'conversation.open', conversationId: id, limit: 40 }, 'conversation.messages')
+  ui.openChat()
+}
+
+/** A clean slate: the next message starts a new thread. */
+export function newThread(): void {
+  rememberMain(null)
+  useAgent.setState({ conversationId: null, messages: [], history: { hasMore: false, cursor: null } })
+  ui.openChat()
+}
+
+export async function deleteThread(id: string): Promise<boolean> {
+  if (!socket) return false
+  const r = await request(socket, { type: 'conversation.delete', conversationId: id }, 'conversation.deleted')
+  if (!r) toast.error("Couldn't delete that chat.")
+  return !!r
+}
+
+/** Every overdue open task onto today, in one go, with one Undo. */
+export async function moveOverdueToToday(today: string): Promise<void> {
+  const late = Object.values(useEntities.getState().tasks).filter(
+    (t) => t.status !== 'done' && t.status !== 'skipped' && t.due_date !== null && t.due_date < today,
+  )
+  if (!late.length) return
+  const was = late.map((t) => [t.id, t.due_date] as const)
+  const results = await Promise.all(
+    late.map((t) => patchTask(t.id, { due_date: today }, `Couldn't move ${quote(t.title)}.`)),
+  )
+  const moved = results.filter(Boolean).length
+  if (!moved) return
+  toast.show(`Moved ${moved} overdue task${moved === 1 ? '' : 's'} to today`, {
+    undo: () => void Promise.all(was.map(([id, due]) => patchTask(id, { due_date: due }, `Couldn't move it back.`))),
+  })
+}
+
+/** Start a focus session on something (Aelora session.start). */
+export async function startFocus(anchor: string | null): Promise<void> {
+  if (!socket) return
+  const reply = await request<{ type: string; session?: unknown }>(
+    socket,
+    { type: 'session.start', ...(anchor ? { anchor: anchor.slice(0, 200) } : {}) },
+    'session.started',
+  )
+  if (!reply?.session) return void toast.error("Couldn't start a focus session.")
+  sessions.apply(reply.session)
+  toast.show(anchor ? `Focusing on ${quote(anchor)}` : 'Focus session started')
+}
+
+/** End the running focus session, and say how long it was. */
+export async function endFocus(): Promise<void> {
+  const cur = useSession.getState().active
+  if (!socket || !cur) return
+  const reply = await request<{ type: string; session?: unknown }>(
+    socket,
+    { type: 'session.end', id: cur.id },
+    'session.ended',
+  )
+  if (!reply?.session) return void toast.error("Couldn't end the session.")
+  sessions.apply(reply.session)
+  const mins = Math.max(1, Math.round((Date.now() - Date.parse(cur.started_at)) / 60_000))
+  toast.show(`Focused for ${mins} min. Nice.`)
+}
+
 /** Quick capture: a thought straight onto the task list (queued if offline). */
 export function captureTask(title: string): Promise<void> {
   return capture(socket, useAgent.getState().connection === 'open', title)
@@ -371,6 +463,18 @@ export async function rememberFact(content: string, category?: string): Promise<
   const r = await ask({ type: 'vault.remember', content: text, ...(category ? { category } : {}) }, 'vault.remembered')
   if (r) void loadVault()
   return r !== null
+}
+
+/** Undo a "Noted: …": find the memory Wendy just saved by its words and forget it. */
+export async function forgetByText(text: string): Promise<void> {
+  await loadVault()
+  const want = text.trim().toLowerCase()
+  const hit = Object.values(useVault.getState().entries).find((e) => {
+    const c = e.content.trim().toLowerCase()
+    return c === want || c.includes(want) || want.includes(c)
+  })
+  if (hit && (await forgetFact(hit.id))) toast.show('Forgotten')
+  else toast.error("Couldn't find that to forget. It's in the Vault if you want to remove it there.")
 }
 
 /** Forget a memory; optimistic, restored if the server says no. */

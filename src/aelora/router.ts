@@ -14,6 +14,7 @@ import { CATEGORIES, useVault, vault, type VaultEntry } from '../stores/vault'
 import { pending, usePending, waiting } from '../stores/pending'
 import { refreshGoogle } from '../google/google'
 import { flushCaptures } from '../stores/captures'
+import { sessions } from '../stores/session'
 import { actOption, sayOption } from '../options/types'
 import { notifyInBackground, resubscribe } from '../push/push'
 import { agent, useAgent, type Reaction } from '../stores/agent'
@@ -176,6 +177,7 @@ function bootstrap(bus: FrameBus): void {
   void resubscribe()
   void refreshGoogle()
   void flushCaptures(bus)
+  void request(bus, { type: 'session.list' }, 'session.list')
 }
 
 let calendarRefetch: ReturnType<typeof setTimeout> | undefined
@@ -452,6 +454,9 @@ function routeEvent(bus: FrameBus, event: string, data: Record<string, unknown> 
       if (sub === 'goal:deleted') entities.removeGoal(String(data.id))
       else if (data.goal) entities.upsertGoal(data.goal as Goal)
       return
+    case 'session':
+      sessions.apply(data.session)
+      return
     case 'pending_action':
       // Something Wendy prepared that waits for the user's OK (an email, an invite…).
       pending.apply(data)
@@ -535,6 +540,7 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
       adoptMainUser(userId)
       vault.reset()
       pending.clear()
+      sessions.clear()
       useAgent.setState({
         userId,
         botName: typeof f.botName === 'string' ? f.botName : 'Wendy',
@@ -604,6 +610,9 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
       entities.removeGoal(String(f.id))
       return
 
+    case 'session.list':
+      sessions.setList(f.sessions)
+      return
     case 'notification.list':
       entities.setNotifications((f.notifications as Notification[]) ?? [])
       return

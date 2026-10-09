@@ -91,6 +91,29 @@ export function useGoals(): {
   }, [goals, tasks, hydrated])
 }
 
+/**
+ * Timed events that overlap another one: occurrence key → the other event's
+ * title. All-day events don't clash (they're context, not appointments).
+ */
+export function clashes(events: CalendarOccurrence[]): Map<string, string> {
+  const timed = events
+    .filter((e) => !e.all_day)
+    .map((e) => ({ e, s: Date.parse(e.start_time), end: Date.parse(e.end_time) }))
+    .sort((a, b) => a.s - b.s)
+  const out = new Map<string, string>()
+  for (let i = 0; i < timed.length; i++) {
+    for (let j = i + 1; j < timed.length && timed[j].s < timed[i].end; j++) {
+      const a = timed[i].e
+      const b = timed[j].e
+      if (a.id === b.id) continue
+      const key = (x: CalendarOccurrence) => `${x.id}@${x.occurrence_start ?? ''}`
+      if (!out.has(key(a))) out.set(key(a), b.title)
+      if (!out.has(key(b))) out.set(key(b), a.title)
+    }
+  }
+  return out
+}
+
 export function useAgenda(now: number): {
   upcoming: CalendarOccurrence[]
   current: CalendarOccurrence | null
