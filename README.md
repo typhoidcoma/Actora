@@ -69,6 +69,29 @@ echoes, a reminder drip and canned option generation. To use a real backend, put
    `null`, the reminder offer never appears.
 4. **Hosting.** Serve `/sw.js` from the site root with `Cache-Control: no-cache`.
 
+## Deploy (Cloud Run, Docker)
+
+The repo builds as a Docker image: `npm run build` in a Node stage, then nginx serves `dist/` on Cloud Run's
+`$PORT` (see `Dockerfile` and `deploy/nginx.conf.template`). Cloud Run's continuous deployment (Cloud Build
+trigger on `main`) picks the Dockerfile up as is.
+
+- **Build arg.** `VITE_AELORA_BASE_URL` defaults to the current Aelora service URL; override it with
+  `--build-arg` (or a trigger substitution) if the backend moves. Supabase comes from Aelora's
+  `/api/public-config` at runtime, so it needs nothing. `.env` files never enter the image.
+- **Serving.** Hashed `/assets/*` are cached for a year; `index.html`, `/sw.js` and the manifest are
+  `no-cache` so new deploys and the push worker take effect at once; a missing `sw.js` 404s instead of falling
+  back to the app shell (Aelora `docs/PUSH.md` §3).
+
+**Outside this repo, once you know the production URL** (`https://actora-….run.app` or a custom domain):
+
+1. **Aelora:** add it to `AELORA_CORS_ORIGINS` on the Aelora Cloud Run service. The variable _replaces_ the default
+   list, so keep the existing origins (and `http://localhost:5173` for local dev). Without it the browser blocks
+   `/api/public-config` (sign-in can't start) and `/api/llm` (Wendy's options and card ranking).
+2. **Supabase → Authentication → URL Configuration:** add it to _Redirect URLs_ (keep `http://localhost:5173`), so
+   Google sign-in can return to the live site.
+
+Google's own OAuth settings don't change: Google redirects to Supabase, and Supabase redirects to the app.
+
 ## How it works
 
 ### Never typing: options everywhere (`src/options/`)
