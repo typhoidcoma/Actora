@@ -19,7 +19,7 @@ const BLOB = 0.6
  */
 export function OrbDock() {
   const m = useMetrics()
-  const focus = useUi((s) => s.focus)
+  const focus = useUi((s) => s.focus !== null || s.selected !== null || s.reader)
   const chatOpen = useUi((s) => s.chatOpen)
   const [pressed, setPressed] = useState(false)
   const [hover, setHover] = useState(false)
@@ -94,7 +94,7 @@ export function OrbDock() {
         aria-label={listening ? 'Stop listening' : 'Talk to Wendy'}
         aria-pressed={listening}
         title="Tap to talk · hold for chat"
-        className="pointer-events-auto absolute inset-[20%] rounded-full outline-none focus-visible:ring-2 focus-visible:ring-apricot/60"
+        className="pointer-events-auto absolute inset-[20%] rounded-full outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         onPointerDown={down}
         onPointerUp={up}
         onPointerEnter={(e) => e.pointerType === 'mouse' && setHover(true)}
@@ -125,7 +125,7 @@ function ListeningRings({ on }: { on: boolean }) {
             key={i}
             aria-hidden
             className="absolute inset-[20%] rounded-full"
-            style={{ boxShadow: 'inset 0 0 0 2px var(--mood-1, #6F9F9C)' }}
+            style={{ boxShadow: 'inset 0 0 0 2px var(--mood-1, #A7C5BD)' }}
             initial={{ opacity: 0, scale: 1 }}
             animate={{ opacity: [0.7, 0], scale: [1, 1.45] }}
             exit={{ opacity: 0 }}
@@ -146,7 +146,7 @@ function MicHint({ on }: { on: boolean }) {
     <motion.svg
       aria-hidden
       viewBox="0 0 24 24"
-      className="absolute top-[60%] left-1/2 h-[12%] w-[12%] -translate-x-1/2 -translate-y-1/2 text-white drop-shadow-[0_1px_3px_rgb(29_43_48/0.45)]"
+      className="absolute top-[60%] left-1/2 h-[12%] w-[12%] -translate-x-1/2 -translate-y-1/2 text-white drop-shadow-[0_1px_3px_rgb(42_34_48/0.45)]"
       initial={false}
       animate={{ opacity: on ? 0.95 : 0, scale: on ? 1 : 0.85, y: on ? 0 : 4 }}
       transition={{ duration: 0.25 }}
@@ -169,7 +169,7 @@ function MicHint({ on }: { on: boolean }) {
  */
 export function OrbSocket() {
   const m = useMetrics()
-  const focus = useUi((s) => s.focus)
+  const focus = useUi((s) => s.focus !== null || s.selected !== null || s.reader)
   const chatOpen = useUi((s) => s.chatOpen)
   if (chatOpen || focus) return null
   const d = m.orb + m.gap

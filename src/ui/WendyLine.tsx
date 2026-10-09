@@ -3,9 +3,8 @@ import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAgent } from '../stores/agent'
 import { useMetrics } from '../stores/metrics'
-import { ui } from '../stores/ui'
 import { toolLabel } from './format'
-import { plainText } from './markdownText'
+import { firstSentence, plainText } from './markdownText'
 
 /**
  * Wendy's voice above the grid: her welcome, her replies to what you tapped,
@@ -28,7 +27,8 @@ export function WendyLine() {
     })),
   )
 
-  const content = useMemo((): { key: string; text: string; live?: boolean; kicker?: string; long?: boolean } => {
+  // Her full answer lives in box 4; this line carries only the first sentence.
+  const content = useMemo((): { key: string; text: string; live?: boolean; kicker?: string } => {
     if (a.line === 'notice' && a.notice) {
       return {
         key: `n:${a.notice.notificationId}`,
@@ -39,21 +39,22 @@ export function WendyLine() {
     if (a.line === 'message' && a.message) return { key: `m:${a.message}`, text: a.message }
     if (a.line === 'reply') {
       if (a.turnBusy && !a.streaming) return { key: 'thinking', text: '' }
-      if (a.streaming) return { key: 'reply-live', text: plainText(a.streaming), live: true }
+      if (a.streaming) return { key: 'reply-live', text: firstSentence(plainText(a.streaming)), live: true }
       if (a.last?.role === 'assistant') {
-        const text = plainText(a.last.text)
-        return { key: `r:${a.last.id}`, text, long: text.length > 180 }
+        return { key: `r:${a.last.id}`, text: firstSentence(plainText(a.last.text)) }
       }
       if (a.last?.role === 'error') return { key: `e:${a.last.id}`, text: a.last.text }
     }
     return { key: 'greeting', text: a.greeting.text, live: a.greeting.streaming }
   }, [a])
 
-  const size = Math.round(Math.max(18, Math.min(26, m.grid * 0.04)))
+  const size = Math.round(
+    m.compact ? Math.min(26, Math.max(20, m.line.h * 0.11)) : Math.max(18, Math.min(26, m.grid * 0.04)),
+  )
 
   return (
     <div
-      className="pointer-events-none fixed z-10 flex flex-col justify-end"
+      className={`pointer-events-none fixed z-10 flex flex-col ${m.compact ? 'justify-center' : 'justify-end'}`}
       style={{ left: m.line.x, top: m.line.y, width: m.line.w, height: m.line.h }}
       aria-live="polite"
     >
@@ -75,7 +76,7 @@ export function WendyLine() {
             style={{ fontSize: size, lineHeight: 1.22 }}
           >
             {content.kicker && (
-              <span className="mr-2 align-middle font-sans text-[13px] font-medium tracking-wide text-apricot not-italic">
+              <span className="mr-2 align-middle font-sans text-[13px] font-medium tracking-wide text-accent not-italic">
                 {content.kicker}
               </span>
             )}
@@ -89,14 +90,6 @@ export function WendyLine() {
           </motion.div>
         </AnimatePresence>
       </div>
-      {content.long && (
-        <button
-          onClick={ui.openChat}
-          className="pointer-events-auto mx-auto mt-1 h-7 rounded-full px-3 text-[13px] font-medium text-muted underline decoration-line underline-offset-4"
-        >
-          Read all
-        </button>
-      )}
     </div>
   )
 }
@@ -122,7 +115,7 @@ function Thinking({ label }: { label: string | null }) {
       {[0, 1, 2].map((i) => (
         <motion.span
           key={i}
-          className="h-2 w-2 rounded-full bg-apricot"
+          className="h-2 w-2 rounded-full bg-accent"
           animate={{ opacity: [0.25, 1, 0.25], y: [0, -3, 0] }}
           transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.15, ease: 'easeInOut' }}
         />

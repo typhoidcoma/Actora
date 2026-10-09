@@ -1,10 +1,30 @@
 # Actora
 
 A touch-first web client for the [Aelora](https://github.com/luminora-app/Aelora) agent backend. The app shows one
-screen. At the top, Wendy speaks. In the middle is a 2×2 grid of live tiles (**Tasks · Goals · Calendar · Inbox**)
-around an orb that is Wendy. At the bottom, a rail of options shows what you can say or do next. **Nothing requires
-typing.** Tap the orb to talk to her, tap an option, or tap any item to get its actions. Wendy can drive every part of
-the UI herself. It's designed for iPad first, scales down to phones, and installs to the home screen.
+screen:
+
+- **Wendy's line** across the top: her welcome, the first sentence of each reply, and reminders.
+- **The grid**: four 4:3 cards around an orb that is Wendy.
+  - Three **priority cards**, ranked: the things to tackle next, from any domain.
+  - **Box 4** (bottom-right) with her latest full answer, including links, images and tables.
+- **The option rail** along the bottom: what you can say or do next.
+
+**Nothing requires typing.** Tap the orb to talk, tap an option, or tap a card for its actions. Wendy can drive every
+part of the UI; `docs/wendy-ui.md` is her playbook. Actora is designed for iPad first, scales down to phones, and
+installs to the home screen.
+
+## Priority cards (`src/priority/`)
+
+1. **Local score** (`score.ts`). Each item gets an instant, deterministic score: a live or imminent event, an overdue
+   task, a fresh unread reminder, a task due today, a goal falling behind. The top 3 can hold at most two of one kind.
+2. **Wendy re-ranks** (`rank.ts`). She reorders the top 8 through `POST /api/llm`, grounded in your profile, and
+   writes a short ✦ "why now" for each card. Debounced, cached by the candidate set, at most once every 2 minutes,
+   429-aware.
+3. **`priorities.set`**. Wendy can set the order herself. It holds for 30 minutes.
+
+When an item is finished or read, its card drops out at once and the others glide up. If there are fewer than three
+things to tackle, domain summaries fill the gaps. Tapping a card morphs it into its item panel. The full lists open
+from the header buttons, from "See all", or when Wendy opens them.
 
 ## Stack
 
@@ -104,11 +124,14 @@ The setup follows Aelora's `docs/PUSH.md`:
 
 ### Look
 
-- **Palette.** Apricot `#E1A36F`, sand `#DEC484`, cream `#E2D8A5`, sage `#6F9F9C` and slate `#577E89`, plus clay, rose,
-  moss and deep teal for emotional and weather range.
+- **Palette.** Yán Hūi Smoke `#A7C5BD`, Light Hog Bristle `#E5DDCB`, Orange Daylily `#EB7B59`, Bullfighters Red
+  `#CF4647` and Midnight Affair `#524656`, plus dusty rose, sand, deep mint and plum for emotion and weather range.
+  - The semantic tokens are `accent` (daylily), `urgent` (red) and `calm` (smoke).
+  - Priority heat runs red, then daylily, then smoke.
+- **Shape.** Cards are exactly 4:3 with 12px corners.
 - **Themes.**
-  - **Daylight** is cream paper and runs while the sun is up at your location (Open-Meteo sunrise/sunset).
-  - **Dusk** is deep slate-teal and runs after sunset.
+  - **Daylight** is Hog Bristle and runs while the sun is up at your location (Open-Meteo sunrise/sunset).
+  - **Dusk** is Midnight Affair and runs after sunset.
   - Changes cross-fade through registered CSS custom properties. You can override the theme in the menu, and Wendy can
     with `theme.set`.
 - **Liquid glass.** Backdrop blur and saturation, a specular edge, a finger-tracking sheen, a rim around the notch, and

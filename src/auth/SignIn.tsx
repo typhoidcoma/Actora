@@ -64,7 +64,7 @@ export function SignIn({ error: initialError }: { error?: string | null }) {
           {busy ? 'Opening Google…' : 'Continue with Google'}
         </motion.button>
 
-        {error && <p className="max-w-xs text-center text-sm text-clay">{error}</p>}
+        {error && <p className="max-w-xs text-center text-sm text-urgent">{error}</p>}
       </main>
     </MotionConfig>
   )

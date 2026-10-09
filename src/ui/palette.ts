@@ -8,31 +8,31 @@ const hex = (h: string): RGB => {
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]
 }
 
-// App palette + earthy extensions (see styles/index.css).
-const APRICOT = hex('#E1A36F')
-const SAND = hex('#DEC484')
-const CREAM = hex('#F1E8CC')
-const SAGE = hex('#6F9F9C')
-const SLATE = hex('#577E89')
-const CLAY = hex('#C9765A')
-const ROSE = hex('#D79A8C')
-const MOSS = hex('#8C9A6B')
-const DEEP = hex('#2E4A52')
-const PLUM = hex('#7A6A86')
+// App palette + extensions (see styles/index.css).
+const SMOKE = hex('#A7C5BD')
+const BRISTLE = hex('#E5DDCB')
+const DAYLILY = hex('#EB7B59')
+const RED = hex('#CF4647')
+const MIDNIGHT = hex('#524656')
+const ROSE = hex('#D9A5A0')
+const SAND = hex('#CDBFA3')
+const MINT = hex('#6E9C92')
+const PLUM = hex('#8A7690')
+const CREAM = hex('#F4EEE2')
 
 /** Orb interior colours per Plutchik emotion, all inside the app palette. */
 const EMOTION_TRIADS: Record<PrimaryEmotion, Triad> = {
-  joy: [APRICOT, SAND, CREAM],
-  trust: [SAGE, SLATE, CREAM],
-  fear: [PLUM, DEEP, SAGE],
-  surprise: [ROSE, SAND, CREAM],
-  sadness: [SLATE, DEEP, SAGE],
-  disgust: [MOSS, DEEP, SAND],
-  anger: [CLAY, APRICOT, ROSE],
-  anticipation: [SAND, APRICOT, SAGE],
+  joy: [DAYLILY, SAND, CREAM],
+  trust: [SMOKE, MINT, CREAM],
+  fear: [PLUM, MIDNIGHT, SMOKE],
+  surprise: [ROSE, DAYLILY, CREAM],
+  sadness: [MIDNIGHT, PLUM, SMOKE],
+  disgust: [MINT, MIDNIGHT, SAND],
+  anger: [RED, DAYLILY, ROSE],
+  anticipation: [SAND, DAYLILY, SMOKE],
 }
 
-export const NEUTRAL: Triad = [SAGE, SLATE, CREAM]
+export const NEUTRAL: Triad = [SMOKE, PLUM, BRISTLE]
 
 const isEmotion = (e: string): e is PrimaryEmotion => e in EMOTION_TRIADS
 

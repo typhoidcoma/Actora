@@ -1,43 +1,43 @@
 import type { Sky, SkyKind } from './sky'
 
 /**
- * Ambient colours per sky, inside the app palette (apricot, sand, cream, sage,
- * slate) plus earthy extensions (clay, rose, moss, deep teal, dusty plum).
- * `day` sits on cream paper; `dusk` glows softly on deep slate-teal.
+ * Ambient colours per sky, inside the app palette (smoke, bristle, daylily, red,
+ * midnight) plus extensions (dusty rose, sand, deep mint, plum).
+ * `day` sits on Hog Bristle paper; `dusk` glows softly on Midnight Affair.
  */
 const SKIES: Record<SkyKind, { day: string[]; dusk: string[] }> = {
   clear: {
-    day: ['#E1A36F', '#DEC484', '#6F9F9C', '#D79A8C'],
-    dusk: ['#C98A5C', '#577E89', '#6F9F9C', '#3E6A72'],
+    day: ['#EB7B59', '#CDBFA3', '#A7C5BD', '#D9A5A0'],
+    dusk: ['#C96A50', '#8A7690', '#A7C5BD', '#6B5470'],
   },
   partly: {
-    day: ['#DEC484', '#6F9F9C', '#577E89', '#E1A36F'],
-    dusk: ['#577E89', '#6F9F9C', '#B8A06A', '#2E4A52'],
+    day: ['#CDBFA3', '#A7C5BD', '#D9A5A0', '#EB7B59'],
+    dusk: ['#8A7690', '#6E9C92', '#B08A80', '#4A3E52'],
   },
   cloudy: {
-    day: ['#577E89', '#6F9F9C', '#A9B4A8', '#DEC484'],
-    dusk: ['#4A6268', '#577E89', '#3A5258', '#6F9F9C'],
+    day: ['#A7C5BD', '#B8B0A8', '#8A7690', '#CDBFA3'],
+    dusk: ['#5E5266', '#6E8A86', '#4A3E52', '#7A6E80'],
   },
   fog: {
-    day: ['#C9C5B0', '#A9B4A8', '#E2D8A5', '#8FA5A8'],
-    dusk: ['#5E7275', '#7A8C8A', '#577E89', '#4A5E62'],
+    day: ['#D6CEC0', '#B8C8C2', '#E5DDCB', '#A8A0A8'],
+    dusk: ['#6A6070', '#7E8A88', '#5A5060', '#8A8088'],
   },
   rain: {
-    day: ['#577E89', '#6F9F9C', '#2E4A52', '#8FB0AE'],
-    dusk: ['#2E4A52', '#577E89', '#3E6A72', '#6F9F9C'],
+    day: ['#6E9C92', '#A7C5BD', '#524656', '#8FB0AA'],
+    dusk: ['#3E5A58', '#524656', '#6E9C92', '#4A3E52'],
   },
   storm: {
-    day: ['#2E4A52', '#577E89', '#7A6A86', '#C9765A'],
-    dusk: ['#5E4A6E', '#2E4A52', '#577E89', '#A8604A'],
+    day: ['#524656', '#6E9C92', '#8A7690', '#CF4647'],
+    dusk: ['#5E3E5A', '#3A3044', '#6E9C92', '#A83E40'],
   },
   snow: {
-    day: ['#F4F0E2', '#BFD3CF', '#E2D8A5', '#8FA5A8'],
-    dusk: ['#A9C2C0', '#7E9A9A', '#E2D8A5', '#577E89'],
+    day: ['#F4EEE2', '#C8DAD4', '#E5DDCB', '#A8B8C0'],
+    dusk: ['#B8CCC6', '#8A9A98', '#E5DDCB', '#7A6E80'],
   },
 }
 
-const WARM = '#E39A5C'
-const COLD = '#BFD8D6'
+const WARM = '#EB7B59'
+const COLD = '#C8DAD4'
 
 export interface Blob {
   color: string

@@ -59,7 +59,13 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
   })
   // Keep Wendy's idea of what's on screen in sync with what is actually on screen.
   const offUi = useUi.subscribe((s, prev) => {
-    if (s.focus !== prev.focus || s.chatOpen !== prev.chatOpen || s.selected !== prev.selected) sendClientState(sock)
+    if (
+      s.focus !== prev.focus ||
+      s.chatOpen !== prev.chatOpen ||
+      s.selected !== prev.selected ||
+      s.reader !== prev.reader
+    )
+      sendClientState(sock)
   })
 
   sock.start()

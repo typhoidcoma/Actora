@@ -57,23 +57,26 @@ export function measure(): Metrics {
 
   // Vertical stack: header · Wendy's line · grid · option rail.
   const headerH = safe.top + (short ? 52 : 64)
-  const lineH = Math.round(short ? 46 : clamp(vh * 0.1, 72, 116))
+  const baseLineH = Math.round(short ? 46 : clamp(vh * 0.1, 72, 116))
   const railH = Math.max(safe.bottom, 10) + 66
   const availW = vw - reserveX * 2
-  const availH = vh - headerH - lineH - railH - 12
+  const availH = vh - headerH - baseLineH - railH - 12
 
-  const side = Math.floor(clamp(Math.min(availW, availH), 200, 900))
-  // Square tiles on tablets and desktops; on phones, stretch along the long axis
-  // so the tiles use the screen instead of floating in it.
-  const phone = Math.min(vw, vh) < 600
-  const gridW = phone && availW > availH ? Math.floor(Math.min(availW, side * 1.6)) : side
-  const gridH = phone && availH > availW ? Math.floor(Math.min(availH, side * 1.45)) : side
+  // Every card is exactly 4:3, so the grid is two 4:3 cells across and down.
+  const gap = Math.round(clamp(Math.min(availW, availH) * 0.018, 8, 16))
+  const cellW = Math.floor(clamp(Math.min((availW - gap) / 2, ((availH - gap) / 2) * (4 / 3)), 140, 600))
+  const cellH = Math.round(cellW * 0.75)
+  const gridW = cellW * 2 + gap
+  const gridH = cellH * 2 + gap
   const grid = Math.min(gridW, gridH)
-  const gap = Math.round(clamp(grid * 0.018, 8, 16))
-  const orb = Math.round(grid * 0.3)
-  const radius = Math.round(clamp(grid * 0.045, 18, 34))
+  // Small cells (phones) get a smaller orb so it never covers card text.
+  const orb = Math.round(grid * (cellW < 260 ? 0.25 : 0.32))
+  const radius = Math.round(clamp(grid * 0.02, 10, 14))
   const gridX = Math.round((vw - gridW) / 2)
-  const gridY = Math.round(headerH + lineH + 6 + Math.max(0, (availH - gridH) / 2))
+  // Spare height (tall phones) goes to Wendy's line rather than empty margins.
+  const spare = Math.max(0, availH - gridH)
+  const lineH = baseLineH + Math.round(Math.min(spare * 0.6, 160))
+  const gridY = Math.round(headerH + lineH + 6 + (spare - (lineH - baseLineH)) / 2)
 
   const lineW = Math.round(Math.min(vw - reserveX * 2, Math.max(gridW, 720)))
   const line = { x: Math.round((vw - lineW) / 2), y: headerH, w: lineW, h: lineH }
@@ -93,7 +96,7 @@ export function measure(): Metrics {
     h: sheetH,
     x: Math.round((vw - sheetW) / 2),
     y: compact ? vh - sheetH : Math.round((vh - sheetH) / 2),
-    radius: compact ? 28 : 32,
+    radius: 16,
   }
 
   return {

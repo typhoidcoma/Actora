@@ -65,7 +65,7 @@ function Sheet() {
           type="submit"
           disabled={!text.trim() || busy}
           aria-label="Send"
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-apricot text-on-accent transition-opacity disabled:opacity-35"
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-accent text-on-accent transition-opacity disabled:opacity-35"
         >
           <svg viewBox="0 0 16 16" className="h-4 w-4">
             <path

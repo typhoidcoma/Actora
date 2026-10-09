@@ -9,7 +9,7 @@ import { useTasks, useSelected } from './data'
 import { DashRun, Face, type Corner } from './Face'
 import { Empty, Section, SelectedWash } from './parts'
 
-export const TASKS_ACCENT = '#E1A36F'
+export const TASKS_ACCENT = '#EB7B59'
 
 export function TasksFace({ corner }: { corner: Corner }) {
   const { open, todayTotal, todayDone } = useTasks()
@@ -82,7 +82,7 @@ function TaskRow({ task }: { task: Task }) {
               <motion.path
                 d="M3.5 8.5l3 3 6-7"
                 fill="none"
-                stroke="#1D2B30"
+                stroke="#2A2230"
                 strokeWidth={2.2}
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -104,7 +104,7 @@ function TaskRow({ task }: { task: Task }) {
           {task.title}
         </span>
         {due && !isDone && (
-          <span className={`num shrink-0 text-xs ${due === 'Overdue' ? 'text-clay' : 'text-muted'}`}>{due}</span>
+          <span className={`num shrink-0 text-xs ${due === 'Overdue' ? 'text-urgent' : 'text-muted'}`}>{due}</span>
         )}
         {task.estimated_minutes && !isDone ? (
           <span className="num shrink-0 text-xs text-faint">{task.estimated_minutes}m</span>

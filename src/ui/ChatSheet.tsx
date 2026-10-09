@@ -1,24 +1,14 @@
 import { AnimatePresence, motion, useDragControls, type PanInfo } from 'motion/react'
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useAgent, type ChatBubble } from '../stores/agent'
 import { useMetrics } from '../stores/metrics'
 import { ui, useUi } from '../stores/ui'
 import { toolLabel } from './format'
+import { LazyMarkdown as Markdown } from './LazyMarkdown'
 import { stableMarkdown } from './markdownText'
 import { glide, morph, press } from './motion'
 import { OptionRail } from './OptionRail'
 import { sheen } from './sheen'
-
-// The Markdown stack is the heaviest dependency; load it with the first chat open.
-const LazyMarkdown = lazy(() => import('./Markdown'))
-
-function Markdown({ text }: { text: string }) {
-  return (
-    <Suspense fallback={<div className="md whitespace-pre-wrap">{text}</div>}>
-      <LazyMarkdown text={text} />
-    </Suspense>
-  )
-}
 
 export function ChatSheet() {
   const open = useUi((s) => s.chatOpen)
@@ -175,7 +165,7 @@ function Transcript() {
             {streaming ? (
               <div className="text-text">
                 <Markdown text={stableMarkdown(streaming)} />
-                <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-[3px] animate-pulse bg-apricot" />
+                <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-[3px] animate-pulse bg-accent" />
               </div>
             ) : (
               <TypingDots />
@@ -194,14 +184,14 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
         initial={{ opacity: 0, y: 10, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={morph}
-        className="max-w-[80%] self-end rounded-[20px] rounded-br-md bg-apricot/25 px-4 py-2.5 text-[15px] text-strong"
+        className="max-w-[80%] self-end rounded-[20px] rounded-br-md bg-accent/25 px-4 py-2.5 text-[15px] text-strong"
       >
         {bubble.text}
       </motion.div>
     )
   }
   if (bubble.role === 'error') {
-    return <div className="self-start text-sm text-clay">{bubble.text}</div>
+    return <div className="self-start text-sm text-urgent">{bubble.text}</div>
   }
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-[88%] self-start text-text">
@@ -216,7 +206,7 @@ function TypingDots() {
       {[0, 1, 2].map((i) => (
         <motion.span
           key={i}
-          className="h-1.5 w-1.5 rounded-full bg-apricot"
+          className="h-1.5 w-1.5 rounded-full bg-accent"
           animate={{ opacity: [0.25, 1, 0.25], y: [0, -3, 0] }}
           transition={{ duration: 1, repeat: Infinity, delay: i * 0.15, ease: 'easeInOut' }}
         />

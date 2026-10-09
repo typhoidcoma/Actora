@@ -108,6 +108,11 @@ const REPLIES: Array<[RegExp, string, string?]> = [
   ],
   [/goal/i, '*Ship Actora v1* is moving — one of three tasks done. The 5K goal needs a run today.', 'list_goals'],
   [/add.*task|remind/i, 'Done — added it to your tasks for today.', 'create_task'],
+  [
+    /search|find|look up|best|shoe|run(ning)? (route|spot)|weekend/i,
+    'Here are three good options I found:\n\n![Trail at golden hour](https://picsum.photos/seed/actora-trail/640/400)\n\n1. **[Discovery Park Loop](https://www.seattle.gov/parks)**: 2.8 mi of mostly soft trail, great at sunset.\n2. **[Green Lake](https://www.seattle.gov/parks)**: flat, 2.8 mi paved, busy on weekends.\n3. **[Burke-Gilman](https://www.seattle.gov/parks)**: long and steady if you want an easy tempo.\n\n| Route | Distance | Surface |\n|---|---|---|\n| Discovery Park | 2.8 mi | Trail |\n| Green Lake | 2.8 mi | Paved |\n\nWant me to put one on your calendar for tomorrow morning?',
+    'web_search',
+  ],
 ]
 
 export class MockWebSocket implements WebSocketLike {
@@ -364,6 +369,16 @@ export async function mockLlm(req: { prompt: string }, signal?: AbortSignal): Pr
     })
   })
   const p = req.prompt
+  if (p.includes('RANK THESE CANDIDATES')) {
+    const found = [...p.matchAll(/key: (\S+) \| (\w+) \| "([^"]*)"/g)].slice(0, 3)
+    const whys: Record<string, string> = {
+      event: 'Give yourself five minutes to land in it',
+      task: 'Small, and it clears your head for the rest',
+      notification: 'Quick one — I flagged it earlier',
+      goal: 'One step today keeps the streak alive',
+    }
+    return JSON.stringify({ top: found.map(([, key, kind]) => ({ key, why: whys[kind] ?? 'Worth doing now' })) })
+  }
   const last = /Wendy's last message[^\n]*\n([\s\S]*?)(?:\n\n|\nButtons|\nWrite)/.exec(p)?.[1] ?? ''
   const opt = (label: string, say = label) => ({ label, say })
   let options

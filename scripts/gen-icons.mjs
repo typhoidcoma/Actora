@@ -1,16 +1,16 @@
-// Renders the app icon (apricot/sage orb on cream) to PNGs for the PWA manifest
+// Renders the app icon (daylily/smoke/midnight orb on Hog Bristle) to PNGs for the PWA manifest
 // and iOS home screen. Zero dependencies: rasterises with math, encodes with zlib.
 // Usage: node scripts/gen-icons.mjs
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { deflateSync } from 'node:zlib'
 
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
-const CREAM = hex('#EFE6C8')
+const CREAM = hex('#E5DDCB')
 const STOPS = [
-  [0, hex('#F6EFD8')],
-  [0.3, hex('#E1A36F')],
-  [0.7, hex('#6F9F9C')],
-  [1, hex('#577E89')],
+  [0, hex('#F4EEE2')],
+  [0.3, hex('#EB7B59')],
+  [0.7, hex('#A7C5BD')],
+  [1, hex('#524656')],
 ]
 const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t)
 function ramp(t) {
@@ -37,7 +37,7 @@ function render(size) {
       // soft warm halo instead of a neon glow
       const glow = Math.exp(-Math.max(0, r - R) / (size * 0.07)) * 0.35 * (1 - body)
       let col = mix(CREAM, ramp(Math.min(1, lr)), body)
-      col = mix(col, hex('#DEC484'), glow)
+      col = mix(col, hex('#EB7B59'), glow)
       const i = (y * size + x) * 4
       px[i] = col[0]
       px[i + 1] = col[1]

@@ -17,9 +17,11 @@
 }
 
 /*
- * Two themes over one palette: daylight (cream paper) and dusk (deep slate-teal).
- * Palette: apricot #E1A36F, sand #DEC484, cream #E2D8A5, sage #6F9F9C, slate #577E89,
- * extended with clay, moss, rose and deep teal for emotion and weather range.
+ * Two themes over one palette: daylight (Light Hog Bristle) and dusk (Midnight Affair).
+ * Palette: Yán Hūi Smoke #A7C5BD, Light Hog Bristle #E5DDCB, Orange Daylily #EB7B59,
+ * Bullfighters Red #CF4647, Midnight Affair #524656; extended with dusty rose, sand,
+ * deep mint, plum and ink for emotion and weather range.
+ * Semantic roles: accent = daylily, urgent = red, calm = smoke.
  * Every themed value is a registered custom property so a theme change cross-fades.
  */
 @theme inline {
@@ -31,17 +33,18 @@
   --color-faint: var(--t-faint);
   --color-line: var(--t-line);
   --color-scrim: var(--t-scrim);
-  --color-on-accent: #1d2b30;
+  --color-on-accent: #2a2230;
 
-  --color-apricot: #e1a36f;
-  --color-sand: #dec484;
-  --color-cream: #e2d8a5;
-  --color-sage: #6f9f9c;
-  --color-slate: #577e89;
-  --color-clay: #c9765a;
-  --color-moss: #8c9a6b;
-  --color-rose: #d79a8c;
-  --color-deep: #2e4a52;
+  --color-accent: #eb7b59;
+  --color-urgent: #cf4647;
+  --color-calm: #a7c5bd;
+  --color-midnight: #524656;
+  --color-bristle: #e5ddcb;
+  --color-rose: #d9a5a0;
+  --color-sand: #cdbfa3;
+  --color-mint: #6e9c92;
+  --color-plum: #8a7690;
+  --color-ink: #2e2733;
 
   --font-sans: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
@@ -53,27 +56,27 @@
 @property --t-bg {
   syntax: '<color>';
   inherits: true;
-  initial-value: #efe6c8;
+  initial-value: #e5ddcb;
 }
 @property --t-bg-2 {
   syntax: '<color>';
   inherits: true;
-  initial-value: #f6f0dc;
+  initial-value: #eee8db;
 }
 @property --t-text {
   syntax: '<color>';
   inherits: true;
-  initial-value: #24363c;
+  initial-value: #3a2f3d;
 }
 @property --t-strong {
   syntax: '<color>';
   inherits: true;
-  initial-value: #16262b;
+  initial-value: #2a2230;
 }
 @property --t-muted {
   syntax: '<color>';
   inherits: true;
-  initial-value: #66787a;
+  initial-value: #7a6e73;
 }
 @property --t-glass {
   syntax: '<color>';
@@ -89,20 +92,20 @@
 :root,
 :root[data-theme='day'] {
   color-scheme: light;
-  --t-bg: #efe6c8;
-  --t-bg-2: #f6f0dc;
-  --t-text: #24363c;
-  --t-strong: #16262b;
-  --t-muted: #66787a;
-  --t-faint: #93a09e;
-  --t-line: rgb(36 54 60 / 0.12);
-  --t-scrim: rgb(239 230 200 / 0.55);
-  --t-glass: rgb(255 252 242 / 0.4);
-  --t-glass-thick: rgb(255 252 242 / 0.74);
+  --t-bg: #e5ddcb;
+  --t-bg-2: #eee8db;
+  --t-text: #3a2f3d;
+  --t-strong: #2a2230;
+  --t-muted: #7a6e73;
+  --t-faint: #a89da0;
+  --t-line: rgb(58 47 61 / 0.12);
+  --t-scrim: rgb(229 221 203 / 0.55);
+  --t-glass: rgb(255 252 246 / 0.42);
+  --t-glass-thick: rgb(255 252 246 / 0.76);
   --t-spec: rgb(255 255 255 / 0.85);
   --t-spec-soft: rgb(255 255 255 / 0.35);
-  --t-shade: rgb(120 88 50 / 0.12);
-  --t-drop: rgb(110 80 45 / 0.22);
+  --t-shade: rgb(82 70 86 / 0.1);
+  --t-drop: rgb(82 60 70 / 0.2);
   --t-fringe: 0;
   --t-ambient: 0.6;
   --t-grain: 0.07;
@@ -111,20 +114,20 @@
 
 :root[data-theme='dusk'] {
   color-scheme: dark;
-  --t-bg: #1d2b30;
-  --t-bg-2: #24363c;
-  --t-text: #ede4c8;
-  --t-strong: #fbf5e4;
-  --t-muted: #9db3b2;
-  --t-faint: #6c8486;
-  --t-line: rgb(241 232 204 / 0.1);
-  --t-scrim: rgb(20 30 34 / 0.55);
-  --t-glass: rgb(36 54 60 / 0.34);
-  --t-glass-thick: rgb(30 46 52 / 0.78);
-  --t-spec: rgb(255 248 230 / 0.42);
-  --t-spec-soft: rgb(255 248 230 / 0.1);
-  --t-shade: rgb(5 12 14 / 0.4);
-  --t-drop: rgb(5 12 14 / 0.6);
+  --t-bg: #2e2733;
+  --t-bg-2: #3b3240;
+  --t-text: #efe8da;
+  --t-strong: #fbf7ef;
+  --t-muted: #b5abae;
+  --t-faint: #85797f;
+  --t-line: rgb(239 232 218 / 0.1);
+  --t-scrim: rgb(30 25 34 / 0.55);
+  --t-glass: rgb(82 70 86 / 0.32);
+  --t-glass-thick: rgb(62 52 68 / 0.8);
+  --t-spec: rgb(255 246 236 / 0.4);
+  --t-spec-soft: rgb(255 246 236 / 0.1);
+  --t-shade: rgb(15 10 18 / 0.4);
+  --t-drop: rgb(15 10 18 / 0.6);
   --t-fringe: 1;
   --t-ambient: 0.75;
   --t-grain: 0.06;
@@ -145,7 +148,7 @@
   --grid: min(calc(100vw - 2rem), calc(100dvh - 8.5rem), 56rem);
   --orb: calc(var(--grid) * 0.3);
   --notch: calc(var(--orb) / 2 + var(--gap));
-  --radius: clamp(18px, 3.2vmin, 32px);
+  --radius: 12px;
 }
 
 html,
@@ -347,8 +350,8 @@ button {
     border-radius: inherit;
     opacity: var(--t-fringe);
     box-shadow:
-      inset 1.5px 1.5px 1px -1px rgb(111 159 156 / 0.45),
-      inset -1.5px -1.5px 1px -1px rgb(225 163 111 / 0.3);
+      inset 1.5px 1.5px 1px -1px rgb(167 197 189 / 0.45),
+      inset -1.5px -1.5px 1px -1px rgb(235 123 89 / 0.3);
     mix-blend-mode: screen;
     pointer-events: none;
   }
@@ -408,8 +411,8 @@ button {
     border-radius: 50%;
     background: radial-gradient(
       circle,
-      var(--mood-1, #6f9f9c) 0%,
-      color-mix(in srgb, var(--mood-2, #577e89) 60%, transparent) 35%,
+      var(--mood-1, #a7c5bd) 0%,
+      color-mix(in srgb, var(--mood-2, #524656) 60%, transparent) 35%,
       transparent 68%
     );
     filter: blur(30px);
@@ -486,19 +489,19 @@ button {
   height: 6px;
   margin: 0 0.6em 0.12em -0.9em;
   border-radius: 50%;
-  background: var(--color-apricot);
+  background: var(--color-accent);
 }
 .md ol {
   list-style: decimal;
 }
 .md a {
-  color: var(--color-slate);
+  color: var(--color-urgent);
   text-decoration: underline;
   text-underline-offset: 3px;
-  text-decoration-color: color-mix(in srgb, var(--color-slate) 45%, transparent);
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
 }
 :root[data-theme='dusk'] .md a {
-  color: var(--color-sage);
+  color: var(--color-accent);
 }
 .md strong {
   color: var(--t-strong);
@@ -542,4 +545,28 @@ button {
   .shimmer {
     animation: none;
   }
+}
+
+/* Wendy's answer inside box 4: compact, image previews shown separately. */
+.card-md .md {
+  font-size: inherit;
+  line-height: 1.45;
+}
+.card-md .md img,
+.card-md .md table {
+  display: none;
+}
+.card-md .md p,
+.card-md .md ul,
+.card-md .md ol {
+  margin-bottom: 0.4em;
+}
+/* Markers inside the flow, so they wrap around the notch with the text. */
+.card-md .md ol,
+.card-md .md ul {
+  list-style-position: inside;
+  padding-left: 0;
+}
+.card-md .md ul > li::before {
+  margin-left: 0;
 }

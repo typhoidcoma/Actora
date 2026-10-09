@@ -3,7 +3,9 @@ import { useState, type ReactNode } from 'react'
 import { disablePush, enablePush, INSTALL_HELP, testPush } from '../push/push'
 import { agent, useAgent } from '../stores/agent'
 import { usePush } from '../stores/push'
-import { ui, useUi, type ThemeMode } from '../stores/ui'
+import { useShallow } from 'zustand/react/shallow'
+import { useEntities } from '../stores/entities'
+import { ui, useUi, type ThemeMode, type TileId } from '../stores/ui'
 import { useSky, type Sky } from '../weather/sky'
 import { clockTime, toolLabel } from './format'
 import { press } from './motion'
@@ -43,7 +45,7 @@ function Weather() {
   )
 }
 
-const TONE = { ok: '#6F9F9C', busy: '#E1A36F', warn: '#C9765A' } as const
+const TONE = { ok: '#6E9C92', busy: '#EB7B59', warn: '#CF4647' } as const
 const THEME_NEXT: Record<ThemeMode, ThemeMode> = { auto: 'day', day: 'dusk', dusk: 'auto' }
 const THEME_LABEL: Record<ThemeMode, string> = { auto: 'Follows the sun', day: 'Daylight', dusk: 'Dusk' }
 
@@ -58,9 +60,12 @@ export function Header({ onSignOut }: { onSignOut?: () => void }) {
 
   return (
     <header className="fixed inset-x-0 top-0 z-40 flex items-center justify-between px-[max(20px,env(safe-area-inset-left))] pt-[max(12px,env(safe-area-inset-top))]">
-      <div className="flex h-11 items-center gap-2">
-        <span className="h-3 w-3 rounded-full bg-gradient-to-br from-apricot to-sage" aria-hidden />
-        <span className="display text-[20px] leading-none font-bold text-strong">actora</span>
+      <div className="flex h-11 items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="h-3 w-3 rounded-full bg-gradient-to-br from-accent to-calm" aria-hidden />
+          <span className="display hidden text-[20px] leading-none font-bold text-strong sm:block">actora</span>
+        </div>
+        <DomainButtons />
       </div>
 
       <div className="relative flex items-center gap-4">
@@ -153,3 +158,91 @@ function MenuItem({ children, hint, onClick }: { children: ReactNode; hint?: str
     </button>
   )
 }
+
+/** Tasks · Calendar · Goals · Inbox: the full lists, one tap away (icons only on phones). */
+function DomainButtons() {
+  const focus = useUi((s) => s.focus)
+  const now = useNow(60_000)
+  const counts = useEntities(
+    useShallow((s) => ({
+      tasks: Object.values(s.tasks).filter((t) => t.status !== 'done' && t.status !== 'skipped').length,
+      calendar: Object.values(s.events).filter((e) => {
+        const start = Date.parse(e.start_time)
+        return Date.parse(e.end_time) > now && start - now < 86_400_000
+      }).length,
+      goals: Object.values(s.goals).filter((g) => g.status === 'active').length,
+      inbox: Object.values(s.notifications).filter((n) => !n.read_at).length,
+    })),
+  )
+  const items: Array<{ id: TileId; label: string; icon: ReactNode }> = [
+    { id: 'tasks', label: 'Tasks', icon: <TaskIcon /> },
+    { id: 'calendar', label: 'Calendar', icon: <CalIcon /> },
+    { id: 'goals', label: 'Goals', icon: <GoalIcon /> },
+    { id: 'inbox', label: 'Inbox', icon: <InboxIcon /> },
+  ]
+  return (
+    <nav className="flex items-center gap-1" aria-label="Lists">
+      {items.map((it) => {
+        const active = focus === it.id
+        const count = counts[it.id]
+        return (
+          <motion.button
+            key={it.id}
+            whileTap={press}
+            onClick={() => ui.focus(active ? null : it.id)}
+            aria-label={`${it.label}${count ? `, ${count}` : ''}`}
+            aria-pressed={active}
+            className={`relative flex h-10 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-medium transition-colors md:px-3 ${
+              active ? 'bg-strong text-bg' : 'text-muted hover:bg-text/6'
+            }`}
+          >
+            <span className="h-[18px] w-[18px]">{it.icon}</span>
+            <span className="hidden md:inline">{it.label}</span>
+            {count > 0 && (
+              <span
+                className={`num min-w-4 rounded-full px-1 text-center text-[10px] leading-4 font-bold ${
+                  active ? 'bg-bg text-strong' : 'bg-text/12 text-text'
+                } max-md:absolute max-md:-top-0.5 max-md:-right-0.5`}
+              >
+                {count}
+              </span>
+            )}
+          </motion.button>
+        )
+      })}
+    </nav>
+  )
+}
+
+const ico = {
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.7,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+} as const
+const TaskIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden>
+    <circle cx="12" cy="12" r="8.5" {...ico} />
+    <path d="M8.5 12.3l2.4 2.4 4.6-5" {...ico} />
+  </svg>
+)
+const CalIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden>
+    <rect x="4" y="5.5" width="16" height="14" rx="3" {...ico} />
+    <path d="M4 10h16M9 3.5v4M15 3.5v4" {...ico} />
+  </svg>
+)
+const GoalIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden>
+    <circle cx="12" cy="12" r="8.5" {...ico} />
+    <circle cx="12" cy="12" r="4.5" {...ico} />
+    <circle cx="12" cy="12" r="0.8" fill="currentColor" />
+  </svg>
+)
+const InboxIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden>
+    <path d="M4 13.5l2.2-7A2 2 0 0 1 8.1 5h7.8a2 2 0 0 1 1.9 1.5l2.2 7V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" {...ico} />
+    <path d="M4 13.5h4.5l1.2 2h4.6l1.2-2H20" {...ico} />
+  </svg>
+)

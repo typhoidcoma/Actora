@@ -36,7 +36,7 @@ export function OptionRail({ contextKey, className = '' }: { contextKey: string;
               className="glass-pill flex h-12 min-w-0 flex-1 items-center gap-3 rounded-full px-5 text-left text-[15px] text-strong"
             >
               <motion.span
-                className="h-2.5 w-2.5 shrink-0 rounded-full bg-clay"
+                className="h-2.5 w-2.5 shrink-0 rounded-full bg-urgent"
                 animate={{ scale: [1, 1.35, 1], opacity: [1, 0.6, 1] }}
                 transition={{ duration: 1.1, repeat: Infinity }}
               />
@@ -101,7 +101,7 @@ function Chip({ option, index, disabled }: { option: Option; index: number; disa
       }`}
     >
       {fromWendy && (
-        <span aria-hidden className="text-[11px] text-apricot">
+        <span aria-hidden className="text-[11px] text-accent">
           ✦
         </span>
       )}

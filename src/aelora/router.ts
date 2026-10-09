@@ -2,7 +2,9 @@ import { actOption, sayOption } from '../options/types'
 import { resubscribe } from '../push/push'
 import { agent, useAgent, type Reaction } from '../stores/agent'
 import { entities, useEntities } from '../stores/entities'
+import { scoreItems } from '../priority/score'
 import { optionsStore } from '../stores/options'
+import { mergePriorities, priorityStore, usePriorityStore } from '../stores/priority'
 import { usePush } from '../stores/push'
 import {
   APP_TO_TILE,
@@ -33,19 +35,26 @@ import type { FrameBus } from './socket'
 
 /**
  * ui_action names we accept; advertised in client_state so Wendy can drive the
- * whole screen (WEBSOCKET.md → client-advertised catalogs).
- *   tile.focus {tile} · tile.close · chat.open · chat.close
- *   item.focus {kind: task|goal|event|notification, id}   open its tile and select it
+ * whole screen (WEBSOCKET.md → client-advertised catalogs). Playbook: docs/wendy-ui.md.
+ *   priorities.set {items: [{kind, id, why?}]}             rank the three cards (30 min)
+ *   card.open / item.focus {kind, id}                      open one item in its panel
+ *   list.open / tile.focus {tile} · tile.close             full Tasks/Calendar/Goals/Inbox list
+ *   reader.open · reader.close                             her full answer (box 4) expanded
  *   options.set {options: [{label, say}]}                  replace the tap options here
- *   reply.show · reply.hide                                her line: reply vs greeting
+ *   chat.open · chat.close · reply.show · reply.hide
  *   theme.set {mode: auto|day|dusk} · voice.listen · push.offer
  */
 export const AVAILABLE_ACTIONS = [
+  'priorities.set',
+  'card.open',
+  'item.focus',
+  'list.open',
   'tile.focus',
   'tile.close',
+  'reader.open',
+  'reader.close',
   'chat.open',
   'chat.close',
-  'item.focus',
   'options.set',
   'reply.show',
   'reply.hide',
@@ -85,7 +94,22 @@ function screen() {
           : u.focus === 'inbox'
             ? Object.values(e.notifications).map((n) => n.title)
             : []
-  return { context: contextKeyOf(u), focus: u.focus, selected: u.selected, visible: visible.slice(0, 12) }
+  const p = usePriorityStore.getState()
+  const priorities = mergePriorities(
+    scoreItems(e, Date.now()),
+    p.wendy,
+    p.pushed && p.pushed.until > Date.now() ? p.pushed.entries : null,
+  ).map((i) => ({ key: i.key, title: i.title, why: i.why }))
+  const box4 = useAgent.getState().messages.some((m) => m.role === 'assistant') ? 'reply' : 'welcome'
+  return {
+    context: contextKeyOf(u),
+    focus: u.focus,
+    selected: u.selected,
+    reader: u.reader,
+    priorities,
+    box4,
+    visible: visible.slice(0, 12),
+  }
 }
 
 export function sendClientState(bus: FrameBus): void {
@@ -179,18 +203,37 @@ const THEMES = new Set<ThemeMode>(['auto', 'day', 'dusk'])
 
 export function runUiAction(action: string, args: Record<string, unknown>): void {
   switch (action) {
+    case 'priorities.set': {
+      const items = Array.isArray(args.items) ? args.items : []
+      const entries = items
+        .map((o) => (o && typeof o === 'object' ? (o as { kind?: unknown; id?: unknown; why?: unknown }) : null))
+        .filter((o): o is { kind: ItemKind; id: string; why?: unknown } => {
+          return !!o && ITEM_KINDS.has(o.kind as ItemKind) && typeof o.id === 'string' && !!o.id
+        })
+        .slice(0, 3)
+        .map((o) => ({ key: `${o.kind}:${o.id}`, why: typeof o.why === 'string' ? o.why.slice(0, 80) : undefined }))
+      if (entries.length) priorityStore.push(entries)
+      else priorityStore.clearPushed()
+      return
+    }
+    case 'list.open':
     case 'tile.focus':
       if (typeof args.tile === 'string') ui.focus(args.tile as TileId)
       return
     case 'tile.close':
       return ui.focus(null)
+    case 'reader.open':
+      return ui.openReader()
+    case 'reader.close':
+      return ui.closeReader()
     case 'chat.open':
       return ui.openChat()
     case 'chat.close':
       return ui.closeChat()
+    case 'card.open':
     case 'item.focus':
       if (ITEM_KINDS.has(args.kind as ItemKind) && typeof args.id === 'string') {
-        ui.select({ kind: args.kind as ItemKind, id: args.id })
+        ui.open({ kind: args.kind as ItemKind, id: args.id })
       }
       return
     case 'options.set': {

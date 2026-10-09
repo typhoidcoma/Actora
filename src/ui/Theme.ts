@@ -4,7 +4,7 @@ import { isDaylight, useSky } from '../weather/sky'
 
 export type ResolvedTheme = 'day' | 'dusk'
 
-const THEME_COLOR: Record<ResolvedTheme, string> = { day: '#EFE6C8', dusk: '#1D2B30' }
+const THEME_COLOR: Record<ResolvedTheme, string> = { day: '#E5DDCB', dusk: '#2E2733' }
 
 /** Current theme: Wendy's or the user's override, else the sun at the user's location. */
 export function useTheme(): ResolvedTheme {

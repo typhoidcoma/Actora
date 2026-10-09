@@ -17,3 +17,15 @@ export function plainText(md: string): string {
     .replace(/\s{2,}/g, ' ')
     .trim()
 }
+
+/** First few image URLs in a Markdown reply (web-search previews). */
+export function imagesIn(md: string, max = 3): Array<{ alt: string; src: string }> {
+  return [...md.matchAll(/!\[([^\]]*)]\((https?:[^)\s]+)\)/g)].slice(0, max).map(([, alt, src]) => ({ alt, src }))
+}
+
+/** The first sentence of a reply, for Wendy's one-line voice above the grid. */
+export function firstSentence(text: string, max = 160): string {
+  const m = /^(.+?[.!?])(\s|$)/.exec(text)
+  const s = (m ? m[1] : text).trim()
+  return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s
+}

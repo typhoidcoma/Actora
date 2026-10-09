@@ -123,9 +123,9 @@ describe('Wendy-driven UI actions', () => {
     useOptionsStore.setState({ pushed: null })
   })
 
-  it('item.focus opens the right tile and selects the item', () => {
+  it('item.focus opens the item in its own panel', () => {
     runUiAction('item.focus', { kind: 'event', id: 'e1' })
-    expect(useUi.getState()).toMatchObject({ focus: 'calendar', selected: { kind: 'event', id: 'e1' } })
+    expect(useUi.getState()).toMatchObject({ focus: null, selected: { kind: 'event', id: 'e1' } })
   })
 
   it('options.set pushes sanitized options for the current context', () => {

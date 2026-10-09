@@ -51,7 +51,7 @@ function runAct(act: LocalAct): void {
     case 'openChat':
       return ui.openChat()
     case 'select':
-      return ui.select(act.item)
+      return ui.open(act.item)
     case 'complete':
       void completeTask(act.id)
       ui.select(null)

@@ -8,7 +8,7 @@ import { useInbox, useNow, useSelected } from './data'
 import { Face, type Corner } from './Face'
 import { Empty, Section, SelectedWash } from './parts'
 
-export const INBOX_ACCENT = '#DEC484'
+export const INBOX_ACCENT = '#8A7690'
 
 export function InboxFace({ corner }: { corner: Corner }) {
   const now = useNow(30_000)

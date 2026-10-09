@@ -7,7 +7,7 @@ import { useGoals, useSelected } from './data'
 import { Bar, Face, type Corner } from './Face'
 import { Empty, Section, SelectedWash } from './parts'
 
-export const GOALS_ACCENT = '#6F9F9C'
+export const GOALS_ACCENT = '#A7C5BD'
 
 export function GoalsFace({ corner }: { corner: Corner }) {
   const { active, overall } = useGoals()

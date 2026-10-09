@@ -4,6 +4,7 @@ import { markNotificationRead } from '../aelora/client'
 import { startGreeting } from '../aelora/greeting'
 import { useContextKey } from '../options/useOptions'
 import { startWendyOptions } from '../options/wendy'
+import { startRanking } from '../priority/rank'
 import { initPush, setNotificationOpener } from '../push/push'
 import { agent, useAgent } from '../stores/agent'
 import { useEntities } from '../stores/entities'
@@ -33,7 +34,7 @@ const Grain = () => <div className="grain z-50" aria-hidden />
 
 /** Lock-screen tap on a reminder: open Inbox on it and mark it read once data is in. */
 function openNotification(id: string): void {
-  ui.select({ kind: 'notification', id })
+  ui.open({ kind: 'notification', id })
   const tryMark = () => {
     const n = useEntities.getState().notifications[id]
     if (!n) return false
@@ -45,7 +46,7 @@ function openNotification(id: string): void {
 }
 
 export function Stage({ onSignOut }: { onSignOut?: () => void }) {
-  const focus = useUi((s) => s.focus)
+  const focus = useUi((s) => s.focus !== null || s.selected !== null || s.reader)
   const chatOpen = useUi((s) => s.chatOpen)
   const fatal = useAgent((s) => s.connection === 'fatal')
   const key = useContextKey()
@@ -54,6 +55,7 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
 
   useEffect(() => watchMetrics(), [])
   useEffect(() => startWendyOptions(), [])
+  useEffect(() => startRanking(), [])
   useEffect(() => startGreeting(), [])
   useEffect(() => {
     void initPush()
@@ -146,7 +148,7 @@ function FatalCard() {
         <p className="mb-6 text-sm text-muted">The connection to Wendy was closed. Reload to start a new session.</p>
         <button
           onClick={() => window.location.reload()}
-          className="h-12 w-full rounded-full bg-apricot font-medium text-on-accent"
+          className="h-12 w-full rounded-full bg-accent font-medium text-on-accent"
         >
           Reload
         </button>

@@ -2,7 +2,9 @@ import { LlmError, llm, type LlmRequest } from '../aelora/http'
 import { config } from '../config'
 import { useAgent } from '../stores/agent'
 import { useEntities } from '../stores/entities'
+import { scoreItems } from '../priority/score'
 import { optionsStore, useOptionsStore } from '../stores/options'
+import { mergePriorities, usePriorityStore } from '../stores/priority'
 import { usePush } from '../stores/push'
 import { contextKeyOf, useUi } from '../stores/ui'
 import { useSky } from '../weather/sky'
@@ -89,7 +91,17 @@ export function screenSummary(key: string, s: Snapshot): string {
     }.`
 
   if (key === 'home') {
-    lines.push('Screen: home (tasks, goals, calendar, inbox tiles).', taskLine(5), eventLine(3))
+    const p = usePriorityStore.getState()
+    const top = mergePriorities(
+      scoreItems(s.entities, s.now),
+      p.wendy,
+      p.pushed && p.pushed.until > s.now ? p.pushed.entries : null,
+    )
+    lines.push(
+      `Screen: home. The three priority cards, in order: ${top.map((t, i) => `#${i + 1} ${t.kind} "${t.title}" (${t.meta})`).join('; ') || 'none'}. Box 4 shows Wendy's latest answer.`,
+      taskLine(5),
+      eventLine(3),
+    )
     lines.push(
       `Unread notifications: ${
         unread

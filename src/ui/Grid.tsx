@@ -1,37 +1,75 @@
-import { AnimatePresence, motion, useDragControls, type PanInfo } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import type { ComponentType } from 'react'
+import { usePriorities } from '../priority/usePriorities'
 import { useMetrics } from '../stores/metrics'
-import { TILE_IDS, ui, useUi, type TileId } from '../stores/ui'
-import { glide, jelly, morph, press } from './motion'
-import { sheen } from './sheen'
+import type { RankedItem } from '../stores/priority'
+import { ui, useUi, type ItemKind, type TileId } from '../stores/ui'
+import { CardShell } from './cards/CardShell'
+import { ItemPanel } from './cards/ItemPanel'
+import { Panel } from './cards/Panel'
+import { PriorityCard } from './cards/PriorityCard'
+import { Reader } from './cards/Reader'
+import { WendyCard } from './cards/WendyCard'
+import { glide } from './motion'
 import { CALENDAR_ACCENT, CalendarDetail, CalendarFace } from './tiles/Calendar'
 import type { Corner } from './tiles/Face'
 import { GOALS_ACCENT, GoalsDetail, GoalsFace } from './tiles/Goals'
 import { INBOX_ACCENT, InboxDetail, InboxFace } from './tiles/Inbox'
 import { TASKS_ACCENT, TasksDetail, TasksFace } from './tiles/Tasks'
 
-interface TileDef {
+interface ListDef {
   label: string
   accent: string
   Face: ComponentType<{ corner: Corner }>
   Detail: ComponentType
 }
 
-const TILES: Record<TileId, TileDef> = {
+/** Full domain lists: opened from the header, an item's "See all", a summary card, or Wendy. */
+const LISTS: Record<TileId, ListDef> = {
   tasks: { label: 'Tasks', accent: TASKS_ACCENT, Face: TasksFace, Detail: TasksDetail },
-  goals: { label: 'Goals', accent: GOALS_ACCENT, Face: GoalsFace, Detail: GoalsDetail },
   calendar: { label: 'Calendar', accent: CALENDAR_ACCENT, Face: CalendarFace, Detail: CalendarDetail },
+  goals: { label: 'Goals', accent: GOALS_ACCENT, Face: GoalsFace, Detail: GoalsDetail },
   inbox: { label: 'Inbox', accent: INBOX_ACCENT, Face: InboxFace, Detail: InboxDetail },
 }
 
-// The notch sits in each tile's inner corner, i.e. toward the grid centre.
-const NOTCH = ['notch-br', 'notch-bl', 'notch-tr', 'notch-tl'] as const
-const GLOW_AT = ['0% 0%', '100% 0%', '0% 100%', '100% 100%'] as const
+const KIND_LIST: Record<ItemKind, TileId> = { task: 'tasks', event: 'calendar', notification: 'inbox', goal: 'goals' }
+const FILL_ORDER: TileId[] = ['calendar', 'tasks', 'inbox', 'goals']
+
+type Slot =
+  | { type: 'item'; key: string; item: RankedItem; rank: number }
+  | { type: 'list'; key: string; tile: TileId }
+  | { type: 'wendy'; key: 'wendy' }
+
+/**
+ * Three ranked priority cards (any domain) plus Wendy's answer in the bottom
+ * right. If there are fewer than three things to tackle, calm domain summaries
+ * fill the gaps. Cards glide to their new slot when the ranking changes.
+ */
+function useSlots(): Slot[] {
+  const ranked = usePriorities()
+  const slots: Slot[] = ranked.map((item, i) => ({ type: 'item', key: item.key, item, rank: i + 1 }))
+  const shown = new Set(ranked.map((r) => KIND_LIST[r.kind]))
+  for (const pass of [0, 1]) {
+    for (const tile of FILL_ORDER) {
+      if (slots.length >= 3) break
+      const taken = slots.some((s) => s.type === 'list' && s.tile === tile)
+      if (!taken && (pass === 1 || !shown.has(tile))) slots.push({ type: 'list', key: `list:${tile}`, tile })
+    }
+  }
+  return [...slots.slice(0, 3), { type: 'wendy', key: 'wendy' }]
+}
 
 export function Grid() {
   const m = useMetrics()
   const focus = useUi((s) => s.focus)
+  const selected = useUi((s) => s.selected)
+  const reader = useUi((s) => s.reader)
   const chatOpen = useUi((s) => s.chatOpen)
+  const slots = useSlots()
+
+  const itemPanel = !focus && selected ? selected : null
+  const openKey = reader ? 'wendy' : itemPanel ? `${itemPanel.kind}:${itemPanel.id}` : focus ? `list:${focus}` : null
+  const panelOpen = openKey !== null
 
   return (
     <motion.div
@@ -41,106 +79,53 @@ export function Grid() {
       transition={glide}
     >
       <div className="grid h-full w-full grid-cols-2 grid-rows-2" style={{ gap: m.gap }}>
-        {TILE_IDS.map((id, i) =>
-          focus === id ? (
-            <div key={id} />
-          ) : (
-            <CollapsedTile key={id} id={id} corner={i as Corner} hidden={focus !== null} />
-          ),
-        )}
+        {slots.map((slot, i) => {
+          const corner = i as Corner
+          // The open card unmounts so its layoutId can morph into the panel.
+          if (slot.key === openKey) return <div key={slot.key} />
+          if (slot.type === 'wendy') return <WendyCard key="wendy" corner={corner} hidden={panelOpen} />
+          if (slot.type === 'item') {
+            return (
+              <PriorityCard
+                key={slot.key}
+                item={slot.item}
+                rank={slot.rank}
+                corner={corner}
+                hidden={panelOpen}
+                compact={m.compact}
+              />
+            )
+          }
+          const def = LISTS[slot.tile]
+          return (
+            <CardShell
+              key={slot.key}
+              layoutId={`list-${slot.tile}`}
+              corner={corner}
+              accent={def.accent}
+              hidden={panelOpen}
+              label={`Open ${def.label}`}
+              onOpen={() => ui.focus(slot.tile)}
+            >
+              <def.Face corner={corner} />
+            </CardShell>
+          )
+        })}
       </div>
-      <AnimatePresence>{focus && <ExpandedTile key={focus} id={focus} />}</AnimatePresence>
+      <AnimatePresence>
+        {focus && <ListPanel key={`list-${focus}`} id={focus} />}
+        {itemPanel && <ItemPanel key={`item-${itemPanel.kind}:${itemPanel.id}`} item={itemPanel} />}
+        {reader && <Reader key="reader" />}
+      </AnimatePresence>
     </motion.div>
   )
 }
 
-function Glow({ accent, at, strength = 0.22 }: { accent: string; at: string; strength?: number }) {
+function ListPanel({ id }: { id: TileId }) {
+  const { Detail, accent, label } = LISTS[id]
   return (
-    <div
-      aria-hidden
-      className="pointer-events-none absolute inset-0 -z-10"
-      style={{
-        background: `radial-gradient(120% 120% at ${at}, color-mix(in srgb, ${accent} ${strength * 100}%, transparent), transparent 60%)`,
-      }}
-    />
-  )
-}
-
-function CollapsedTile({ id, corner, hidden }: { id: TileId; corner: Corner; hidden: boolean }) {
-  const radius = useMetrics((s) => s.radius)
-  const { Face, accent, label } = TILES[id]
-  return (
-    <motion.button
-      layoutId={`tile-${id}`}
-      aria-label={`Open ${label}`}
-      onClick={() => ui.focus(id)}
-      whileTap={jelly}
-      {...sheen}
-      animate={{ opacity: hidden ? 0 : 1 }}
-      transition={{ ...morph, scale: jelly.transition }}
-      className={`glass ${NOTCH[corner]} relative overflow-hidden text-left`}
-      style={{ borderRadius: radius }}
-    >
-      <Glow accent={accent} at={GLOW_AT[corner]} />
-      <motion.div layout="position" className="h-full w-full">
-        <Face corner={corner} />
-      </motion.div>
-    </motion.button>
-  )
-}
-
-function ExpandedTile({ id }: { id: TileId }) {
-  const radius = useMetrics((s) => s.radius)
-  const { Detail, accent, label } = TILES[id]
-  const drag = useDragControls()
-
-  const onDragEnd = (_: unknown, info: PanInfo) => {
-    if (info.offset.y > 90 || info.velocity.y > 600) ui.focus(null)
-  }
-
-  return (
-    <motion.div
-      layoutId={`tile-${id}`}
-      transition={morph}
-      drag="y"
-      dragListener={false}
-      dragControls={drag}
-      dragConstraints={{ top: 0, bottom: 0 }}
-      dragElastic={{ top: 0, bottom: 0.45 }}
-      onDragEnd={onDragEnd}
-      {...sheen}
-      className="glass absolute inset-0 z-10 flex flex-col overflow-hidden"
-      style={{ borderRadius: radius }}
-    >
-      <Glow accent={accent} at="0% 0%" strength={0.12} />
-      <motion.header
-        layout="position"
-        onPointerDown={(e) => drag.start(e)}
-        className="flex shrink-0 touch-none items-center justify-between gap-4 px-6 pt-5 pb-3"
-      >
-        <div className="flex items-center gap-3">
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: accent }} />
-          <h2 className="display text-[28px] leading-none text-strong">{label}</h2>
-        </div>
-        <motion.button
-          whileTap={press}
-          onClick={() => ui.focus(null)}
-          aria-label="Close"
-          className="glass-pill grid h-11 w-11 place-items-center rounded-full text-muted"
-        >
-          <svg viewBox="0 0 16 16" className="h-4 w-4">
-            <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
-          </svg>
-        </motion.button>
-      </motion.header>
-      <motion.div
-        className="scroll-y min-h-0 flex-1 px-6 pb-6"
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0, transition: { ...morph, delay: 0.1 } }}
-        exit={{ opacity: 0, transition: { duration: 0.08 } }}
-      >
-        <Detail />
-      </motion.div>
-    </motion.div>
+    <Panel layoutId={`list-${id}`} accent={accent} title={label} onClose={() => ui.focus(null)}>
+      <Detail />
+    </Panel>
   )
 }
