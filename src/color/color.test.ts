@@ -94,3 +94,40 @@ describe('scheme guardrails', () => {
     for (const c of s.dusk.ambient!) expect(L(c).l).toBeLessThanOrEqual(0.69)
   })
 })
+
+describe('mood colours', () => {
+  const toHex = (c: [number, number, number]) =>
+    '#' +
+    c
+      .map((v) =>
+        Math.round(v * 255)
+          .toString(16)
+          .padStart(2, '0'),
+      )
+      .join('')
+
+  it('anger reads warm, sadness cool, in the brand palette', async () => {
+    const { orbColors } = await import('../ui/palette')
+    const brand = buildScheme()
+    const anger = L(toHex(orbColors(null, { anger: 0.9 }, brand)[0])).h
+    const sad = L(toHex(orbColors(null, { sadness: 0.9 }, brand)[0])).h
+    expect(anger < 60 || anger > 340).toBe(true)
+    expect(sad).toBeGreaterThan(200)
+    expect(sad).toBeLessThan(320)
+  })
+
+  it("follows Wendy's palette", async () => {
+    const { orbColors } = await import('../ui/palette')
+    const brand = orbColors(null, { trust: 0.9 }, buildScheme())
+    const violet = orbColors(null, { trust: 0.9 }, buildScheme({ seed: '#7A5AD6' }))
+    expect(toHex(violet[0])).not.toBe(toHex(brand[0]))
+    expect(L(toHex(violet[0])).h).toBeGreaterThan(260)
+  })
+
+  it('glows brighter for stronger feelings', async () => {
+    const { moodIntensity } = await import('../ui/palette')
+    expect(moodIntensity(null, {})).toBe(0)
+    expect(moodIntensity(null, { joy: 0.1 })).toBeLessThan(moodIntensity(null, { joy: 0.8 }))
+    expect(moodIntensity({ emotion: 'joy', intensity: 'high' } as never, {})).toBe(1)
+  })
+})

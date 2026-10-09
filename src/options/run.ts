@@ -110,6 +110,7 @@ function runAct(act: LocalAct): void {
 }
 
 export function runOption(o: Option): void {
+  optionsStore.noteTapped(o)
   if (o.act) runAct(o.act)
   else if (o.say) say(o.say)
 }

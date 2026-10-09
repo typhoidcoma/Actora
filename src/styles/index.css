@@ -452,16 +452,16 @@ button {
       transparent 68%
     );
     filter: blur(30px);
-    opacity: 0.32;
+    /* Brighter when she feels something strongly (--mood-glow, 0..1, from MoodLight). */
+    opacity: calc(0.14 + var(--mood-glow, 0.45) * 0.42);
     animation: breathe 6s ease-in-out infinite;
-    transition: background 1.2s;
   }
 }
 
 @keyframes breathe {
   50% {
     transform: scale(1.08);
-    opacity: 0.42;
+    opacity: calc(0.2 + var(--mood-glow, 0.45) * 0.5);
   }
 }
 
@@ -621,9 +621,9 @@ button {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: shimmer 2.2s linear infinite;
+  animation: sweep 2.2s linear infinite;
 }
-@keyframes shimmer {
+@keyframes sweep {
   from {
     background-position: 100% 0;
   }

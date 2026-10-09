@@ -1,9 +1,10 @@
 import { AnimatePresence, motion } from 'motion/react'
+import { useEffect } from 'react'
 import { runOption, toggleVoice } from '../options/run'
 import type { Option } from '../options/types'
 import { useOptions } from '../options/useOptions'
 import { useAgent } from '../stores/agent'
-import { useOptionsStore } from '../stores/options'
+import { optionsStore, useOptionsStore } from '../stores/options'
 import { ui } from '../stores/ui'
 import { jelly, morph } from './motion'
 import { sheen } from './sheen'
@@ -27,6 +28,14 @@ export function OptionRail({
   const offline = useAgent((s) => s.connection !== 'open')
   const listening = useOptionsStore((s) => s.listening)
   const interim = useOptionsStore((s) => s.interim)
+  // Count what the user actually got to see (settled, not mid-turn), for staleness.
+  const shownIds = options.map((o) => o.id).join('|')
+  useEffect(() => {
+    if (busy || loading || !shownIds) return
+    const t = setTimeout(() => optionsStore.noteShown(options), 1500)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by the visible ids
+  }, [shownIds, busy, loading])
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>

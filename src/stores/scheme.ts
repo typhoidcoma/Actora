@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { buildScheme, type Scheme, type SchemeInput, SCHEME_VARS, schemeCss } from '../color/scheme'
+import { buildScheme, MOOD_VARS, type Scheme, type SchemeInput, SCHEME_VARS, schemeCss } from '../color/scheme'
 
 /**
  * The live colour scheme: the brand by default, or Wendy's (guarded) choice.
@@ -62,9 +62,14 @@ export function resetColors(): void {
 
 function register() {
   if (!('registerProperty' in CSS)) return
-  for (const name of SCHEME_VARS) {
+  const props = [
+    ...SCHEME_VARS.map((name) => ({ name, syntax: '<color>', initialValue: 'transparent' })),
+    ...MOOD_VARS.map((name, i) => ({ name, syntax: '<color>', initialValue: i ? '#8f8cc7' : '#2eddba' })),
+    { name: '--mood-glow', syntax: '<number>', initialValue: '0.45' },
+  ]
+  for (const p of props) {
     try {
-      CSS.registerProperty({ name, syntax: '<color>', inherits: true, initialValue: 'transparent' })
+      CSS.registerProperty({ ...p, inherits: true })
     } catch {
       /* already registered (index.css or a hot reload) */
     }

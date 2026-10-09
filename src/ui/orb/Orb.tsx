@@ -134,7 +134,7 @@ export function Orb() {
       if (s.mood !== p.mood || s.emotion !== p.emotion) colors = orbColors(s.mood, s.emotion)
     })
     const unsubScheme = useScheme.subscribe((s, p) => {
-      if (s.scheme.orb !== p.scheme.orb) colors = orbColors(useAgent.getState().mood, useAgent.getState().emotion)
+      if (s.scheme !== p.scheme) colors = orbColors(useAgent.getState().mood, useAgent.getState().emotion)
     })
     const unsub = () => {
       unsubAgent()

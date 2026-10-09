@@ -11,7 +11,8 @@ import { actOption, sayOption, type Option } from './types'
 
 export interface Snapshot {
   entities: Pick<EntitiesState, 'tasks' | 'goals' | 'events' | 'notifications'>
-  agent: Pick<AgentState, 'messages' | 'line' | 'notice' | 'turnId' | 'awaitingTurn'>
+  agent: Pick<AgentState, 'messages' | 'line' | 'notice' | 'turnId' | 'awaitingTurn'> &
+    Partial<Pick<AgentState, 'mood' | 'greeting'>>
   push: Pick<PushState, 'status' | 'snoozedUntil'>
   now: number
   /** The three priority cards on screen, in order; home options act on them by name. */
@@ -20,24 +21,42 @@ export interface Snapshot {
   finds?: Array<Pick<Find, 'id' | 'title' | 'url'>>
 }
 
-/** One option that moves a specific card forward, phrased for what kind of thing it is. */
-function forCard(c: NonNullable<Snapshot['cards']>[number]): Option {
-  return { ...cardOption(c), pin: true }
-}
+type Card = NonNullable<Snapshot['cards']>[number]
 
-function cardOption(c: NonNullable<Snapshot['cards']>[number]): Option {
+/**
+ * Ways to move one card forward, best first, phrased for what kind of thing it
+ * is. Later ones stand in when the first went stale (tapped, or ignored again
+ * and again). Direct actions (Done, Got it) always work, so they're among them.
+ */
+function cardOptions(c: Card): Option[] {
   const t = short(c.title, 20)
   switch (c.kind) {
     case 'event':
       return c.urgency >= 0.75
-        ? sayOption(`Prep: ${t}`, `Help me prep for "${c.title}".`)
-        : sayOption(`Before ${t}?`, `What should I get done before "${c.title}"?`)
+        ? [
+            sayOption(`Prep: ${t}`, `Help me prep for "${c.title}".`),
+            sayOption(`Remind me before ${short(c.title, 12)}`, `Remind me 10 minutes before "${c.title}".`),
+          ]
+        : [
+            sayOption(`Before ${t}?`, `What should I get done before "${c.title}"?`),
+            sayOption(`Prep: ${t}`, `Help me prep for "${c.title}".`),
+          ]
     case 'task':
-      return sayOption(`Start: ${t}`, `Help me get started on "${c.title}".`)
+      return [
+        sayOption(`Start: ${t}`, `Help me get started on "${c.title}".`),
+        actOption(`Done: ${short(c.title, 18)}`, { type: 'complete', id: c.id }),
+        sayOption(`Break down ${short(c.title, 14)}`, `Break "${c.title}" into small steps.`),
+      ]
     case 'notification':
-      return sayOption(`Later: ${t}`, `Remind me about "${c.title}" again in an hour.`)
+      return [
+        actOption(`Got it: ${short(c.title, 16)}`, { type: 'markRead', id: c.id }),
+        sayOption(`Later: ${t}`, `Remind me about "${c.title}" again in an hour.`),
+      ]
     case 'goal':
-      return sayOption(`Next step: ${t}`, `What's my next step for "${c.title}"?`)
+      return [
+        sayOption(`Next step: ${t}`, `What's my next step for "${c.title}"?`),
+        sayOption(`Task for ${short(c.title, 16)}`, `Add a task today for my goal "${c.title}".`),
+      ]
   }
 }
 
@@ -83,8 +102,13 @@ function pushOffer(s: Snapshot): Option[] {
   return []
 }
 
-function followUps(): Option[] {
-  return [sayOption('Tell me more'), sayOption('Sounds good', 'Sounds good, thanks!'), sayOption('What else?')]
+/** Stand-ins until Wendy's own options arrive: answer her if she asked, else go deeper. */
+function followUps(s: Snapshot): Option[] {
+  const last = [...s.agent.messages].reverse().find((m) => m.role === 'assistant')
+  if (last && last.text.trim().endsWith('?')) {
+    return [sayOption('Yes please', 'Yes please.'), sayOption('Not right now', 'Not right now, thanks.')]
+  }
+  return [sayOption('Tell me more'), sayOption('What else?')]
 }
 
 function home(s: Snapshot): Option[] {
@@ -96,11 +120,19 @@ function home(s: Snapshot): Option[] {
       sayOption('Tell me more', `Tell me more about "${notice.title}".`),
     ]
   }
-  if (line === 'reply' && s.agent.messages.at(-1)?.role === 'assistant') return followUps()
+  if (line === 'reply' && s.agent.messages.at(-1)?.role === 'assistant') return followUps(s)
 
   if (s.cards?.length) {
-    // Act on what is on screen: one option per card, in rank order, then the day.
-    return [...s.cards.slice(0, 3).map(forCard), sayOption('Plan my day'), ...pushOffer(s)]
+    // Act on what is on screen. Only the top card is pinned; the rest compete with
+    // Wendy's ideas, and each card's alternates fill in when its first idea is stale.
+    const [first, ...others] = s.cards.slice(0, 3).map(cardOptions)
+    return [
+      { ...first[0], pin: true },
+      ...others.map((o) => o[0]),
+      sayOption('Plan my day'),
+      ...[...first.slice(1), ...others.flatMap((o) => o.slice(1))].map((o) => ({ ...o, alt: true })),
+      ...pushOffer(s),
+    ]
   }
 
   const out: Option[] = [sayOption('Plan my day')]
@@ -198,7 +230,7 @@ function item(kind: string, id: string, s: Snapshot): Option[] {
 function chat(s: Snapshot): Option[] {
   const last = s.agent.messages.at(-1)
   if (!last) return [sayOption('Hey Wendy'), sayOption('Plan my day')]
-  if (last.role === 'assistant') return followUps()
+  if (last.role === 'assistant') return followUps(s)
   return [sayOption('Plan my day'), sayOption("What's next?", "What's next on my calendar?")]
 }
 

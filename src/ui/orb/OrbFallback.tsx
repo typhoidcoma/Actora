@@ -9,8 +9,8 @@ export function OrbFallback() {
   const mood = useAgent((s) => s.mood)
   const emotion = useAgent((s) => s.emotion)
   const phase = useAgent((s) => s.phase)
-  const restOrb = useScheme((s) => s.scheme.orb)
-  const [c1, c2, c3] = useMemo(() => orbColors(mood, emotion, restOrb), [mood, emotion, restOrb])
+  const scheme = useScheme((s) => s.scheme)
+  const [c1, c2, c3] = useMemo(() => orbColors(mood, emotion, scheme), [mood, emotion, scheme])
   const busy = phase === 'thinking' || phase === 'tool' || phase === 'speaking'
 
   return (

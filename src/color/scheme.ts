@@ -299,9 +299,16 @@ export function schemeCss(s: Scheme): string {
   return [
     `html:root,html:root[data-theme='day']{${block(s.day)}}`,
     `html:root[data-theme='dusk']{${block(s.dusk)}}`,
-    `html:root{transition:${SCHEME_VARS.map((v) => `${v} 1.2s ease`).join(',')}}`,
+    `html:root{transition:${[
+      ...SCHEME_VARS.map((v) => `${v} 1.2s ease`),
+      ...MOOD_VARS.map((v) => `${v} 1.8s ease`),
+      '--mood-glow 1.8s ease',
+    ].join(',')}}`,
   ].join('\n')
 }
+
+/** Mood light (written by MoodLight): animatable so a change of mood fades instead of jumping. */
+export const MOOD_VARS = ['--mood-1', '--mood-2']
 
 /** A compact summary for Wendy's screen snapshot. */
 export function describeScheme(s: Scheme, source: 'brand' | 'wendy') {

@@ -32,6 +32,8 @@ export interface Option {
   source: 'local' | 'wendy' | 'pushed'
   /** Pinned ahead of Wendy-written options (e.g. one per priority card). */
   pin?: boolean
+  /** A stand-in: only fills space Wendy's options leave (even if it's a direct action). */
+  alt?: boolean
 }
 
 export const sayOption = (label: string, say = label, source: Option['source'] = 'local'): Option => ({

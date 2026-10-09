@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { Notification, Task } from '../aelora/protocol'
 import { runUiAction } from '../aelora/router'
-import { mergeOptions, useOptionsStore } from '../stores/options'
+import { isStale, mergeOptions, useOptionsStore, type OptionHistory } from '../stores/options'
 import { useUi } from '../stores/ui'
 import { localOptions, type Snapshot } from './local'
-import { parseWendyOptions } from './wendy'
+import { feasible, parseWendyOptions } from './wendy'
 import { actOption, sayOption } from './types'
 
 const NOW = new Date(2026, 9, 8, 18, 0).getTime()
@@ -94,14 +94,16 @@ describe('card-aware home options', () => {
       { kind: 'notification', id: 'n', title: 'Stretch', urgency: 0.7 },
     ]
     const opts = localOptions('home', s)
-    expect(opts.map((o) => o.label)).toEqual([
+    // Each card's best idea in rank order, then the day, then each card's alternates.
+    expect(opts.map((o) => o.label).slice(0, 4)).toEqual([
       'Prep: Standup',
       'Start: Write the report',
-      'Later: Stretch',
+      'Got it: Stretch',
       'Plan my day',
     ])
+    // Only the top card is pinned ahead of Wendy; the others compete with her ideas.
     const merged = mergeOptions(opts, [sayOption('Generic idea', 'x', 'wendy')], []).map((o) => o.label)
-    expect(merged.slice(0, 3)).toEqual(['Prep: Standup', 'Start: Write the report', 'Later: Stretch'])
+    expect(merged.slice(0, 3)).toEqual(['Prep: Standup', 'Got it: Stretch', 'Generic idea'])
   })
 })
 
@@ -161,5 +163,44 @@ describe('Wendy-driven UI actions', () => {
     expect(useUi.getState().theme).toBe('dusk')
     runUiAction('theme.set', { mode: 'neon' })
     expect(useUi.getState().theme).toBe('dusk')
+  })
+})
+
+describe('freshness', () => {
+  const h = (over: Partial<OptionHistory> = {}): OptionHistory => ({ tapped: [], shown: {}, ...over })
+
+  it('rests an option that was just tapped, or keeps being ignored', () => {
+    const plan = sayOption('Plan my day')
+    expect(isStale(plan, h(), NOW)).toBe(false)
+    expect(isStale(plan, h({ tapped: [{ label: 'Plan my day', say: 'Plan my day', at: NOW - 60_000 }] }), NOW)).toBe(
+      true,
+    )
+    expect(isStale(plan, h({ tapped: [{ label: 'Plan my day', say: 'Plan my day', at: NOW - 3_600_000 }] }), NOW)).toBe(
+      false,
+    )
+    expect(isStale(plan, h({ shown: { 'plan my day': { n: 4, lastAt: NOW - 60_000 } } }), NOW)).toBe(true)
+    expect(isStale(plan, h({ shown: { 'plan my day': { n: 4, lastAt: NOW - 3 * 3_600_000 } } }), NOW)).toBe(false)
+  })
+
+  it('drops stale suggestions but keeps direct actions and never empties the rail', () => {
+    const local = [actOption('Done', { type: 'complete', id: 'a' }), sayOption('Plan my day')]
+    const wendy = [sayOption('Old idea', 'x', 'wendy'), sayOption('Fresh idea', 'y', 'wendy')]
+    const stale = (o: { label: string }) => o.label === 'Old idea' || o.label === 'Done'
+    expect(mergeOptions(local, wendy, [], 6, stale).map((o) => o.label)).toEqual(['Done', 'Fresh idea', 'Plan my day'])
+    const allStale = () => true
+    expect(mergeOptions([], wendy, [], 6, allStale).length).toBe(2)
+  })
+
+  it("filters out things Wendy can't do", () => {
+    expect(feasible(sayOption('Book a table', 'Book us a table for two'))).toBe(false)
+    expect(feasible(sayOption('Text Sam', 'Text Sam that I am late'))).toBe(false)
+    expect(feasible(sayOption('Find a ramen spot', 'Find me a good ramen spot nearby'))).toBe(true)
+  })
+
+  it('answers her question while her own options load', () => {
+    const asked = snap({}, { line: 'reply', messages: [{ id: '1', role: 'assistant', text: 'Want me to move it?' }] })
+    expect(localOptions('home', asked).map((o) => o.label)).toEqual(['Yes please', 'Not right now'])
+    const told = snap({}, { line: 'reply', messages: [{ id: '1', role: 'assistant', text: 'Done, it is moved.' }] })
+    expect(localOptions('home', told).map((o) => o.label)).toEqual(['Tell me more', 'What else?'])
   })
 })

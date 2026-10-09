@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAgent } from '../stores/agent'
 import { useEntities } from '../stores/entities'
-import { mergeOptions, useOptionsStore } from '../stores/options'
+import { isStale, mergeOptions, useOptionsStore } from '../stores/options'
 import { usePush } from '../stores/push'
 import { contextKeyOf, useUi } from '../stores/ui'
 import { useNow } from '../ui/tiles/data'
@@ -44,6 +44,11 @@ export function useOptions(key: string): { options: Option[]; loading: boolean }
   const loading = useOptionsStore((s) => s.byKey[key]?.loading ?? false)
   const pushed = useOptionsStore((s) => (s.pushed?.key === key ? s.pushed.options : EMPTY))
 
-  const options = useMemo(() => mergeOptions(local, wendy, pushed), [local, wendy, pushed])
+  // Judged against history as it was when this set formed, so an option doesn't
+  // vanish mid-look just because it was counted as shown.
+  const options = useMemo(() => {
+    const history = useOptionsStore.getState().history
+    return mergeOptions(local, wendy, pushed, 6, (o) => isStale(o, history, now))
+  }, [local, wendy, pushed, now])
   return { options, loading }
 }

@@ -115,11 +115,21 @@ export function OrbDock() {
       transition={pressed ? { type: 'spring', stiffness: 700, damping: 30 } : glide}
     >
       <motion.div className="absolute inset-0" style={{ x: fx, y: fy, scale: breath }}>
-        <motion.span
+        {/* Wider and brighter for a strong mood (--mood-glow from MoodLight, cross-fades). */}
+        <span
           aria-hidden
-          className="absolute inset-[8%] rounded-full blur-2xl"
-          style={{ opacity: halo, background: 'radial-gradient(closest-side, var(--mood-1), transparent)' }}
-        />
+          className="absolute inset-[8%]"
+          style={{ transform: 'scale(calc(0.85 + var(--mood-glow, 0.45) * 0.35))' }}
+        >
+          <motion.span
+            className="absolute inset-0 rounded-full"
+            style={{
+              opacity: halo,
+              background: 'radial-gradient(closest-side, var(--mood-1), transparent)',
+              filter: 'blur(24px) brightness(calc(0.8 + var(--mood-glow, 0.45) * 0.5))',
+            }}
+          />
+        </span>
         <Orb />
         <ThinkingRipples on={!listening && phase === 'thinking'} />
         <ToolArc on={!listening && phase === 'tool'} />

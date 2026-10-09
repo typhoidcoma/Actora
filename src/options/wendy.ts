@@ -8,6 +8,7 @@ import { mergePriorities, usePriorityStore } from '../stores/priority'
 import { usePush } from '../stores/push'
 import { contextKeyOf, useUi } from '../stores/ui'
 import { useSky } from '../weather/sky'
+import { useFinds } from '../finds/finds'
 import { localOptions, type Snapshot } from './local'
 import { sayOption, type Option } from './types'
 
@@ -46,7 +47,9 @@ export function parseWendyOptions(text: string): Option[] {
     const k = label.toLowerCase()
     if (seen.has(k)) continue
     seen.add(k)
-    out.push(sayOption(label, say, 'wendy'))
+    const option = sayOption(label, say, 'wendy')
+    if (!feasible(option)) continue
+    out.push(option)
     if (out.length >= 5) break
   }
   return out
@@ -148,7 +151,26 @@ export function screenSummary(key: string, s: Snapshot): string {
             ? e.notifications[id]?.title
             : Object.values(e.events).find((x) => x.id === id)?.title
     lines.push(`Screen: the user tapped the ${kind} "${title ?? 'unknown'}" and is looking at its actions.`)
+    const details = itemDetails(kind, id, s)
+    if (details) lines.push(`Its details: ${details}.`)
+  } else if (key === 'finds' || key.startsWith('find:')) {
+    lines.push('Screen: the "For you" fun finds panel.')
   }
+  // What else is visible, so options can refer to it.
+  const ui = useUi.getState()
+  if (ui.reader) lines.push("The reader is open, showing Wendy's latest full answer.")
+  const finds = useFinds.getState().items
+  if (key === 'home' && finds.length)
+    lines.push(
+      `Box 4 ("For you") has fun finds: ${finds
+        .map((x) => `"${x.title}"`)
+        .slice(0, 4)
+        .join(', ')}.`,
+    )
+  const mood = s.agent.mood
+  if (mood?.emotion) lines.push(`Wendy's current mood: ${mood.emotion}${mood.intensity ? ` (${mood.intensity})` : ''}.`)
+  if (s.agent.line === 'greeting' && s.agent.greeting?.text)
+    lines.push(`Wendy's line above the grid says: "${s.agent.greeting.text.slice(0, 200)}"`)
   if (s.agent.line === 'notice' && s.agent.notice) {
     lines.push(
       `Wendy just told the user about a reminder: "${s.agent.notice.title}" ${s.agent.notice.body ?? ''}`.trim(),
@@ -157,6 +179,18 @@ export function screenSummary(key: string, s: Snapshot): string {
   return lines.join('\n')
 }
 
+/** What a tapped "say" can actually get done: Wendy's tools on Aelora (WEBSOCKET.md) plus conversation. */
+const CAN_DO = `What Wendy can actually do when the user taps a button (nothing else):
+- Tasks: add, list, complete, edit, delete, reschedule. Goals: add, review progress, edit, complete.
+- Calendar: list events, create events, move or delete events (events with other guests need the user's confirmation).
+- Reminders: schedule a reminder at a time, list them, mark read, cancel.
+- Memory: remember a fact about the user, recall what she knows, search past conversations.
+- Web search with images and links (news, ideas, recommendations, facts), and the user's uploaded documents.
+- Email, only if the user has connected Google: search and read mail, draft replies (the user confirms before anything is sent).
+- Talk: advice, planning, breaking work into steps, reflection, encouragement.
+- In the app: open lists (tasks, calendar, goals, inbox), open an item, show fun finds.
+She cannot book, buy, order, pay, call, text or message people, play media, set device alarms or timers, navigate, or control other apps.`
+
 const SYSTEM = `You write the tap-to-reply buttons for Wendy, a warm personal assistant inside a touch-only app.
 The user never types: these buttons are the only way they talk to Wendy, so they must cover what the user would most likely want to say next.
 Rules:
@@ -164,31 +198,121 @@ Rules:
 - 3 to 5 options. "label": 1-4 words, at most ${MAX_LABEL} characters, sentence case, no emoji, no trailing period. "say": exactly what the user says to Wendy when they tap it, first person, natural, at most 120 characters.
 - If Wendy's last message asks a question or offers choices, the options must be direct answers to it (include a yes and a no style answer for yes/no questions).
 - Otherwise suggest the most useful next things for what is on screen, using the user's real item titles.
-- On the home screen, most options should act on the three priority cards by name (for example "Prep for Standup" or "Start the report"), matching what each card is: an event to prepare for, a task to start, a reminder to handle, a goal to push.
-- Make them distinct; never two options that do the same thing. Match a relaxed, adult, friendly tone.`
+- On the home screen, the app already offers one button for the top priority card. Yours can act on the other cards by name (for example "Prep for Standup" or "Start the report"), but mix in what fits the moment: the time of day, what you know the user cares about, what they were just talking about.
+- Make them distinct; never two options that do the same thing. Match a relaxed, adult, friendly tone.
+- Every option must be something Wendy can actually do (see the list above). Never suggest booking, buying, calling, texting, timers or anything outside it.
+- Ground options in what is really there: the user's actual items, what Wendy just said, and what you know about the user from memory. Never invent items, people or plans.
+- Follow the conversation: if they're mid-topic, offer the natural next steps in that topic rather than jumping back to the cards.
+- Don't repeat what the user just tapped or what they keep ignoring (listed below); find a fresher, more specific idea instead.`
 
 export function buildRequest(key: string, s: Snapshot, existing: Option[]): LlmRequest {
   const summary = screenSummary(key, s)
   const turns = s.agent.messages
     .filter((m) => m.role !== 'error')
-    .slice(-6)
+    .slice(-8)
     .map((m) => `${m.role === 'user' ? 'User' : 'Wendy'}: ${m.text.slice(0, 400)}`)
   const last = [...s.agent.messages].reverse().find((m) => m.role === 'assistant')
+  const lastUser = [...s.agent.messages].reverse().find((m) => m.role === 'user')?.text
   const replyingTo = s.agent.line === 'reply' || key === 'chat' ? last?.text : undefined
+
+  // What the user did with earlier options, so the next set moves on.
+  const h = useOptionsStore.getState().history
+  const now = Date.now()
+  const tapped = h.tapped.filter((t) => now - t.at < 60 * 60_000).map((t) => t.label)
+  const ignored = Object.entries(h.shown)
+    .filter(([, v]) => v.n >= 3 && now - v.lastAt < 2 * 3_600_000)
+    .map(([label]) => label)
+    .filter((label) => !tapped.some((t) => t.toLowerCase() === label))
+
   const prompt = [
     summary,
     turns.length ? `\nRecent conversation:\n${turns.join('\n')}` : '',
     replyingTo ? `\nWendy's last message (answer this if it asks something):\n${replyingTo.slice(0, 600)}` : '',
     existing.length ? `\nButtons already shown, do not repeat: ${existing.map((o) => o.label).join(', ')}.` : '',
+    tapped.length
+      ? `\nRecently tapped (don't offer again unless something changed): ${tapped.slice(-6).join(', ')}.`
+      : '',
+    ignored.length ? `\nOffered repeatedly and ignored (don't offer): ${ignored.slice(0, 8).join(', ')}.` : '',
     '\nWrite the options.',
   ].join('\n')
   return {
-    system: SYSTEM,
+    system: `${SYSTEM}\n\n${CAN_DO}`,
     prompt: prompt.slice(0, 11_000),
     json: true,
     maxTokens: 300,
-    context: { profile: true, memoryQuery: summary.split('\n').slice(1, 3).join(' ').slice(0, 200) },
+    // Recall facts about what's actually in play: the topic they're on, else what's on screen.
+    context: { profile: true, memoryQuery: (lastUser ?? focusOf(key, s) ?? 'what matters to me today').slice(0, 200) },
   }
+}
+
+/** The title of what's in focus (an open item, else the top card), for memory recall. */
+function focusOf(key: string, s: Snapshot): string | null {
+  if (key.startsWith('item:')) {
+    const [, kind, ...rest] = key.split(':')
+    const id = rest.join(':')
+    const e = s.entities
+    return (
+      (kind === 'task'
+        ? e.tasks[id]?.title
+        : kind === 'goal'
+          ? e.goals[id]?.title
+          : kind === 'notification'
+            ? e.notifications[id]?.title
+            : Object.values(e.events).find((x) => x.id === id)?.title) ?? null
+    )
+  }
+  if (key.startsWith('tile:')) return `my ${key.slice(5)}`
+  return s.cards?.[0]?.title ?? null
+}
+
+/** One line of facts about an item, so options can be specific ("due Friday, 2 of 5 done"). */
+function itemDetails(kind: string, id: string, s: Snapshot): string | null {
+  const e = s.entities
+  if (kind === 'task') {
+    const t = e.tasks[id]
+    if (!t) return null
+    return [
+      `status ${t.status}`,
+      t.due_date ? `due ${t.due_date}` : 'no due date',
+      t.estimated_minutes ? `about ${t.estimated_minutes} min` : null,
+      t.goal_id && e.goals[t.goal_id] ? `for goal "${e.goals[t.goal_id].title}"` : null,
+    ]
+      .filter(Boolean)
+      .join(', ')
+  }
+  if (kind === 'goal') {
+    const g = e.goals[id]
+    if (!g) return null
+    const linked = Object.values(e.tasks).filter((t) => t.goal_id === id)
+    const done = linked.filter((t) => t.status === 'done').length
+    return [
+      `status ${g.status}`,
+      g.timeframe ? `timeframe ${g.timeframe}` : null,
+      `${done} of ${linked.length} tasks done`,
+    ]
+      .filter(Boolean)
+      .join(', ')
+  }
+  if (kind === 'event') {
+    const ev = Object.values(e.events).find((x) => x.id === id)
+    if (!ev) return null
+    return [`${fmtTime(ev.start_time)}–${fmtTime(ev.end_time)}`, ev.location ? `at ${ev.location}` : null]
+      .filter(Boolean)
+      .join(', ')
+  }
+  if (kind === 'notification') {
+    const n = e.notifications[id]
+    return n ? `${n.read_at ? 'read' : 'unread'}${n.body ? `, says "${n.body.slice(0, 160)}"` : ''}` : null
+  }
+  return null
+}
+
+/** A last line of defence: drop suggestions for things Wendy has no way to do. */
+const CANT =
+  /\b(book|buy|order|purchase|pay|call|phone|text|sms|whatsapp|play|timer|alarm|navigate|directions|uber|lyft|venmo)\b/i
+
+export function feasible(o: Option): boolean {
+  return !CANT.test(`${o.label} ${o.say ?? ''}`)
 }
 
 export function snapshot(): Snapshot {
