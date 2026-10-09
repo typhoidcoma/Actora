@@ -25,7 +25,8 @@ function phaseTargets(s: AgentState): Targets {
     case 'thinking':
       return { speed: 0.95, amp: 0.07, swirl: 1.1, glow: 0.6, desat: 0, ring: 0 }
     case 'tool':
-      return { speed: 0.7, amp: 0.06, swirl: 0.8, glow: 0.55, desat: 0, ring: 1 }
+      // No spinning shader ring: the ripple of tiny circles round the orb (OrbDock) shows tool work.
+      return { speed: 0.7, amp: 0.06, swirl: 0.8, glow: 0.55, desat: 0, ring: 0 }
     case 'speaking':
       return { speed: 0.55, amp: 0.06, swirl: 0.35, glow: 0.6, desat: 0, ring: 0 }
     default:

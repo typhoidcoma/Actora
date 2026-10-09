@@ -186,24 +186,39 @@ function ThinkingRipples({ on }: { on: boolean }) {
   )
 }
 
-/** A comet of light circling the orb while a tool runs. */
+/**
+ * While a tool runs: a ring of tiny circles round the orb with a ripple running
+ * through it (the same motif as the thinking line, ripple-dot in index.css).
+ */
+const RING_DOTS = 18
 function ToolArc({ on }: { on: boolean }) {
   return (
     <AnimatePresence>
       {on && (
-        <motion.span
+        <motion.svg
           aria-hidden
-          className="absolute inset-[15%] rounded-full"
-          style={{
-            background: 'conic-gradient(from 0deg, transparent 0 62%, var(--role-accent) 92%, transparent 100%)',
-            mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px))',
-            WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px))',
-          }}
-          initial={{ opacity: 0, rotate: 0 }}
-          animate={{ opacity: 1, rotate: 360 }}
+          viewBox="0 0 100 100"
+          className="absolute inset-[13%] overflow-visible"
+          style={{ color: 'var(--role-accent)' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           exit={{ opacity: 0, transition: { duration: 0.3 } }}
-          transition={{ rotate: { duration: 1.2, repeat: Infinity, ease: 'linear' }, opacity: { duration: 0.3 } }}
-        />
+        >
+          {Array.from({ length: RING_DOTS }, (_, i) => {
+            const a = (i / RING_DOTS) * Math.PI * 2 - Math.PI / 2
+            return (
+              <circle
+                key={i}
+                className="ripple-dot"
+                cx={50 + Math.cos(a) * 49}
+                cy={50 + Math.sin(a) * 49}
+                r={1.9}
+                fill="currentColor"
+                style={{ animationDelay: `${(i * 1.2) / RING_DOTS}s` }}
+              />
+            )
+          })}
+        </motion.svg>
       )}
     </AnimatePresence>
   )
