@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAgent } from '../stores/agent'
 import { ui } from '../stores/ui'
@@ -14,6 +14,7 @@ import { firstSentence, plainText } from './markdownText'
  */
 export function WendyLine() {
   const m = useMetrics()
+  const stalled = useStalled()
   const a = useAgent(
     useShallow((s) => ({
       line: s.line,
@@ -30,6 +31,10 @@ export function WendyLine() {
 
   // Her full answer lives in box 4; this line carries only the first sentence.
   const content = useMemo((): { key: string; text: string; live?: boolean; kicker?: string; more?: boolean } => {
+    // Without the top bar this line is the only place a dead connection can show.
+    if (stalled === 'fatal')
+      return { key: 'conn-fatal', kicker: 'Offline', text: "Can't reach Wendy. Reload to try again." }
+    if (stalled) return { key: 'conn-stalled', kicker: 'Connecting', text: "Can't reach Wendy yet. Still trying…" }
     if (a.line === 'notice' && a.notice) {
       return {
         key: `n:${a.notice.notificationId}`,
@@ -49,7 +54,7 @@ export function WendyLine() {
       if (a.last?.role === 'error') return { key: `e:${a.last.id}`, text: a.last.text }
     }
     return { key: 'greeting', text: a.greeting.text, live: a.greeting.streaming }
-  }, [a])
+  }, [a, stalled])
 
   // Settled text gets a fresh word-by-word reveal whenever it changes (page
   // load, cached → new greeting); text that just finished streaming keeps its
@@ -165,4 +170,20 @@ function Thinking({ label }: { label: string | null }) {
       ))}
     </span>
   )
+}
+
+/** Not connected for a few seconds (or given up): Wendy can't hear taps, so say so. */
+function useStalled(): false | 'stalled' | 'fatal' {
+  const connection = useAgent((s) => s.connection)
+  const [late, setLate] = useState(false)
+  useEffect(() => {
+    if (connection === 'open') return
+    const t = setTimeout(() => setLate(true), 6000)
+    return () => {
+      clearTimeout(t)
+      setLate(false)
+    }
+  }, [connection])
+  if (connection === 'fatal') return 'fatal'
+  return connection !== 'open' && late ? 'stalled' : false
 }
