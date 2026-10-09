@@ -6,7 +6,7 @@ screen:
 - **Wendy's line** across the top: her welcome, the first sentence of each reply, and reminders.
 - **The grid**: four 4:3 cards around an orb that is Wendy.
   - Three **priority cards**, ranked: the things to tackle next, from any domain.
-  - **Box 4** (bottom-right) with her latest full answer, including links, images and tables.
+  - **Box 4** (bottom-right), **For you**: fun finds Wendy searched the web for, picked for you. Images crossfade behind a big count of fun things you have not seen yet. Her full answers open in a reader, either automatically for big questions or by tapping her line.
 - **The option rail** along the bottom: what you can say or do next.
 
 **Nothing requires typing.** Tap the orb to talk, tap an option, or tap a card for its actions. Wendy can drive every

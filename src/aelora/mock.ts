@@ -191,7 +191,19 @@ export class MockWebSocket implements WebSocketLike {
         })
       }
       case 'chat':
-        return this.chat(String(msg.message ?? ''))
+        return this.chat(
+          String(msg.message ?? ''),
+          typeof msg.conversationId === 'string' ? msg.conversationId : undefined,
+        )
+      case 'conversation.new':
+        return this.reply({ type: 'conversation.created', conversationId: uid(), title: null })
+      case 'conversation.rename':
+        return this.reply({
+          type: 'conversation.updated',
+          conversationId: msg.conversationId,
+          title: msg.title,
+          tags: null,
+        })
       case 'system_chat':
         return this.systemChat()
       case 'task.update': {
@@ -200,6 +212,25 @@ export class MockWebSocket implements WebSocketLike {
         Object.assign(t, (msg.patch as Partial<Task>) ?? {}, { updated_at: iso(new Date()) })
         this.reply({ type: 'task.updated', task: { ...t } })
         return this.reply({ type: 'event', event: 'task', data: { type: 'task:updated', task: { ...t } } })
+      }
+      case 'task.create': {
+        const now = iso(new Date())
+        const task: Task = {
+          id: uid(),
+          title: String(msg.title ?? 'New task'),
+          status: 'todo',
+          goal_id: null,
+          vault_id: null,
+          due_date: typeof msg.dueDate === 'string' ? msg.dueDate : null,
+          estimated_minutes: null,
+          committed_at: null,
+          completed_at: null,
+          created_at: now,
+          updated_at: now,
+        }
+        MockWebSocket.db.tasks.push(task)
+        this.reply({ type: 'task.created', task })
+        return this.reply({ type: 'event', event: 'task', data: { type: 'task:created', task } })
       }
       case 'push.subscribe':
         return this.reply({ type: 'push.subscribed', endpoint: msg.endpoint })
@@ -218,14 +249,16 @@ export class MockWebSocket implements WebSocketLike {
     this.onclose?.({ code } as CloseEvent)
   }
 
-  private chat(message: string): void {
-    const cid = this.conversationId
-    const [, text, tool] = REPLIES.find(([re]) => re.test(message)) ?? [
-      /./,
-      `Got it. I'm here whenever you want to go deeper on "${message.slice(0, 40)}".`,
-      undefined,
-    ]
-    this.transcript.push({ role: 'user', content: message })
+  private chat(message: string, thread?: string): void {
+    const cid = thread ?? this.conversationId
+    const [, text, tool] = /today's fun stuff/i.test(message)
+      ? [/./, FINDS_REPLY, 'web_search']
+      : (REPLIES.find(([re]) => re.test(message)) ?? [
+          /./,
+          `Got it. I'm here whenever you want to go deeper on "${message.slice(0, 40)}".`,
+          undefined,
+        ])
+    if (cid === this.conversationId) this.transcript.push({ role: 'user', content: message })
     let t = 250
     this.later(t, () => this.emit({ type: 'chat.start', conversationId: cid, channelId: cid }))
     this.later(t + 50, () =>
@@ -284,7 +317,7 @@ export class MockWebSocket implements WebSocketLike {
     })
     t += words.length * 38 + 120
     this.later(t, () => {
-      this.transcript.push({ role: 'assistant', content: text })
+      if (cid === this.conversationId) this.transcript.push({ role: 'assistant', content: text })
       const mood = { emotion: 'joy', intensity: 'mid', updatedAt: iso(new Date()) }
       this.emit({ type: 'done', conversationId: cid, channelId: cid, text, mood })
       this.event('emotion', { joy: 0.6, trust: 0.6, anticipation: 0.3, source: 'llm', conversationId: cid })
@@ -428,3 +461,51 @@ export async function mockLlm(req: { prompt: string }, signal?: AbortSignal): Pr
   }
   return JSON.stringify({ options })
 }
+
+/** What a web-search "fun finds" turn returns (images via picsum for offline testing). */
+const FINDS_REPLY = [
+  'Here you go — ```json',
+  JSON.stringify({
+    finds: [
+      {
+        title: 'Octopuses caught "punching" fish on group hunts',
+        blurb:
+          'Researchers filmed octopuses swatting fish that slacked off during cooperative hunts. Workplace drama, but underwater.',
+        why: 'Peak weird-nature energy for your coffee break',
+        url: 'https://en.wikipedia.org/wiki/Octopus',
+        image: 'https://picsum.photos/seed/actora-octo/800/500',
+        source: 'Wikipedia',
+        tag: 'Weird',
+      },
+      {
+        title: 'A shader that paints with fluid physics in 40 lines',
+        blurb: 'A tiny WebGL demo going viral for turning mouse drags into ink in water.',
+        why: "You've been deep in orb shaders — this one's a gem",
+        url: 'https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API',
+        image: 'https://picsum.photos/seed/actora-shader/800/500',
+        source: 'MDN',
+        tag: 'Nerdy',
+      },
+      {
+        title: 'Seattle’s waterfront park finally opens its sky bridge',
+        blurb:
+          'The new Overlook Walk links Pike Place to the water with sunset views and a surprising amount of seating.',
+        why: 'A great new route for your evening runs',
+        url: 'https://www.seattle.gov/parks',
+        image: 'https://picsum.photos/seed/actora-park/800/500',
+        source: 'Seattle Parks',
+        tag: 'Local',
+      },
+      {
+        title: 'Astronomers spot a “cotton candy” planet',
+        blurb: 'A planet so puffy it has the density of spun sugar is orbiting a nearby star.',
+        why: 'Small wonder to end the day on',
+        url: 'https://science.nasa.gov/exoplanets/',
+        image: 'https://picsum.photos/seed/actora-planet/800/500',
+        source: 'NASA',
+        tag: 'Good news',
+      },
+    ],
+  }),
+  '```',
+].join('\n')

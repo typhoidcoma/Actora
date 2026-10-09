@@ -47,7 +47,7 @@ function openNotification(id: string): void {
 }
 
 export function Stage({ onSignOut }: { onSignOut?: () => void }) {
-  const focus = useUi((s) => s.focus !== null || s.selected !== null || s.reader)
+  const focus = useUi((s) => s.focus !== null || s.selected !== null || s.reader || s.finds)
   const chatOpen = useUi((s) => s.chatOpen)
   const fatal = useAgent((s) => s.connection === 'fatal')
   const key = useContextKey()

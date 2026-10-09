@@ -21,7 +21,7 @@ const READER_ORB = 56
  */
 export function OrbDock() {
   const m = useMetrics()
-  const focus = useUi((s) => s.focus !== null || s.selected !== null || s.reader)
+  const focus = useUi((s) => s.focus !== null || s.selected !== null || s.reader || s.finds)
   const reader = useUi((s) => s.reader)
   const chatOpen = useUi((s) => s.chatOpen)
   const [pressed, setPressed] = useState(false)
@@ -177,7 +177,7 @@ function MicHint({ on }: { on: boolean }) {
  */
 export function OrbSocket() {
   const m = useMetrics()
-  const focus = useUi((s) => s.focus !== null || s.selected !== null || s.reader)
+  const focus = useUi((s) => s.focus !== null || s.selected !== null || s.reader || s.finds)
   const chatOpen = useUi((s) => s.chatOpen)
   if (chatOpen || focus) return null
   const d = m.orb + m.gap

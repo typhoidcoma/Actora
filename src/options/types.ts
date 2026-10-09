@@ -16,6 +16,9 @@ export type LocalAct =
   | { type: 'snoozePush' }
   | { type: 'installHelp' }
   | { type: 'greeting' }
+  | { type: 'huntFinds' }
+  | { type: 'openFinds' }
+  | { type: 'saveFind'; id: string }
 
 /**
  * One tap target. `say` sends a chat turn to Wendy in the user's voice;

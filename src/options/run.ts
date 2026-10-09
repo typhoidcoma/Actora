@@ -1,4 +1,5 @@
-import { chat, completeTask, markNotificationRead, rescheduleTask } from '../aelora/client'
+import { ask, chat, completeTask, markNotificationRead, rescheduleTask } from '../aelora/client'
+import { hunt, useFinds } from '../finds/finds'
 import { enablePush, INSTALL_HELP } from '../push/push'
 import { agent, orbSignals, useAgent } from '../stores/agent'
 import { useEntities } from '../stores/entities'
@@ -48,6 +49,14 @@ async function markAllRead(): Promise<void> {
   for (const n of unread) await markNotificationRead(n.id)
 }
 
+/** "Save for later": a fun find becomes a task to come back to. */
+async function saveFind(id: string): Promise<void> {
+  const f = useFinds.getState().items.find((x) => x.id === id)
+  if (!f) return
+  const r = await ask({ type: 'task.create', title: `Read: ${f.title}`.slice(0, 120) }, 'task.created')
+  agent.showMessage(r ? `Saved "${f.title}" to your tasks.` : "Couldn't save that one. Try again in a moment.")
+}
+
 function runAct(act: LocalAct): void {
   switch (act.type) {
     case 'focus':
@@ -90,6 +99,13 @@ function runAct(act: LocalAct): void {
       return agent.showMessage(INSTALL_HELP)
     case 'greeting':
       return agent.showGreeting()
+    case 'huntFinds':
+      return hunt()
+    case 'openFinds':
+      return ui.openFinds()
+    case 'saveFind':
+      void saveFind(act.id)
+      return
   }
 }
 

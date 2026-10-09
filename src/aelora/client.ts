@@ -3,6 +3,7 @@ import { useAgent } from '../stores/agent'
 import { entities, useEntities } from '../stores/entities'
 import { useUi } from '../stores/ui'
 import { abortTurnOnDisconnect, sendChat, sendGreeting } from './chat'
+import { startFinds } from '../finds/finds'
 import { setTokenSource } from './http'
 import type { ClientMessage, Notification, ServerFrame, Task } from './protocol'
 import { request } from './request'
@@ -69,7 +70,9 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
   })
 
   sock.start()
+  const offFinds = startFinds(sock)
   return () => {
+    offFinds()
     offFrames()
     offStatus()
     offUi()

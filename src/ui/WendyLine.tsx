@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAgent } from '../stores/agent'
+import { ui } from '../stores/ui'
 import { useMetrics } from '../stores/metrics'
 import { toolLabel } from './format'
 import { firstSentence, plainText } from './markdownText'
@@ -28,7 +29,7 @@ export function WendyLine() {
   )
 
   // Her full answer lives in box 4; this line carries only the first sentence.
-  const content = useMemo((): { key: string; text: string; live?: boolean; kicker?: string } => {
+  const content = useMemo((): { key: string; text: string; live?: boolean; kicker?: string; more?: boolean } => {
     if (a.line === 'notice' && a.notice) {
       return {
         key: `n:${a.notice.notificationId}`,
@@ -41,7 +42,9 @@ export function WendyLine() {
       if (a.turnBusy && !a.streaming) return { key: 'thinking', text: '' }
       if (a.streaming) return { key: 'reply-live', text: firstSentence(plainText(a.streaming)), live: true }
       if (a.last?.role === 'assistant') {
-        return { key: `r:${a.last.id}`, text: firstSentence(plainText(a.last.text)) }
+        const full = plainText(a.last.text)
+        const first = firstSentence(full)
+        return { key: `r:${a.last.id}`, text: first, more: full.length > first.length + 2 }
       }
       if (a.last?.role === 'error') return { key: `e:${a.last.id}`, text: a.last.text }
     }
@@ -93,6 +96,14 @@ export function WendyLine() {
               <Words text={content.text} />
             ) : (
               <Reveal text={content.text} />
+            )}
+            {content.more && (
+              <button
+                onClick={ui.openReader}
+                className="pointer-events-auto ml-3 align-middle font-sans text-[14px] font-semibold text-accent underline decoration-accent/40 underline-offset-4"
+              >
+                Read all
+              </button>
             )}
           </motion.div>
         </AnimatePresence>

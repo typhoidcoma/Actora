@@ -1,6 +1,7 @@
 import type { CalendarOccurrence, Goal, Notification, Task } from '../aelora/protocol'
 import type { AgentState } from '../stores/agent'
 import type { EntitiesState } from '../stores/entities'
+import type { Find } from '../finds/finds'
 import type { PriorityItem } from '../priority/score'
 import type { PushState } from '../stores/push'
 import { actOption, sayOption, type Option } from './types'
@@ -15,6 +16,8 @@ export interface Snapshot {
   now: number
   /** The three priority cards on screen, in order; home options act on them by name. */
   cards?: Array<Pick<PriorityItem, 'kind' | 'id' | 'title' | 'urgency'>>
+  /** Today's fun finds, for Discover options. */
+  finds?: Array<Pick<Find, 'id' | 'title' | 'url'>>
 }
 
 /** One option that moves a specific card forward, phrased for what kind of thing it is. */
@@ -199,9 +202,27 @@ function chat(s: Snapshot): Option[] {
   return [sayOption('Plan my day'), sayOption("What's next?", "What's next on my calendar?")]
 }
 
+/** Discover: the fun finds panel, and one find inside it. */
+function finds(key: string, s: Snapshot): Option[] {
+  if (key === 'finds') {
+    return [
+      actOption('Find me more', { type: 'huntFinds' }),
+      sayOption('Surprise me', "Surprise me with something fun I wouldn't expect to like."),
+    ]
+  }
+  const f = s.finds?.find((x) => x.id === key.slice('find:'.length))
+  if (!f) return []
+  return [
+    sayOption('Tell me more', `Tell me more about "${f.title}" (${f.url}).`),
+    sayOption('More like this', `Find me more fun things like "${f.title}".`),
+    actOption('Save for later', { type: 'saveFind', id: f.id }),
+  ]
+}
+
 export function localOptions(key: string, s: Snapshot): Option[] {
   if (key === 'home') return home(s)
   if (key === 'chat') return chat(s)
+  if (key === 'finds' || key.startsWith('find:')) return finds(key, s)
   if (key.startsWith('tile:')) return tile(key.slice(5), s)
   if (key.startsWith('item:')) {
     const [, kind, ...rest] = key.split(':')

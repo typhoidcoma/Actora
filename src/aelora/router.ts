@@ -1,3 +1,4 @@
+import { handleFindsFrame, hunt, unseenCount, useFinds } from '../finds/finds'
 import { actOption, sayOption } from '../options/types'
 import { resubscribe } from '../push/push'
 import { agent, useAgent, type Reaction } from '../stores/agent'
@@ -39,7 +40,8 @@ import type { FrameBus } from './socket'
  *   priorities.set {items: [{kind, id, why?}]}             rank the three cards (30 min)
  *   card.open / item.focus {kind, id}                      open one item in its panel
  *   list.open / tile.focus {tile} · tile.close             full Tasks/Calendar/Goals/Inbox list
- *   reader.open · reader.close                             her full answer (box 4) expanded
+ *   reader.open · reader.close                             her full answer, in the reader
+ *   finds.open · finds.refresh                             box 4: open the fun finds / hunt for more
  *   options.set {options: [{label, say}]}                  replace the tap options here
  *   chat.open · chat.close · reply.show · reply.hide
  *   theme.set {mode: auto|day|dusk} · voice.listen · push.offer
@@ -53,6 +55,8 @@ export const AVAILABLE_ACTIONS = [
   'tile.close',
   'reader.open',
   'reader.close',
+  'finds.open',
+  'finds.refresh',
   'chat.open',
   'chat.close',
   'options.set',
@@ -100,7 +104,8 @@ function screen() {
     p.wendy,
     p.pushed && p.pushed.until > Date.now() ? p.pushed.entries : null,
   ).map((i) => ({ key: i.key, title: i.title, why: i.why }))
-  const box4 = useAgent.getState().messages.some((m) => m.role === 'assistant') ? 'reply' : 'welcome'
+  const f = useFinds.getState()
+  const box4 = { type: 'fun finds', count: f.items.length, unseen: unseenCount(f), titles: f.items.map((x) => x.title) }
   return {
     context: contextKeyOf(u),
     focus: u.focus,
@@ -224,6 +229,10 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
       return ui.focus(null)
     case 'reader.open':
       return ui.openReader()
+    case 'finds.open':
+      return ui.openFinds()
+    case 'finds.refresh':
+      return hunt()
     case 'reader.close':
       return ui.closeReader()
     case 'chat.open':
@@ -331,6 +340,8 @@ function routeEvent(bus: FrameBus, event: string, data: Record<string, unknown> 
 }
 
 export function routeFrame(f: ServerFrame, bus: FrameBus): void {
+  // The fun-finds thread runs its own turns; claim its frames before the user's chat sees them.
+  if (handleFindsFrame(f)) return
   if (handleChatFrame(f)) return
 
   switch (f.type) {

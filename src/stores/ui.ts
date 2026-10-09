@@ -20,8 +20,12 @@ export interface UiState {
    * highlighted row in that list; without, it is open in its own item panel.
    */
   selected: Selected | null
-  /** Wendy's full answer (box 4) expanded to fill the grid. */
+  /** Wendy's full answer, open in the reader panel. */
   reader: boolean
+  /** "For you" fun finds (box 4) expanded into the Discover panel. */
+  finds: boolean
+  /** The find being looked at inside Discover (its options are on the rail). */
+  find: string | null
   theme: ThemeMode
   /** Hidden text fallback (behind the mic chip). */
   keyboardOpen: boolean
@@ -39,31 +43,39 @@ export const useUi = create<UiState>(() => ({
   chatOpen: false,
   selected: null,
   reader: false,
+  finds: false,
+  find: null,
   theme: 'auto',
   keyboardOpen: false,
 }))
 
 const same = (a: Selected | null, b: Selected) => a?.kind === b.kind && a.id === b.id
 
+/** Every panel closed; spread first, then open the one wanted. */
+const CLOSED = { focus: null, chatOpen: false, selected: null, reader: false, finds: false, find: null } as const
+
 export const ui = {
-  focus: (id: TileId | null) => useUi.setState({ focus: id, chatOpen: false, selected: null, reader: false }),
-  openChat: () => useUi.setState({ chatOpen: true, focus: null, selected: null, reader: false }),
+  focus: (id: TileId | null) => useUi.setState({ ...CLOSED, focus: id }),
+  openChat: () => useUi.setState({ ...CLOSED, chatOpen: true }),
   closeChat: () => useUi.setState({ chatOpen: false }),
-  closeAll: () => useUi.setState({ focus: null, chatOpen: false, selected: null, reader: false, keyboardOpen: false }),
+  closeAll: () => useUi.setState({ ...CLOSED, keyboardOpen: false }),
   /** Open an item in its own panel (from a card, or when Wendy points at it). */
-  open: (item: Selected) => useUi.setState({ selected: item, focus: null, chatOpen: false, reader: false }),
+  open: (item: Selected) => useUi.setState({ ...CLOSED, selected: item }),
   /** Show an item in its full list, highlighted ("See all"). */
-  reveal: (item: Selected) =>
-    useUi.setState({ focus: ITEM_TILE[item.kind], selected: item, chatOpen: false, reader: false }),
+  reveal: (item: Selected) => useUi.setState({ ...CLOSED, focus: ITEM_TILE[item.kind], selected: item }),
   /** Toggle a highlighted row inside the open list. */
   select: (item: Selected | null) => {
     const s = useUi.getState()
     if (!item) return useUi.setState({ selected: null })
     if (same(s.selected, item)) return useUi.setState({ selected: null })
-    useUi.setState({ selected: item, focus: s.focus ?? ITEM_TILE[item.kind], chatOpen: false, reader: false })
+    useUi.setState({ ...CLOSED, selected: item, focus: s.focus ?? ITEM_TILE[item.kind] })
   },
-  openReader: () => useUi.setState({ reader: true, focus: null, selected: null, chatOpen: false }),
+  openReader: () => useUi.setState({ ...CLOSED, reader: true }),
   closeReader: () => useUi.setState({ reader: false }),
+  openFinds: () => useUi.setState({ ...CLOSED, finds: true }),
+  closeFinds: () => useUi.setState({ finds: false, find: null }),
+  /** Toggle which find is selected in Discover. */
+  selectFind: (id: string | null) => useUi.setState((s) => ({ find: id && s.find !== id ? id : null })),
   setTheme: (theme: ThemeMode) => useUi.setState({ theme }),
   keyboard: (open: boolean) => useUi.setState({ keyboardOpen: open }),
 }
@@ -86,9 +98,12 @@ export function openAppsFor(state: Pick<UiState, 'focus' | 'chatOpen'>): string[
 /** Where the user is, as an options context key: home, tile:<id>, item:<kind>:<id>, chat. */
 export type ContextKey = string
 
-export function contextKeyOf(state: Pick<UiState, 'focus' | 'chatOpen' | 'selected' | 'reader'>): ContextKey {
+export function contextKeyOf(
+  state: Pick<UiState, 'focus' | 'chatOpen' | 'selected' | 'reader' | 'finds' | 'find'>,
+): ContextKey {
   // Reading Wendy's full answer is part of the conversation: same follow-ups as chat.
   if (state.chatOpen || state.reader) return 'chat'
+  if (state.finds) return state.find ? `find:${state.find}` : 'finds'
   if (state.selected) return `item:${state.selected.kind}:${state.selected.id}`
   if (state.focus) return `tile:${state.focus}`
   return 'home'

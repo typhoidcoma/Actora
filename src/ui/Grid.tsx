@@ -9,7 +9,8 @@ import { ItemPanel } from './cards/ItemPanel'
 import { Panel } from './cards/Panel'
 import { PriorityCard } from './cards/PriorityCard'
 import { Reader } from './cards/Reader'
-import { WendyCard } from './cards/WendyCard'
+import { FindsCard } from './cards/FindsCard'
+import { FindsPanel } from './cards/FindsPanel'
 import { glide } from './motion'
 import { CALENDAR_ACCENT, CalendarDetail, CalendarFace } from './tiles/Calendar'
 import type { Corner } from './tiles/Face'
@@ -64,12 +65,14 @@ export function Grid() {
   const focus = useUi((s) => s.focus)
   const selected = useUi((s) => s.selected)
   const reader = useUi((s) => s.reader)
+  const finds = useUi((s) => s.finds)
   const chatOpen = useUi((s) => s.chatOpen)
   const slots = useSlots()
 
   const itemPanel = !focus && selected ? selected : null
-  const openKey = reader ? 'wendy' : itemPanel ? `${itemPanel.kind}:${itemPanel.id}` : focus ? `list:${focus}` : null
-  const panelOpen = openKey !== null
+  const openKey = finds ? 'wendy' : itemPanel ? `${itemPanel.kind}:${itemPanel.id}` : focus ? `list:${focus}` : null
+  // The reader isn't tied to a card; it floats over the grid like any panel.
+  const panelOpen = openKey !== null || reader
 
   return (
     <motion.div
@@ -83,7 +86,7 @@ export function Grid() {
           const corner = i as Corner
           // The open card unmounts so its layoutId can morph into the panel.
           if (slot.key === openKey) return <div key={slot.key} />
-          if (slot.type === 'wendy') return <WendyCard key="wendy" corner={corner} hidden={panelOpen} />
+          if (slot.type === 'wendy') return <FindsCard key="wendy" corner={corner} hidden={panelOpen} />
           if (slot.type === 'item') {
             return (
               <PriorityCard
@@ -116,6 +119,7 @@ export function Grid() {
         {focus && <ListPanel key={`list-${focus}`} id={focus} />}
         {itemPanel && <ItemPanel key={`item-${itemPanel.kind}:${itemPanel.id}`} item={itemPanel} />}
         {reader && <Reader key="reader" />}
+        {finds && <FindsPanel key="finds" />}
       </AnimatePresence>
     </motion.div>
   )

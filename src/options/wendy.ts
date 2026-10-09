@@ -230,6 +230,8 @@ export function startWendyOptions(): () => void {
     const a = useAgent.getState()
     if (a.connection !== 'open' || a.turnId || a.awaitingTurn) return
     const key = contextKeyOf(useUi.getState())
+    // Discover's options are concrete local actions; no need to ask Wendy.
+    if (key === 'finds' || key.startsWith('find:')) return
     const sig = signature(key)
     if (sig === lastSig) return
     lastSig = sig
