@@ -78,12 +78,21 @@ export function sendGreeting(bus: FrameBus, directive: string, onDone?: (text: s
   if (s.greetingPending || s.turnId || s.awaitingTurn) return false
   if (!bus.send({ type: 'system_chat', message: directive })) return false
   greetingDone = onDone
-  set({ greetingPending: true })
+  // A fresh line every time: the old one clears and the orb thinks until her words stream in.
+  set({
+    greetingPending: true,
+    greeting: { text: '', streaming: true },
+    ...(s.phase === 'idle' ? { phase: 'thinking' as const } : {}),
+  })
   clearTimeout(greetingTimer)
-  greetingTimer = setTimeout(
-    () => set({ greetingPending: false, greeting: { ...get().greeting, streaming: false } }),
-    GREETING_TIMEOUT_MS,
-  )
+  greetingTimer = setTimeout(() => {
+    const g = get()
+    set({
+      greetingPending: false,
+      greeting: { ...g.greeting, streaming: false },
+      ...(g.phase === 'thinking' && !g.turnId && !g.awaitingTurn ? { phase: 'idle' as const } : {}),
+    })
+  }, GREETING_TIMEOUT_MS)
   return true
 }
 let greetingDone: ((text: string) => void) | undefined

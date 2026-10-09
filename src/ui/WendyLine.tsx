@@ -42,7 +42,8 @@ export function WendyLine() {
         text: [a.notice.title, a.notice.body].filter(Boolean).join(' — '),
       }
     }
-    if (a.line === 'message' && a.message) return { key: `m:${a.message}`, text: a.message }
+    // App notes (reminders switched on, saved to tasks…) are labelled as the app's, not put in Wendy's mouth.
+    if (a.line === 'message' && a.message) return { key: `m:${a.message}`, kicker: 'Actora', text: a.message }
     if (a.line === 'reply') {
       if (a.turnBusy && !a.streaming) return { key: 'thinking', text: '' }
       if (a.streaming) return { key: 'reply-live', text: firstSentence(plainText(a.streaming)), live: true }

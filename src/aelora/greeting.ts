@@ -3,13 +3,16 @@ import { useEntities } from '../stores/entities'
 import { useSky } from '../weather/sky'
 import { greet } from './client'
 
-// Wendy's welcome line. Generated over system_chat (Aelora's sanctioned path for
-// app-event prompts: no history, mood or fact side effects), cached so reopening
-// the app shows it instantly, and only regenerated after 30 min away or when the
-// part of the day changes. A local line covers connecting and offline.
+// Wendy's welcome line, written fresh by Wendy every time the user arrives:
+// on each app open, and again when they come back after a while. Nothing is
+// cached or templated; the line stays empty (the orb thinks) until her words
+// stream in. Generated over system_chat (Aelora's path for app-event prompts:
+// no history, mood or fact side effects).
 
-const CACHE_KEY = 'actora.greeting.v1'
-const STALE_MS = 30 * 60_000
+/** Away this long, coming back counts as arriving again. */
+const AWAY_MS = 20 * 60_000
+const HISTORY_KEY = 'actora.greeting.recent.v1'
+const HISTORY = 4
 
 type Part = 'morning' | 'afternoon' | 'evening' | 'night'
 
@@ -18,13 +21,14 @@ export function partOfDay(d = new Date()): Part {
   return h >= 5 && h < 12 ? 'morning' : h >= 12 && h < 17 ? 'afternoon' : h >= 17 && h < 22 ? 'evening' : 'night'
 }
 
-interface Facts {
+export interface Facts {
   part: Part
+  weekday: string
   name: string | null
   weather: string | null
   openTasks: number
   topTask: string | null
-  nextEvent: { title: string; mins: number; at: string } | null
+  nextEvent: { title: string; mins: number } | null
   unread: number
 }
 
@@ -48,121 +52,132 @@ function facts(now = Date.now()): Facts {
   }
   return {
     part: partOfDay(new Date(now)),
+    weekday: new Date(now).toLocaleDateString([], { weekday: 'long' }),
     name: useAgent.getState().userName,
     weather:
       sky.source === 'live' && sky.temp !== null ? `${Math.round(sky.temp)}°${sky.unit}, ${words[sky.kind]}` : null,
     openTasks: open.length,
     topTask: open[0]?.title ?? null,
-    nextEvent: next
-      ? {
-          title: next.title,
-          mins: Math.round((Date.parse(next.start_time) - now) / 60_000),
-          at: new Date(next.start_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-        }
-      : null,
+    nextEvent: next ? { title: next.title, mins: Math.round((Date.parse(next.start_time) - now) / 60_000) } : null,
     unread: Object.values(notifications).filter((n) => !n.read_at).length,
   }
 }
 
-/** Shown instantly while Wendy's own line is on its way (or when offline). */
-export function localGreeting(f = facts()): string {
-  const hello = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening', night: 'Hey' }[f.part]
-  const who = f.name ? `${hello}, ${f.name}.` : `${hello}.`
-  const bits: string[] = []
-  if (f.openTasks) bits.push(`${f.openTasks} thing${f.openTasks === 1 ? '' : 's'} on your list`)
-  if (f.nextEvent && f.nextEvent.mins < 24 * 60) bits.push(`${f.nextEvent.title} at ${f.nextEvent.at}`)
-  if (!bits.length) return `${who} Nothing pressing — want to plan something?`
-  return `${who} ${bits.join(', and ')}.`
-}
+/**
+ * Directions for the opener, not words: each greeting gets a different angle
+ * so two in a row never feel the same. Wendy writes every word herself.
+ */
+export const ANGLES = [
+  'a playful observation about the time of day, the weekday or the weather',
+  'a tiny, doable dare or challenge for today',
+  'something you remember about them that would make them smile',
+  'an upbeat nudge toward the one thing that matters most right now',
+  'a light, dry joke',
+  'a cozy, unhurried vibe',
+  'genuine curiosity about how they are or what they are up to',
+  'hype: make them feel ready for the day',
+  'a surprising little fact or thought that connects to their day',
+] as const
 
-export function greetingDirective(f = facts()): string {
+export function greetingDirective(f: Facts, angle: string, recent: string[]): string {
   const lines = [
-    'APP EVENT: the user just opened the Actora home screen. Greet them as Wendy in one or two short, warm sentences (at most 30 words).',
-    'Lead with what matters most right now. Plain text only: no markdown, no lists, no emoji. Do not ask more than one question.',
-    `Context: it is ${f.part}.`,
+    'APP EVENT: the user just arrived in the Actora app. Welcome them as Wendy with a fresh, fun opener.',
+    'One or two short sentences, at most 30 words. Plain text only: no markdown, no lists, no emoji. At most one question.',
+    `Angle for this greeting: ${angle}.`,
+    'Make it feel alive and specific to right now, never generic. Mention at most one practical thing, and only if it really matters.',
+    `Context: ${f.weekday} ${f.part}.${f.weather ? ` Weather: ${f.weather}.` : ''}`,
   ]
   if (f.name) lines.push(`Their name is ${f.name}.`)
-  if (f.weather) lines.push(`Weather: ${f.weather}.`)
   lines.push(
     `Open tasks: ${f.openTasks}${f.topTask ? ` (top: "${f.topTask}")` : ''}.`,
-    f.nextEvent ? `Next event: "${f.nextEvent.title}" in ${f.nextEvent.mins} minutes.` : 'No upcoming events.',
+    f.nextEvent && f.nextEvent.mins < 24 * 60
+      ? `Next event: "${f.nextEvent.title}" in ${f.nextEvent.mins} minutes.`
+      : 'Nothing on the calendar soon.',
     `Unread reminders: ${f.unread}.`,
   )
+  if (recent.length)
+    lines.push(
+      `Your last greetings, don't reuse their openings, structure or jokes: ${recent.map((r) => `"${r}"`).join(' / ')}`,
+    )
   return lines.join('\n')
 }
 
-interface Cached {
-  text: string
-  at: number
-  part: Part
-  owner?: string | null
-}
-
-// The cached line belongs to one signed-in user; it is only used once hello
-// confirms that user (adoptGreetingUser), so a shared device never shows the
-// previous person's greeting.
+// Recent greetings are kept per user only so the next one can steer away from
+// them; they're never shown again.
 let owner: string | null | undefined
 
-function readCache(): Cached | null {
-  if (owner === undefined) return null
+function recent(): string[] {
   try {
-    const c = JSON.parse(localStorage.getItem(CACHE_KEY) ?? 'null') as Cached | null
-    return c && c.owner === owner ? c : null
+    const r = JSON.parse(localStorage.getItem(HISTORY_KEY) ?? 'null') as { owner?: string | null; lines?: string[] }
+    return r && r.owner === owner && Array.isArray(r.lines) ? r.lines : []
   } catch {
-    return null
+    return []
   }
 }
 
-function writeCache(text: string) {
+function remember(text: string) {
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ text, at: Date.now(), part: partOfDay(), owner }))
+    localStorage.setItem(HISTORY_KEY, JSON.stringify({ owner, lines: [text, ...recent()].slice(0, HISTORY) }))
   } catch {
     /* private mode */
   }
 }
 
-export function shouldRegenerate(c: Cached | null, now = Date.now()): boolean {
-  return !c || now - c.at > STALE_MS || c.part !== partOfDay(new Date(now))
-}
-
-/** Called on every hello: show this user's cached line, or drop another user's. */
+/** Called on every hello: whose greetings these are (a shared device never mixes people). */
 export function adoptGreetingUser(userId: string | null): void {
-  if (owner === userId) return
   owner = userId
-  const cached = readCache()
-  if (cached) {
-    useAgent.setState({ greeting: { text: cached.text, streaming: false } })
-    return
-  }
-  try {
-    localStorage.removeItem(CACHE_KEY)
-  } catch {
-    /* private mode */
-  }
 }
 
-/** Seed the line locally, then ask Wendy once the socket, user and data are ready. */
-export function startGreeting(): () => void {
-  useAgent.setState({ greeting: { text: localGreeting(), streaming: false } })
-  let asked = false
+let lastAngle = -1
+function pickAngle(): string {
+  let i = Math.floor(Math.random() * ANGLES.length)
+  if (i === lastAngle) i = (i + 1) % ANGLES.length
+  lastAngle = i
+  return ANGLES[i]
+}
 
-  const tryAsk = () => {
-    if (asked) return
+/**
+ * Greets on arrival: once the socket, user and data are ready after the app
+ * opens, and again when the user returns after AWAY_MS. Reconnects alone
+ * don't count as arriving.
+ */
+export function startGreeting(): () => void {
+  useAgent.setState({ greeting: { text: '', streaming: false } })
+  let due = true
+  let hiddenAt = 0
+
+  const tryGreet = () => {
+    if (!due) return
     const a = useAgent.getState()
     const hydrated = Object.values(useEntities.getState().hydrated).every(Boolean)
-    if (a.connection !== 'open' || a.userId === null || !hydrated) return
-    asked = true
-    const cached = readCache()
-    if (!shouldRegenerate(cached)) return
-    // Refresh the local line with real counts while Wendy writes hers.
-    if (!cached) useAgent.setState({ greeting: { text: localGreeting(), streaming: false } })
-    greet(greetingDirective(), (text) => text.trim() && writeCache(text.trim()))
+    if (a.connection !== 'open' || a.userId === null || !hydrated || a.turnId || a.awaitingTurn) return
+    const sent = greet(greetingDirective(facts(), pickAngle(), recent()), (text) => {
+      if (text.trim()) remember(text.trim().slice(0, 200))
+    })
+    if (sent) due = false
   }
-  const offA = useAgent.subscribe(tryAsk)
-  const offE = useEntities.subscribe(tryAsk)
-  tryAsk()
+
+  const onVisibility = () => {
+    if (document.visibilityState === 'hidden') {
+      hiddenAt = Date.now()
+      return
+    }
+    if (hiddenAt && Date.now() - hiddenAt >= AWAY_MS) {
+      due = true
+      // Back after a while: a fresh hello (a reminder she's showing stays put).
+      if (useAgent.getState().line !== 'notice') useAgent.setState({ line: 'greeting', message: null })
+      tryGreet()
+    }
+    hiddenAt = 0
+  }
+
+  const offA = useAgent.subscribe(tryGreet)
+  const offE = useEntities.subscribe(tryGreet)
+  document.addEventListener('visibilitychange', onVisibility)
+  tryGreet()
   return () => {
     offA()
     offE()
+    document.removeEventListener('visibilitychange', onVisibility)
   }
 }

@@ -88,7 +88,7 @@ export async function enablePush(): Promise<boolean> {
     // The mock has no push service; exercise the permission path only.
     const perm = await Notification.requestPermission()
     usePush.setState({ status: perm === 'granted' ? 'on' : perm === 'denied' ? 'denied' : 'off' })
-    if (perm === 'granted') agent.showMessage("Done — I'll nudge you when something needs you.")
+    if (perm === 'granted') agent.showMessage('Reminders are on.')
     return perm === 'granted'
   }
   if (!publicKey) return false
@@ -105,9 +105,7 @@ export async function enablePush(): Promise<boolean> {
   const reply = await ask(subscribeMessage(sub, navigator.userAgent), 'push.subscribed')
   const ok = reply !== null
   usePush.setState({ status: ok ? 'on' : 'off' })
-  agent.showMessage(
-    ok ? "Done — I'll nudge you when something needs you." : "Couldn't turn on reminders. Try again later.",
-  )
+  agent.showMessage(ok ? 'Reminders are on.' : "Couldn't turn on reminders. Try again later.")
   return ok
 }
 
@@ -118,7 +116,7 @@ export async function disablePush(): Promise<void> {
     await ask({ type: 'push.unsubscribe', endpoint: sub.endpoint }, 'push.unsubscribed')
   }
   usePush.setState({ status: 'off' })
-  agent.showMessage("Reminders are off. I'll still show them here when you're in the app.")
+  agent.showMessage('Reminders are off. They still show here while the app is open.')
 }
 
 /** push.test: sends a fixed payload to this user's devices, bypassing all gates. */
