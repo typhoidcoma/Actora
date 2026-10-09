@@ -49,7 +49,8 @@ function Sheet() {
         dragElastic={{ top: 0, bottom: 0.5 }}
         onDragEnd={onDragEnd}
         {...sheen}
-        className="glass glass-thick fixed z-20 flex flex-col overflow-hidden"
+        // Phones read a size down (chat-phone in index.css): more of the conversation fits.
+        className={`glass glass-thick fixed z-20 flex flex-col overflow-hidden ${m.compact ? 'chat-phone' : ''}`}
         style={{
           left: m.sheet.x,
           top: m.sheet.y,
@@ -100,7 +101,7 @@ function SheetHeader({ onPointerDown }: { onPointerDown: (e: React.PointerEvent)
     >
       <div className="absolute top-2 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-text/15" />
       <div className="min-w-0 flex-1">
-        <div className="display text-[26px] leading-none text-strong">{botName}</div>
+        <div className="chat-name display text-[26px] leading-none text-strong">{botName}</div>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={status}
@@ -195,7 +196,7 @@ function Transcript() {
                 <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-[3px] animate-pulse bg-accent" />
               </div>
             ) : (
-              <div className="text-[17px] font-semibold text-strong">
+              <div className="chat-activity text-[17px] font-semibold text-strong">
                 <Activity compact />
               </div>
             )}
@@ -213,7 +214,7 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
         initial={{ opacity: 0, y: 10, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={morph}
-        className="selectable max-w-[80%] self-end rounded-[6px] rounded-br-[3px] bg-accent/25 px-4 py-2.5 text-[15px] text-strong"
+        className="chat-user selectable max-w-[80%] self-end rounded-[6px] rounded-br-[3px] bg-accent/25 px-4 py-2.5 text-[15px] text-strong"
       >
         {bubble.text}
       </motion.div>
@@ -230,7 +231,7 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
       {/* Quiet until hovered on desktop; always there (faint) on touch. */}
       <CopyButton
         text={copyableText(bubble.text)}
-        className="-ml-2 mt-0.5 opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
+        className="chat-copy -ml-2 mt-0.5 opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
       />
     </motion.div>
   )

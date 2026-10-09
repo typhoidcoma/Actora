@@ -480,6 +480,29 @@ button {
   display: none;
 }
 
+/* Chat on phones: a size down throughout, so more of the conversation fits. */
+.chat-phone .md {
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+.chat-phone .md p {
+  margin-bottom: 0.5em;
+}
+.chat-phone .chat-user {
+  font-size: 14px;
+  padding: 7px 12px;
+}
+.chat-phone .chat-name {
+  font-size: 22px;
+}
+.chat-phone .chat-activity {
+  font-size: 15px;
+}
+.chat-phone .chat-copy {
+  height: 26px;
+  font-size: 12px;
+}
+
 /* Wendy's Markdown */
 .md {
   font-size: 1rem;
