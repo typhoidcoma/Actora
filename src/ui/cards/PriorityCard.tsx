@@ -49,7 +49,8 @@ export function PriorityCard({
       >
         {kind.label}
       </span>
-      {item.primary && (
+      {/* Tasks finish from their panel or by voice; a lone checkbox looked out of place here. */}
+      {item.primary && item.primary.act.type !== 'complete' && (
         <motion.button
           whileTap={press}
           onClick={(e) => {
@@ -59,7 +60,7 @@ export function PriorityCard({
           aria-label={`${item.primary.label}: ${item.title}`}
           className={`glass-pill grid shrink-0 ${tight ? 'h-8 min-w-8' : 'h-9 min-w-9'} place-items-center rounded-[6px] px-2.5 text-[12px] font-semibold text-strong`}
         >
-          {item.primary.act.type === 'complete' ? <Check /> : item.primary.label}
+          {item.primary.label}
         </motion.button>
       )}
     </div>
@@ -120,20 +121,5 @@ export function PriorityCard({
         )}
       </div>
     </CardShell>
-  )
-}
-
-function Check() {
-  return (
-    <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden>
-      <path
-        d="M3.5 8.5l3 3 6-7"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   )
 }
