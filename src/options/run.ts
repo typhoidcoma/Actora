@@ -5,7 +5,7 @@ import { agent, orbSignals, useAgent } from '../stores/agent'
 import { useEntities } from '../stores/entities'
 import { optionsStore } from '../stores/options'
 import { snoozePushOffer } from '../stores/push'
-import { ui, useUi } from '../stores/ui'
+import { panelOpen, ui, useUi } from '../stores/ui'
 import { isLargeQuestion } from '../ui/markdownText'
 import { listen, speechProblem } from '../voice/speech'
 import type { LocalAct, Option } from './types'
@@ -41,6 +41,13 @@ export function toggleVoice(): void {
 /** Send a user turn. Off the chat screen, Wendy answers in the line above the grid. */
 export function say(text: string): boolean {
   const u = useUi.getState()
+  // Asked from inside a task, list or other panel: answer in the main chat, so
+  // the user sees her think and talk instead of a panel with no words in it.
+  if (!u.chatOpen && !u.reader && panelOpen(u)) {
+    const sent = chat(text)
+    if (sent) ui.openChat()
+    return sent
+  }
   if (!u.chatOpen) agent.showReply()
   const sent = chat(text)
   // A big question gets the full reader straight away, so the whole answer can
