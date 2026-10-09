@@ -8,8 +8,9 @@ import { morph, press } from '../motion'
 import { useTasks, useSelected } from './data'
 import { DashRun, Face, type Corner } from './Face'
 import { Empty, Section, SelectedWash } from './parts'
+import { ROLE } from '../brand'
 
-export const TASKS_ACCENT = '#EB7B59'
+export const TASKS_ACCENT = ROLE.kind.task
 
 export function TasksFace({ corner }: { corner: Corner }) {
   const { open, todayTotal, todayDone } = useTasks()
@@ -82,7 +83,7 @@ function TaskRow({ task }: { task: Task }) {
               <motion.path
                 d="M3.5 8.5l3 3 6-7"
                 fill="none"
-                stroke="#2A2230"
+                stroke="#FFFFFF"
                 strokeWidth={2.2}
                 strokeLinecap="round"
                 strokeLinejoin="round"

@@ -10,6 +10,7 @@ import { useSky, type Sky } from '../weather/sky'
 import { clockTime, toolLabel } from './format'
 import { jelly } from './motion'
 import { useNow } from './tiles/data'
+import { ROLE } from './brand'
 
 function useStatus(): { text: string; tone: 'ok' | 'busy' | 'warn' } {
   const connection = useAgent((s) => s.connection)
@@ -34,7 +35,7 @@ const SKY_LABEL: Record<Sky['kind'], string> = {
   storm: 'Storms',
   snow: 'Snow',
 }
-const TONE = { ok: '#6E9C92', busy: '#EB7B59', warn: '#CF4647' } as const
+const TONE = ROLE.status
 const THEME_NEXT: Record<ThemeMode, ThemeMode> = { auto: 'day', day: 'dusk', dusk: 'auto' }
 const THEME_LABEL: Record<ThemeMode, string> = { auto: 'Follows the sun', day: 'Daylight', dusk: 'Dusk' }
 

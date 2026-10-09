@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useUi } from '../stores/ui'
 import { isDaylight, useSky } from '../weather/sky'
+import { ROLE } from './brand'
 
 export type ResolvedTheme = 'day' | 'dusk'
 
-const THEME_COLOR: Record<ResolvedTheme, string> = { day: '#E5DDCB', dusk: '#2E2733' }
+const THEME_COLOR: Record<ResolvedTheme, string> = ROLE.themeColor
 
 /** Current theme: Wendy's or the user's override, else the sun at the user's location. */
 export function useTheme(): ResolvedTheme {

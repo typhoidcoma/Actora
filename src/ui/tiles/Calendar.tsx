@@ -7,8 +7,9 @@ import { morph } from '../motion'
 import { useAgenda, useNow, useSelected } from './data'
 import { Face, type Corner } from './Face'
 import { Empty, Section, SelectedWash } from './parts'
+import { ROLE } from '../brand'
 
-export const CALENDAR_ACCENT = '#6E9C92'
+export const CALENDAR_ACCENT = ROLE.kind.event
 
 export function CalendarFace({ corner }: { corner: Corner }) {
   const now = useNow(15_000)

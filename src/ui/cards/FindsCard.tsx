@@ -4,8 +4,9 @@ import { hunt, unseenCount, useFinds } from '../../finds/finds'
 import { ui } from '../../stores/ui'
 import type { Corner } from '../tiles/Face'
 import { CardShell } from './CardShell'
+import { ROLE } from '../brand'
 
-const ON_IMAGE = '#FBF7EF'
+const ON_IMAGE = ROLE.onImage
 const SCRIM = 'linear-gradient(to top, rgb(30 24 34 / 0.9) 8%, rgb(30 24 34 / 0.45) 52%, rgb(30 24 34 / 0.12))'
 const ROTATE_MS = 7000
 
@@ -33,7 +34,7 @@ export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean 
     <CardShell
       layoutId="finds-card"
       corner={corner}
-      accent="#EB7B59"
+      accent={ROLE.finds}
       hidden={hidden}
       label={items.length ? `${unseen} fun things to see — open` : 'Find fun things for me'}
       onOpen={() => (items.length ? ui.openFinds() : off ? undefined : hunt())}
@@ -58,7 +59,7 @@ export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean 
             <motion.div
               key="no-image"
               className="absolute inset-0"
-              style={{ background: 'linear-gradient(135deg, #EB7B59, #8A7690 55%, #524656)' }}
+              style={{ background: ROLE.findsFallback }}
               animate={hunting ? { opacity: [0.75, 1, 0.75] } : { opacity: 1 }}
               transition={hunting ? { duration: 2.4, repeat: Infinity } : undefined}
             />
@@ -102,7 +103,7 @@ export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean 
                 className="min-w-0"
               >
                 <div className="mb-1 flex items-baseline justify-between gap-3 text-[13px] font-bold">
-                  <span style={{ color: '#F2A88E' }}>{f.tag}</span>
+                  <span style={{ color: ROLE.onImageTag }}>{f.tag}</span>
                   <span className="num font-medium opacity-70">
                     {(index % items.length) + 1} / {items.length}
                   </span>

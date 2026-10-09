@@ -1,4 +1,5 @@
 import type { EmotionVector, MoodState, PrimaryEmotion } from '../aelora/protocol'
+import { BRAND, EXT } from './brand'
 
 export type RGB = [number, number, number]
 export type Triad = [RGB, RGB, RGB]
@@ -8,31 +9,32 @@ const hex = (h: string): RGB => {
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]
 }
 
-// App palette + extensions (see styles/index.css).
-const SMOKE = hex('#A7C5BD')
-const BRISTLE = hex('#E5DDCB')
-const DAYLILY = hex('#EB7B59')
-const RED = hex('#CF4647')
-const MIDNIGHT = hex('#524656')
-const ROSE = hex('#D9A5A0')
-const SAND = hex('#CDBFA3')
-const MINT = hex('#6E9C92')
-const PLUM = hex('#8A7690')
-const CREAM = hex('#F4EEE2')
+// Brand palette + extensions (src/ui/brand.ts).
+const BLUE = hex(BRAND.blue)
+const GREEN = hex(BRAND.green)
+const PINK = hex(BRAND.pink)
+const SLATE = hex(BRAND.slate)
+const VIOLET = hex(EXT.violet)
+const CYAN = hex(EXT.cyan)
+const LIME = hex(EXT.lime)
+const ROSE = hex(EXT.rose)
+const RED = hex(EXT.red)
+const NAVY = hex(EXT.navy)
+const ICE = hex(EXT.ice)
 
-/** Orb interior colours per Plutchik emotion, all inside the app palette. */
+/** Orb interior colours per Plutchik emotion, all inside the brand palette. */
 const EMOTION_TRIADS: Record<PrimaryEmotion, Triad> = {
-  joy: [DAYLILY, SAND, CREAM],
-  trust: [SMOKE, MINT, CREAM],
-  fear: [PLUM, MIDNIGHT, SMOKE],
-  surprise: [ROSE, DAYLILY, CREAM],
-  sadness: [MIDNIGHT, PLUM, SMOKE],
-  disgust: [MINT, MIDNIGHT, SAND],
-  anger: [RED, DAYLILY, ROSE],
-  anticipation: [SAND, DAYLILY, SMOKE],
+  joy: [GREEN, LIME, ICE],
+  trust: [BLUE, CYAN, ICE],
+  fear: [VIOLET, NAVY, BLUE],
+  surprise: [ROSE, CYAN, ICE],
+  sadness: [NAVY, SLATE, BLUE],
+  disgust: [LIME, SLATE, VIOLET],
+  anger: [RED, PINK, VIOLET],
+  anticipation: [CYAN, GREEN, BLUE],
 }
 
-export const NEUTRAL: Triad = [SMOKE, PLUM, BRISTLE]
+export const NEUTRAL: Triad = [BLUE, VIOLET, ICE]
 
 const isEmotion = (e: string): e is PrimaryEmotion => e in EMOTION_TRIADS
 

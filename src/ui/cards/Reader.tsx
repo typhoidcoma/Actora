@@ -5,6 +5,7 @@ import { toolLabel } from '../format'
 import { LazyMarkdown } from '../LazyMarkdown'
 import { stableMarkdown } from '../markdownText'
 import { Panel } from './Panel'
+import { ROLE } from '../brand'
 
 /**
  * Box 4 expanded: Wendy's full answer with everything usable — links open,
@@ -39,7 +40,7 @@ export function Reader() {
     : 'Latest answer'
 
   return (
-    <Panel lead layoutId="reader" accent="#6E9C92" kicker={kicker} title={a.botName} onClose={ui.closeReader}>
+    <Panel lead layoutId="reader" accent={ROLE.wendy} kicker={kicker} title={a.botName} onClose={ui.closeReader}>
       {a.asked && (
         <p className="mb-4 border-l-2 border-line pl-3 text-[15px] text-muted">
           You asked <span className="text-text">“{a.asked}”</span>

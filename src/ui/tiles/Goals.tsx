@@ -6,8 +6,9 @@ import { morph } from '../motion'
 import { useGoals, useSelected } from './data'
 import { Bar, Face, type Corner } from './Face'
 import { Empty, Section, SelectedWash } from './parts'
+import { ROLE } from '../brand'
 
-export const GOALS_ACCENT = '#A7C5BD'
+export const GOALS_ACCENT = ROLE.kind.goal
 
 export function GoalsFace({ corner }: { corner: Corner }) {
   const { active, overall } = useGoals()

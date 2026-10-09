@@ -5,6 +5,7 @@ import { ui, useUi } from '../../stores/ui'
 import { morph } from '../motion'
 import { Panel } from './Panel'
 import { SelectedWash } from '../tiles/parts'
+import { ROLE } from '../brand'
 
 /** Box 4 expanded: today's fun finds as rich cards. Each counts as seen once it's actually looked at. */
 export function FindsPanel() {
@@ -19,7 +20,7 @@ export function FindsPanel() {
         : 'All caught up for today'
 
   return (
-    <Panel layoutId="finds-card" accent="#EB7B59" kicker={kicker} title="For you" onClose={ui.closeFinds}>
+    <Panel layoutId="finds-card" accent={ROLE.finds} kicker={kicker} title="For you" onClose={ui.closeFinds}>
       <ul className="grid gap-5 sm:grid-cols-2">
         {items.map((f, i) => (
           <FindItem key={f.id} find={f} index={i} selected={selected === f.id} isNew={!seen.includes(f.id)} />
@@ -71,7 +72,7 @@ function FindItem({
       transition={{ ...morph, delay: index * 0.05 }}
       className="relative isolate"
     >
-      <SelectedWash on={selected} accent="#EB7B59" />
+      <SelectedWash on={selected} accent={ROLE.finds} />
       <button onClick={() => ui.selectFind(f.id)} className="block w-full text-left">
         {f.image && (
           <img
@@ -92,7 +93,7 @@ function FindItem({
         {f.why && (
           <div
             className="mt-2 rounded-[10px] px-3 py-2"
-            style={{ background: 'color-mix(in srgb, #EB7B59 12%, transparent)' }}
+            style={{ background: `color-mix(in srgb, ${ROLE.finds} 12%, transparent)` }}
           >
             <div className="text-[12px] font-bold text-accent">Wendy says</div>
             <div className="text-[14px] font-medium text-strong">{f.why}</div>

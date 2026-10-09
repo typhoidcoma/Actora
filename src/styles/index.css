@@ -17,11 +17,10 @@
 }
 
 /*
- * Two themes over one palette: daylight (Light Hog Bristle) and dusk (Midnight Affair).
- * Palette: Yán Hūi Smoke #A7C5BD, Light Hog Bristle #E5DDCB, Orange Daylily #EB7B59,
- * Bullfighters Red #CF4647, Midnight Affair #524656; extended with dusty rose, sand,
- * deep mint, plum and ink for emotion and weather range.
- * Semantic roles: accent = daylily, urgent = red, calm = smoke.
+ * Two themes over one palette: daylight (cream paper) and dusk (deep indigo).
+ * Brand palette (agent art, Oct 2026; JS mirror in src/ui/brand.ts): periwinkle
+ * #5A7BE6, lime #B4D03A, hot pink #F23D7B, indigo ink #1F2A6B on cream #F2EEE4.
+ * Semantic roles: accent = blue, urgent = pink, calm = lime.
  * Every themed value is a registered custom property so a theme change cross-fades.
  */
 @theme inline {
@@ -33,18 +32,12 @@
   --color-faint: var(--t-faint);
   --color-line: var(--t-line);
   --color-scrim: var(--t-scrim);
-  --color-on-accent: #2a2230;
+  --color-on-accent: #ffffff;
 
-  --color-accent: #eb7b59;
-  --color-urgent: #cf4647;
-  --color-calm: #a7c5bd;
-  --color-midnight: #524656;
-  --color-bristle: #e5ddcb;
-  --color-rose: #d9a5a0;
-  --color-sand: #cdbfa3;
-  --color-mint: #6e9c92;
-  --color-plum: #8a7690;
-  --color-ink: #2e2733;
+  --color-accent: #5a7be6;
+  --color-urgent: #f23d7b;
+  --color-calm: #7e9a14;
+  --color-slate: #1f2a6b;
 
   --font-sans: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
@@ -56,27 +49,27 @@
 @property --t-bg {
   syntax: '<color>';
   inherits: true;
-  initial-value: #e5ddcb;
+  initial-value: #f2eee4;
 }
 @property --t-bg-2 {
   syntax: '<color>';
   inherits: true;
-  initial-value: #eee8db;
+  initial-value: #f8f5ee;
 }
 @property --t-text {
   syntax: '<color>';
   inherits: true;
-  initial-value: #3a2f3d;
+  initial-value: #262b4f;
 }
 @property --t-strong {
   syntax: '<color>';
   inherits: true;
-  initial-value: #2a2230;
+  initial-value: #171b3a;
 }
 @property --t-muted {
   syntax: '<color>';
   inherits: true;
-  initial-value: #7a6e73;
+  initial-value: #62668a;
 }
 @property --t-glass {
   syntax: '<color>';
@@ -92,20 +85,20 @@
 :root,
 :root[data-theme='day'] {
   color-scheme: light;
-  --t-bg: #e5ddcb;
-  --t-bg-2: #eee8db;
-  --t-text: #3a2f3d;
-  --t-strong: #2a2230;
-  --t-muted: #7a6e73;
-  --t-faint: #a89da0;
-  --t-line: rgb(58 47 61 / 0.12);
-  --t-scrim: rgb(229 221 203 / 0.55);
-  --t-glass: rgb(255 252 246 / 0.42);
-  --t-glass-thick: rgb(255 252 246 / 0.76);
+  --t-bg: #f2eee4;
+  --t-bg-2: #f8f5ee;
+  --t-text: #262b4f;
+  --t-strong: #171b3a;
+  --t-muted: #62668a;
+  --t-faint: #a3a5bb;
+  --t-line: rgb(38 43 79 / 0.12);
+  --t-scrim: rgb(242 238 228 / 0.55);
+  --t-glass: rgb(255 253 248 / 0.45);
+  --t-glass-thick: rgb(255 253 248 / 0.8);
   --t-spec: rgb(255 255 255 / 0.85);
   --t-spec-soft: rgb(255 255 255 / 0.35);
-  --t-shade: rgb(82 70 86 / 0.1);
-  --t-drop: rgb(82 60 70 / 0.2);
+  --t-shade: rgb(31 42 107 / 0.08);
+  --t-drop: rgb(31 42 107 / 0.16);
   --t-fringe: 0;
   --t-ambient: 0.6;
   --t-grain: 0.07;
@@ -114,20 +107,20 @@
 
 :root[data-theme='dusk'] {
   color-scheme: dark;
-  --t-bg: #2e2733;
-  --t-bg-2: #3b3240;
-  --t-text: #efe8da;
-  --t-strong: #fbf7ef;
-  --t-muted: #b5abae;
-  --t-faint: #85797f;
-  --t-line: rgb(239 232 218 / 0.1);
-  --t-scrim: rgb(30 25 34 / 0.55);
-  --t-glass: rgb(82 70 86 / 0.32);
-  --t-glass-thick: rgb(62 52 68 / 0.8);
-  --t-spec: rgb(255 246 236 / 0.4);
-  --t-spec-soft: rgb(255 246 236 / 0.1);
-  --t-shade: rgb(15 10 18 / 0.4);
-  --t-drop: rgb(15 10 18 / 0.6);
+  --t-bg: #1b2048;
+  --t-bg-2: #252b5c;
+  --t-text: #f0eefa;
+  --t-strong: #ffffff;
+  --t-muted: #aeb1d4;
+  --t-faint: #7479a6;
+  --t-line: rgb(240 238 250 / 0.1);
+  --t-scrim: rgb(16 19 46 / 0.55);
+  --t-glass: rgb(90 123 230 / 0.16);
+  --t-glass-thick: rgb(34 40 88 / 0.84);
+  --t-spec: rgb(235 242 255 / 0.4);
+  --t-spec-soft: rgb(235 242 255 / 0.1);
+  --t-shade: rgb(8 10 30 / 0.4);
+  --t-drop: rgb(8 10 30 / 0.6);
   --t-fringe: 1;
   --t-ambient: 0.75;
   --t-grain: 0.06;
@@ -350,8 +343,8 @@ button {
     border-radius: inherit;
     opacity: var(--t-fringe);
     box-shadow:
-      inset 1.5px 1.5px 1px -1px rgb(167 197 189 / 0.45),
-      inset -1.5px -1.5px 1px -1px rgb(235 123 89 / 0.3);
+      inset 1.5px 1.5px 1px -1px rgb(180 208 58 / 0.4),
+      inset -1.5px -1.5px 1px -1px rgb(242 61 123 / 0.28);
     mix-blend-mode: screen;
     pointer-events: none;
   }
@@ -411,8 +404,8 @@ button {
     border-radius: 50%;
     background: radial-gradient(
       circle,
-      var(--mood-1, #a7c5bd) 0%,
-      color-mix(in srgb, var(--mood-2, #524656) 60%, transparent) 35%,
+      var(--mood-1, #5a7be6) 0%,
+      color-mix(in srgb, var(--mood-2, #7a5ad6) 60%, transparent) 35%,
       transparent 68%
     );
     filter: blur(30px);

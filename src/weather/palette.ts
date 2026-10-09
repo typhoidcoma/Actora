@@ -1,43 +1,44 @@
+import { BRAND, EXT } from '../ui/brand'
 import type { Sky, SkyKind } from './sky'
 
 /**
- * Ambient colours per sky, inside the app palette (smoke, bristle, daylily, red,
- * midnight) plus extensions (dusty rose, sand, deep mint, plum).
- * `day` sits on Hog Bristle paper; `dusk` glows softly on Midnight Affair.
+ * Ambient colours per sky, built from the brand palette (src/ui/brand.ts):
+ * blue, green, pink and slate, with violet, cyan, lime and navy for range.
+ * `day` sits on the cool light background; `dusk` glows on deep slate.
  */
 const SKIES: Record<SkyKind, { day: string[]; dusk: string[] }> = {
   clear: {
-    day: ['#EB7B59', '#CDBFA3', '#A7C5BD', '#D9A5A0'],
-    dusk: ['#C96A50', '#8A7690', '#A7C5BD', '#6B5470'],
+    day: [BRAND.blue, EXT.cyan, BRAND.green, EXT.rose],
+    dusk: [BRAND.blue, EXT.violet, EXT.cyan, BRAND.pink],
   },
   partly: {
-    day: ['#CDBFA3', '#A7C5BD', '#D9A5A0', '#EB7B59'],
-    dusk: ['#8A7690', '#6E9C92', '#B08A80', '#4A3E52'],
+    day: [EXT.cyan, BRAND.blue, EXT.slateLight, BRAND.green],
+    dusk: [EXT.navy, BRAND.blue, BRAND.slate, EXT.violet],
   },
   cloudy: {
-    day: ['#A7C5BD', '#B8B0A8', '#8A7690', '#CDBFA3'],
-    dusk: ['#5E5266', '#6E8A86', '#4A3E52', '#7A6E80'],
+    day: [EXT.slateLight, BRAND.blue, '#C3C6E0', EXT.violet],
+    dusk: [BRAND.slate, EXT.navy, '#2C3270', EXT.slateLight],
   },
   fog: {
-    day: ['#D6CEC0', '#B8C8C2', '#E5DDCB', '#A8A0A8'],
-    dusk: ['#6A6070', '#7E8A88', '#5A5060', '#8A8088'],
+    day: ['#DCD8E6', '#E8E4EC', EXT.slateLight, '#C3C6E0'],
+    dusk: ['#4A4F82', '#343A6E', EXT.slateLight, BRAND.slate],
   },
   rain: {
-    day: ['#6E9C92', '#A7C5BD', '#524656', '#8FB0AA'],
-    dusk: ['#3E5A58', '#524656', '#6E9C92', '#4A3E52'],
+    day: [BRAND.blue, EXT.navy, EXT.cyan, EXT.slateLight],
+    dusk: [EXT.navy, BRAND.blue, BRAND.slate, EXT.cyan],
   },
   storm: {
-    day: ['#524656', '#6E9C92', '#8A7690', '#CF4647'],
-    dusk: ['#5E3E5A', '#3A3044', '#6E9C92', '#A83E40'],
+    day: [EXT.navy, EXT.violet, BRAND.pink, BRAND.slate],
+    dusk: [EXT.violet, EXT.navy, BRAND.pink, '#2A2F6A'],
   },
   snow: {
-    day: ['#F4EEE2', '#C8DAD4', '#E5DDCB', '#A8B8C0'],
-    dusk: ['#B8CCC6', '#8A9A98', '#E5DDCB', '#7A6E80'],
+    day: [EXT.ice, '#D4E6FF', EXT.cyan, '#E8E4EC'],
+    dusk: ['#B4C8F2', EXT.slateLight, EXT.ice, BRAND.blue],
   },
 }
 
-const WARM = '#EB7B59'
-const COLD = '#C8DAD4'
+const WARM = BRAND.pink
+const COLD = EXT.cyan
 
 export interface Blob {
   color: string
@@ -53,7 +54,7 @@ const hexA = (hex: string, a: number) => {
   return `rgb(${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255} / ${a})`
 }
 
-/** Temperature tint: hot days pick up clay-apricot, freezing ones pale sage, in the sky's units. */
+/** Temperature tint: hot days pick up hot pink, freezing ones sky blue, in the sky's units. */
 function tempAccent(sky: Sky): string | null {
   if (sky.temp === null) return null
   const c = sky.unit === 'F' ? ((sky.temp - 32) * 5) / 9 : sky.temp

@@ -124,10 +124,11 @@ The setup follows Aelora's `docs/PUSH.md`:
 
 ### Look
 
-- **Palette.** Yán Hūi Smoke `#A7C5BD`, Light Hog Bristle `#E5DDCB`, Orange Daylily `#EB7B59`, Bullfighters Red
-  `#CF4647` and Midnight Affair `#524656`, plus dusty rose, sand, deep mint and plum for emotion and weather range.
-  - The semantic tokens are `accent` (daylily), `urgent` (red) and `calm` (smoke).
-  - Priority heat runs red, then daylily, then smoke.
+- **Palette.** Taken from the Wendy agent art (`src/ui/brand.ts`, mirrored as CSS tokens): periwinkle `#5A7BE6`, lime
+  `#B4D03A`, hot pink `#F23D7B` and indigo ink `#1F2A6B` on cream paper `#F2EEE4`, plus violet, sky, blush and navy for
+  emotion and weather range.
+  - The semantic tokens are `accent` (periwinkle), `urgent` (pink) and `calm` (deep lime `#7E9A14`, readable on cream).
+  - Priority heat runs pink, then periwinkle, then lime. Daylight is cream; dusk is deep indigo.
 - **Shape.** Cards are exactly 4:3 with 12px corners.
 - **Themes.**
   - **Daylight** is Hog Bristle and runs while the sun is up at your location (Open-Meteo sunrise/sunset).

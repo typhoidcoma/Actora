@@ -133,7 +133,7 @@ function ListeningRings({ on }: { on: boolean }) {
             key={i}
             aria-hidden
             className="absolute inset-[20%] rounded-full"
-            style={{ boxShadow: 'inset 0 0 0 2px var(--mood-1, #A7C5BD)' }}
+            style={{ boxShadow: 'inset 0 0 0 2px var(--mood-1, #5A7BE6)' }}
             initial={{ opacity: 0, scale: 1 }}
             animate={{ opacity: [0.7, 0], scale: [1, 1.45] }}
             exit={{ opacity: 0 }}
