@@ -17,12 +17,10 @@ export function MoodLight() {
   useEffect(() => {
     const [c1, c2] = orbColors(mood, emotion)
     const root = document.documentElement.style
-    root.setProperty('--mood-1', offline ? 'rgb(90 96 110)' : css(c1))
-    root.setProperty('--mood-2', offline ? 'rgb(60 64 74)' : css(c2))
+    root.setProperty('--mood-1', offline ? 'rgb(140 150 148)' : css(c1))
+    root.setProperty('--mood-2', offline ? 'rgb(110 120 120)' : css(c2))
   }, [mood, emotion, offline])
 
   const d = m.orb * 2.2
-  return (
-    <div className="spill" aria-hidden style={{ left: (m.vw - d) / 2, top: (m.vh - d) / 2, width: d, height: d }} />
-  )
+  return <div className="spill" aria-hidden style={{ left: m.cx - d / 2, top: m.cy - d / 2, width: d, height: d }} />
 }

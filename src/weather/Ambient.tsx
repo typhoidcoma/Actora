@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { blobColor, randomLayout } from './palette'
 import { useSky, watchSky } from './sky'
+import { useTheme } from '../ui/Theme'
 
 /**
  * Drifting, pre-blurred colour field behind the glass. The layout is random on
@@ -8,6 +9,7 @@ import { useSky, watchSky } from './sky'
  */
 export function Ambient() {
   const sky = useSky()
+  const day = useTheme() === 'day'
   const [layout] = useState(() => randomLayout())
 
   useEffect(() => watchSky(), [])
@@ -25,7 +27,7 @@ export function Ambient() {
               height: `${b.size}vmax`,
               animationDuration: `${b.duration}s`,
               animationDelay: `${b.delay}s`,
-              '--c': blobColor(sky, b.slot),
+              '--c': blobColor(sky, b.slot, day),
             } as React.CSSProperties
           }
         />

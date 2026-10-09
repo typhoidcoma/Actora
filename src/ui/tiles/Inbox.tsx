@@ -1,13 +1,14 @@
 import { motion } from 'motion/react'
-import { markNotificationRead } from '../../aelora/client'
+import type { Notification } from '../../aelora/protocol'
+import { ui } from '../../stores/ui'
 import { AnimatedNumber } from '../AnimatedNumber'
 import { ago } from '../format'
 import { morph, press } from '../motion'
-import { useInbox, useNow } from './data'
+import { useInbox, useNow, useSelected } from './data'
 import { Face, type Corner } from './Face'
-import { Empty, Section } from './parts'
+import { Empty, Section, SelectedWash } from './parts'
 
-export const INBOX_ACCENT = '#B39AE6'
+export const INBOX_ACCENT = '#DEC484'
 
 export function InboxFace({ corner }: { corner: Corner }) {
   const now = useNow(30_000)
@@ -30,7 +31,7 @@ export function InboxFace({ corner }: { corner: Corner }) {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 500, damping: 18, delay: i * 0.03 }}
-                className="h-1.5 w-1.5 rounded-full"
+                className="h-[7px] w-[7px] rounded-full"
                 style={{ background: INBOX_ACCENT }}
               />
             ))}
@@ -44,44 +45,48 @@ export function InboxFace({ corner }: { corner: Corner }) {
 export function InboxDetail() {
   const now = useNow(30_000)
   const { items, unread, hydrated } = useInbox(now)
-  if (hydrated && !items.length) return <Empty text="Inbox zero." />
+  if (hydrated && !items.length) return <Empty text="All quiet." />
   return (
     <Section title={unread ? `${unread} unread` : 'All read'} count={items.length}>
-      {items.map((n, i) => {
-        const isUnread = !n.read_at
-        return (
-          <motion.li
-            key={n.id}
-            layout
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: isUnread ? 1 : 0.55, y: 0 }}
-            transition={{ ...morph, delay: Math.min(i, 10) * 0.025 }}
-            className="border-b border-line last:border-0"
-          >
-            <motion.button
-              whileTap={press}
-              onClick={() => void markNotificationRead(n.id)}
-              className="flex w-full items-start gap-3 py-3 text-left"
-            >
-              <span
-                className="mt-2 h-2 w-2 shrink-0 rounded-full transition-all duration-300"
-                style={{
-                  background: isUnread ? INBOX_ACCENT : 'transparent',
-                  boxShadow: isUnread ? `0 0 10px ${INBOX_ACCENT}` : 'none',
-                  border: isUnread ? 'none' : '1px solid rgb(255 255 255 / 0.2)',
-                }}
-              />
-              <span className="min-w-0 flex-1">
-                <span className="flex items-baseline justify-between gap-3">
-                  <span className="truncate text-[15px] text-white">{n.title}</span>
-                  <span className="num shrink-0 text-xs text-faint">{ago(n.sent_at ?? n.created_at, now)}</span>
-                </span>
-                {n.body && <span className="mt-0.5 line-clamp-2 block text-sm text-muted">{n.body}</span>}
-              </span>
-            </motion.button>
-          </motion.li>
-        )
-      })}
+      {items.map((n, i) => (
+        <NoteRow key={n.id} note={n} index={i} now={now} />
+      ))}
     </Section>
+  )
+}
+
+function NoteRow({ note: n, index, now }: { note: Notification; index: number; now: number }) {
+  const isUnread = !n.read_at
+  const selected = useSelected('notification', n.id)
+  return (
+    <motion.li
+      layout
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: isUnread ? 1 : 0.6, y: 0 }}
+      transition={{ ...morph, delay: Math.min(index, 10) * 0.025 }}
+      className="relative isolate border-b border-line last:border-0"
+    >
+      <SelectedWash on={selected} accent={INBOX_ACCENT} />
+      <motion.button
+        whileTap={press}
+        onClick={() => ui.select({ kind: 'notification', id: n.id })}
+        className="flex w-full items-start gap-3 py-3 text-left"
+      >
+        <span
+          className="mt-2 h-2 w-2 shrink-0 rounded-full transition-all duration-300"
+          style={{
+            background: isUnread ? INBOX_ACCENT : 'transparent',
+            boxShadow: isUnread ? 'none' : 'inset 0 0 0 1.5px var(--t-faint)',
+          }}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-baseline justify-between gap-3">
+            <span className="truncate text-[16px] text-strong">{n.title}</span>
+            <span className="num shrink-0 text-xs text-faint">{ago(n.sent_at ?? n.created_at, now)}</span>
+          </span>
+          {n.body && <span className="mt-0.5 line-clamp-2 block text-sm text-muted">{n.body}</span>}
+        </span>
+      </motion.button>
+    </motion.li>
   )
 }

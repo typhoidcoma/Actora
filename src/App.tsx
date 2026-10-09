@@ -4,12 +4,26 @@ import { reconnectAelora, startAelora } from './aelora/client'
 import { getSupabase, signOut } from './auth/supabase'
 import { SignIn } from './auth/SignIn'
 import { config } from './config'
+import { useAgent } from './stores/agent'
 import { Backdrop, Stage } from './ui/Stage'
+import { useThemeSync } from './ui/Theme'
 
 type Auth =
   | { status: 'loading' }
   | { status: 'signed-out'; error?: string }
   | { status: 'signed-in'; sb: SupabaseClient; userId: string }
+
+/** First name from the Google profile, for Wendy's greeting. */
+function firstName(session: Session): string | null {
+  const meta = session.user.user_metadata as { given_name?: string; full_name?: string; name?: string }
+  const name = meta.given_name ?? meta.full_name ?? meta.name
+  return name?.trim().split(/\s+/)[0] || null
+}
+
+function Loading() {
+  useThemeSync()
+  return <Backdrop />
+}
 
 export default function App() {
   return config.mock ? <MockApp /> : <AuthedApp />
@@ -25,7 +39,8 @@ function AuthedApp() {
 
   useEffect(() => {
     let off: (() => void) | undefined
-    const apply = (sb: SupabaseClient, session: Session | null) =>
+    const apply = (sb: SupabaseClient, session: Session | null) => {
+      if (session) useAgent.setState({ userName: firstName(session) })
       setAuth((prev) =>
         session
           ? prev.status === 'signed-in' && prev.userId === session.user.id
@@ -33,6 +48,7 @@ function AuthedApp() {
             : { status: 'signed-in', sb, userId: session.user.id }
           : { status: 'signed-out' },
       )
+    }
 
     getSupabase()
       .then(async (sb) => {
@@ -51,7 +67,7 @@ function AuthedApp() {
     return () => off?.()
   }, [])
 
-  if (auth.status === 'loading') return <Backdrop />
+  if (auth.status === 'loading') return <Loading />
   if (auth.status === 'signed-out') return <SignIn error={auth.error} />
   return <Connected key={auth.userId} sb={auth.sb} />
 }

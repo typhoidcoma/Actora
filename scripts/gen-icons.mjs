@@ -1,16 +1,16 @@
-// Renders the app icon (house-palette orb on ink) to PNGs for the PWA manifest
+// Renders the app icon (apricot/sage orb on cream) to PNGs for the PWA manifest
 // and iOS home screen. Zero dependencies: rasterises with math, encodes with zlib.
 // Usage: node scripts/gen-icons.mjs
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { deflateSync } from 'node:zlib'
 
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
-const INK = hex('#07080b')
+const CREAM = hex('#EFE6C8')
 const STOPS = [
-  [0, hex('#EFEDE0')],
-  [0.32, hex('#CDE04A')],
-  [0.72, hex('#7B5EA7')],
-  [1, hex('#2F4FCF')],
+  [0, hex('#F6EFD8')],
+  [0.3, hex('#E1A36F')],
+  [0.7, hex('#6F9F9C')],
+  [1, hex('#577E89')],
 ]
 const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t)
 function ramp(t) {
@@ -34,14 +34,29 @@ function render(size) {
       // light from upper-left
       const lr = Math.hypot(dx + R * 0.35, dy + R * 0.4) / (R * 1.45)
       const body = Math.min(1, Math.max(0, R - r + 0.5))
-      const glow = Math.exp(-Math.max(0, r - R) / (size * 0.06)) * 0.45 * (1 - body)
-      let col = mix(INK, ramp(Math.min(1, lr)), body)
-      col = mix(col, hex('#7B5EA7'), glow)
+      // soft warm halo instead of a neon glow
+      const glow = Math.exp(-Math.max(0, r - R) / (size * 0.07)) * 0.35 * (1 - body)
+      let col = mix(CREAM, ramp(Math.min(1, lr)), body)
+      col = mix(col, hex('#DEC484'), glow)
       const i = (y * size + x) * 4
       px[i] = col[0]
       px[i + 1] = col[1]
       px[i + 2] = col[2]
       px[i + 3] = 255
+    }
+  }
+  return png(size, px)
+}
+
+/** Monochrome notification badge: white disc on transparent (Android masks by alpha). */
+function badge(size) {
+  const px = Buffer.alloc(size * size * 4)
+  const c = size / 2
+  const R = size * 0.34
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const a = Math.min(1, Math.max(0, R - Math.hypot(x + 0.5 - c, y + 0.5 - c) + 0.5))
+      px.set([255, 255, 255, Math.round(a * 255)], (y * size + x) * 4)
     }
   }
   return png(size, px)
@@ -88,3 +103,5 @@ for (const [name, size] of [
   writeFileSync(`public/icons/${name}.png`, render(size))
   console.log(`public/icons/${name}.png`)
 }
+writeFileSync('public/icons/badge-72.png', badge(72))
+console.log('public/icons/badge-72.png')

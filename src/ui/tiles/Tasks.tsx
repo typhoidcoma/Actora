@@ -1,14 +1,15 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { completeTask } from '../../aelora/client'
 import type { Task } from '../../aelora/protocol'
+import { ui } from '../../stores/ui'
 import { AnimatedNumber } from '../AnimatedNumber'
 import { dueLabel } from '../format'
 import { morph, press } from '../motion'
-import { useTasks } from './data'
+import { useTasks, useSelected } from './data'
 import { DashRun, Face, type Corner } from './Face'
-import { Empty, Section } from './parts'
+import { Empty, Section, SelectedWash } from './parts'
 
-export const TASKS_ACCENT = '#CDE04A'
+export const TASKS_ACCENT = '#E1A36F'
 
 export function TasksFace({ corner }: { corner: Corner }) {
   const { open, todayTotal, todayDone } = useTasks()
@@ -27,7 +28,7 @@ export function TasksFace({ corner }: { corner: Corner }) {
 
 export function TasksDetail() {
   const { open, done, hydrated } = useTasks()
-  if (hydrated && !open.length && !done.length) return <Empty text="No tasks yet. Ask Wendy to add one." />
+  if (hydrated && !open.length && !done.length) return <Empty text="Nothing on your list." />
   return (
     <>
       <Section title="Open" count={open.length}>
@@ -51,15 +52,17 @@ export function TasksDetail() {
 function TaskRow({ task }: { task: Task }) {
   const isDone = task.status === 'done'
   const due = dueLabel(task.due_date)
+  const selected = useSelected('task', task.id)
   return (
     <motion.li
       layout
       initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: isDone ? 0.45 : 1, y: 0 }}
+      animate={{ opacity: isDone ? 0.5 : 1, y: 0 }}
       exit={{ opacity: 0, x: 24 }}
       transition={morph}
-      className="flex items-center gap-3 border-b border-line py-1.5 last:border-0"
+      className="relative isolate flex items-center gap-3 border-b border-line py-1.5 last:border-0"
     >
+      <SelectedWash on={selected} accent={TASKS_ACCENT} />
       <motion.button
         whileTap={press}
         aria-label={isDone ? 'Completed' : `Complete ${task.title}`}
@@ -68,9 +71,9 @@ function TaskRow({ task }: { task: Task }) {
         className="grid h-11 w-11 shrink-0 place-items-center"
       >
         <span
-          className="grid h-6 w-6 place-items-center rounded-full border transition-all duration-300"
+          className="grid h-6 w-6 place-items-center rounded-full border-[1.5px] transition-all duration-300"
           style={{
-            borderColor: isDone ? TASKS_ACCENT : 'rgb(255 255 255 / 0.25)',
+            borderColor: isDone ? TASKS_ACCENT : 'var(--t-faint)',
             background: isDone ? TASKS_ACCENT : 'transparent',
           }}
         >
@@ -79,7 +82,7 @@ function TaskRow({ task }: { task: Task }) {
               <motion.path
                 d="M3.5 8.5l3 3 6-7"
                 fill="none"
-                stroke="#07080b"
+                stroke="#1D2B30"
                 strokeWidth={2.2}
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -91,15 +94,22 @@ function TaskRow({ task }: { task: Task }) {
           )}
         </span>
       </motion.button>
-      <span className={`min-w-0 flex-1 truncate text-[15px] ${isDone ? 'line-through decoration-white/30' : ''}`}>
-        {task.title}
-      </span>
-      {due && !isDone && (
-        <span className={`num shrink-0 text-xs ${due === 'Overdue' ? 'text-coral' : 'text-muted'}`}>{due}</span>
-      )}
-      {task.estimated_minutes && !isDone ? (
-        <span className="num shrink-0 text-xs text-faint">{task.estimated_minutes}m</span>
-      ) : null}
+      <button
+        onClick={() => ui.select({ kind: 'task', id: task.id })}
+        className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left"
+      >
+        <span
+          className={`min-w-0 flex-1 truncate text-[16px] text-strong ${isDone ? 'line-through decoration-faint' : ''}`}
+        >
+          {task.title}
+        </span>
+        {due && !isDone && (
+          <span className={`num shrink-0 text-xs ${due === 'Overdue' ? 'text-clay' : 'text-muted'}`}>{due}</span>
+        )}
+        {task.estimated_minutes && !isDone ? (
+          <span className="num shrink-0 text-xs text-faint">{task.estimated_minutes}m</span>
+        ) : null}
+      </button>
     </motion.li>
   )
 }

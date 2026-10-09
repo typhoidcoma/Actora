@@ -1,40 +1,148 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/geist';
-@import '@fontsource-variable/geist-mono';
 
-/* Luminora house palette (Aelora docs/design/art-direction.md) on a dark glass ground. */
-@theme {
-  --color-ink: #07080b;
-  --color-ink-2: #0d0f14;
-  --color-glass: rgb(22 25 33 / 0.62);
-  --color-line: rgb(255 255 255 / 0.08);
-  --color-text: #eceae0;
-  --color-muted: #8b90a0;
-  --color-faint: #5a5f6e;
+/* Satoshi by Indian Type Foundry, self-hosted under the ITF Free Font License (public/fonts). */
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/Satoshi-Variable.woff2') format('woff2');
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/Satoshi-VariableItalic.woff2') format('woff2');
+  font-weight: 300 900;
+  font-style: italic;
+  font-display: swap;
+}
 
-  --color-lime: #cde04a;
-  --color-coral: #ff5566;
-  --color-sky: #8fc4f0;
-  --color-cobalt: #2f4fcf;
-  --color-violet: #7b5ea7;
-  --color-lilac: #b39ae6;
-  --color-cream: #efede0;
+/*
+ * Two themes over one palette: daylight (cream paper) and dusk (deep slate-teal).
+ * Palette: apricot #E1A36F, sand #DEC484, cream #E2D8A5, sage #6F9F9C, slate #577E89,
+ * extended with clay, moss, rose and deep teal for emotion and weather range.
+ * Every themed value is a registered custom property so a theme change cross-fades.
+ */
+@theme inline {
+  --color-bg: var(--t-bg);
+  --color-bg-2: var(--t-bg-2);
+  --color-text: var(--t-text);
+  --color-strong: var(--t-strong);
+  --color-muted: var(--t-muted);
+  --color-faint: var(--t-faint);
+  --color-line: var(--t-line);
+  --color-scrim: var(--t-scrim);
+  --color-on-accent: #1d2b30;
 
-  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', monospace;
+  --color-apricot: #e1a36f;
+  --color-sand: #dec484;
+  --color-cream: #e2d8a5;
+  --color-sage: #6f9f9c;
+  --color-slate: #577e89;
+  --color-clay: #c9765a;
+  --color-moss: #8c9a6b;
+  --color-rose: #d79a8c;
+  --color-deep: #2e4a52;
+
+  --font-sans: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-:root {
+@property --t-bg {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #efe6c8;
+}
+@property --t-bg-2 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #f6f0dc;
+}
+@property --t-text {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #24363c;
+}
+@property --t-strong {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #16262b;
+}
+@property --t-muted {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #66787a;
+}
+@property --t-glass {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+@property --t-glass-thick {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+
+:root,
+:root[data-theme='day'] {
+  color-scheme: light;
+  --t-bg: #efe6c8;
+  --t-bg-2: #f6f0dc;
+  --t-text: #24363c;
+  --t-strong: #16262b;
+  --t-muted: #66787a;
+  --t-faint: #93a09e;
+  --t-line: rgb(36 54 60 / 0.12);
+  --t-scrim: rgb(239 230 200 / 0.55);
+  --t-glass: rgb(255 252 242 / 0.4);
+  --t-glass-thick: rgb(255 252 242 / 0.74);
+  --t-spec: rgb(255 255 255 / 0.85);
+  --t-spec-soft: rgb(255 255 255 / 0.35);
+  --t-shade: rgb(120 88 50 / 0.12);
+  --t-drop: rgb(110 80 45 / 0.22);
+  --t-fringe: 0;
+  --t-ambient: 0.6;
+  --t-grain: 0.07;
+  --t-grain-blend: multiply;
+}
+
+:root[data-theme='dusk'] {
   color-scheme: dark;
-  /* Grid geometry, shared by the grid, the notches and the orb. */
+  --t-bg: #1d2b30;
+  --t-bg-2: #24363c;
+  --t-text: #ede4c8;
+  --t-strong: #fbf5e4;
+  --t-muted: #9db3b2;
+  --t-faint: #6c8486;
+  --t-line: rgb(241 232 204 / 0.1);
+  --t-scrim: rgb(20 30 34 / 0.55);
+  --t-glass: rgb(36 54 60 / 0.34);
+  --t-glass-thick: rgb(30 46 52 / 0.78);
+  --t-spec: rgb(255 248 230 / 0.42);
+  --t-spec-soft: rgb(255 248 230 / 0.1);
+  --t-shade: rgb(5 12 14 / 0.4);
+  --t-drop: rgb(5 12 14 / 0.6);
+  --t-fringe: 1;
+  --t-ambient: 0.75;
+  --t-grain: 0.06;
+  --t-grain-blend: overlay;
+}
+
+:root {
+  transition:
+    --t-bg 1.2s ease,
+    --t-bg-2 1.2s ease,
+    --t-text 1.2s ease,
+    --t-strong 1.2s ease,
+    --t-muted 1.2s ease,
+    --t-glass 1.2s ease,
+    --t-glass-thick 1.2s ease;
+  /* Grid geometry (overwritten from JS by stores/metrics.ts). */
   --gap: clamp(8px, 1.6vmin, 16px);
-  --grid: min(
-    calc(100vw - 2rem - env(safe-area-inset-left) - env(safe-area-inset-right)),
-    calc(100dvh - 8.5rem),
-    56rem
-  );
+  --grid: min(calc(100vw - 2rem), calc(100dvh - 8.5rem), 56rem);
   --orb: calc(var(--grid) * 0.3);
   --notch: calc(var(--orb) / 2 + var(--gap));
   --radius: clamp(18px, 3.2vmin, 32px);
@@ -48,10 +156,9 @@ body,
 
 body {
   margin: 0;
-  background: var(--color-ink);
-  color: var(--color-text);
+  background: linear-gradient(170deg, var(--t-bg-2), var(--t-bg) 60%);
+  color: var(--t-text);
   font-family: var(--font-sans);
-  font-feature-settings: 'ss01', 'cv11';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;
@@ -73,18 +180,22 @@ button {
   touch-action: manipulation;
 }
 
-.num {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums slashed-zero;
-  letter-spacing: -0.04em;
+/* Display type: big numbers, names, headings and Wendy's voice. Tight and confident. */
+.display {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.035em;
 }
 
-.eyebrow {
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--color-muted);
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Small sentence-case label (replaces the old tracked-uppercase mono eyebrow). */
+.label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--t-muted);
 }
 
 /* ── Ambient backdrop: weather-tinted blobs, pre-blurred, animated with transforms only ── */
@@ -97,8 +208,8 @@ button {
   position: fixed;
   inset: -20vmax;
   pointer-events: none;
-  filter: blur(70px) saturate(1.2);
-  opacity: 0.75;
+  filter: blur(70px) saturate(1.1);
+  opacity: var(--t-ambient);
   transform: translateZ(0);
 }
 .ambient > i {
@@ -125,26 +236,26 @@ button {
   0%,
   91%,
   100% {
-    filter: blur(70px) saturate(1.2) brightness(1);
+    filter: blur(70px) saturate(1.1) brightness(1);
   }
   92% {
-    filter: blur(70px) saturate(1.2) brightness(1.9);
+    filter: blur(70px) saturate(1.1) brightness(1.7);
   }
   93.5% {
-    filter: blur(70px) saturate(1.2) brightness(1.1);
+    filter: blur(70px) saturate(1.1) brightness(1.1);
   }
   94.5% {
-    filter: blur(70px) saturate(1.2) brightness(1.6);
+    filter: blur(70px) saturate(1.1) brightness(1.45);
   }
 }
 
-/* Fine grain over everything (art direction: "subtle grain"). */
+/* Fine grain, above the glass (a print texture, not a screen effect). */
 .grain {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  opacity: 0.06;
-  mix-blend-mode: overlay;
+  opacity: var(--t-grain);
+  mix-blend-mode: var(--t-grain-blend);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
@@ -169,14 +280,14 @@ button {
   /*
    * Liquid glass. Layers, back to front:
    *   backdrop      blur + saturate whatever is behind (ambient, orb light spill)
-   *   tint          very low-alpha body so the backdrop reads through
+   *   tint          themed body, light enough for the backdrop to read through
    *   sheen         radial highlight that follows the finger (--mx/--my, --press)
    *   notch rim     specular ring on the cut-out around the orb
    *   ::before      lensing edge: bright top-left, softer bottom-right echo
-   *   ::after       faint chromatic fringe, like light bending at the rim
+   *   ::after       faint chromatic fringe at dusk, like light bending at the rim
    */
   .glass {
-    --tint: 0.22;
+    --fill: var(--t-glass);
     --blur: 24px;
     position: relative;
     isolation: isolate;
@@ -185,25 +296,24 @@ button {
       radial-gradient(
         circle at var(--nx, -100%) var(--ny, -100%),
         transparent var(--notch),
-        rgb(255 255 255 / 0.32) calc(var(--notch) + 0.6px),
-        rgb(255 255 255 / 0.06) calc(var(--notch) + 3px),
+        var(--t-spec) calc(var(--notch) + 0.6px),
+        var(--t-spec-soft) calc(var(--notch) + 3px),
         transparent calc(var(--notch) + 14px)
       ),
       radial-gradient(
         90% 70% at var(--mx) var(--my),
-        rgb(255 255 255 / calc(0.07 + var(--press) * 0.12)),
+        color-mix(in srgb, var(--t-spec) calc(12% + var(--press) * 20%), transparent),
         transparent 70%
       ),
-      linear-gradient(160deg, rgb(255 255 255 / 0.09), rgb(255 255 255 / 0.015) 42%, rgb(255 255 255 / 0.04)),
-      rgb(16 18 26 / var(--tint));
-    -webkit-backdrop-filter: blur(var(--blur)) saturate(1.9) brightness(1.06);
-    backdrop-filter: blur(var(--blur)) saturate(1.9) brightness(1.06);
+      linear-gradient(160deg, var(--t-spec-soft), transparent 45%), var(--fill);
+    -webkit-backdrop-filter: blur(var(--blur)) saturate(1.6);
+    backdrop-filter: blur(var(--blur)) saturate(1.6);
     box-shadow:
-      inset 0 1px 0.5px rgb(255 255 255 / 0.4),
-      inset 0 -1px 0.5px rgb(255 255 255 / 0.08),
-      inset 0 14px 28px -16px rgb(255 255 255 / 0.12),
-      inset 0 -22px 34px -22px rgb(0 0 0 / 0.4),
-      0 30px 60px -30px rgb(0 0 0 / 0.8);
+      inset 0 1px 0.5px var(--t-spec),
+      inset 0 -1px 0.5px var(--t-spec-soft),
+      inset 0 14px 28px -16px var(--t-spec-soft),
+      inset 0 -22px 34px -22px var(--t-shade),
+      0 30px 60px -30px var(--t-drop);
     transition:
       --mx 0.35s var(--ease-out-expo),
       --my 0.35s var(--ease-out-expo),
@@ -217,11 +327,11 @@ button {
     border-radius: inherit;
     background: linear-gradient(
       135deg,
-      rgb(255 255 255 / 0.6),
-      rgb(255 255 255 / 0.1) 22%,
-      rgb(255 255 255 / 0) 48%,
-      rgb(255 255 255 / 0.05) 70%,
-      rgb(255 255 255 / 0.32)
+      var(--t-spec),
+      var(--t-spec-soft) 22%,
+      transparent 48%,
+      var(--t-spec-soft) 72%,
+      var(--t-spec)
     );
     -webkit-mask:
       linear-gradient(#000 0 0) content-box,
@@ -235,30 +345,31 @@ button {
     position: absolute;
     inset: 0;
     border-radius: inherit;
+    opacity: var(--t-fringe);
     box-shadow:
-      inset 1.5px 1.5px 1px -1px rgb(143 196 240 / 0.35),
-      inset -1.5px -1.5px 1px -1px rgb(255 85 102 / 0.22);
+      inset 1.5px 1.5px 1px -1px rgb(111 159 156 / 0.45),
+      inset -1.5px -1.5px 1px -1px rgb(225 163 111 / 0.3);
     mix-blend-mode: screen;
     pointer-events: none;
   }
 
-  /* Thicker, darker glass for reading surfaces (chat). */
+  /* Thicker glass for reading surfaces (chat, input sheet). */
   .glass-thick {
-    --tint: 0.62;
+    --fill: var(--t-glass-thick);
     --blur: 40px;
   }
 
   /* Small controls: pills, chips, round buttons. */
   .glass-pill {
     position: relative;
-    background: linear-gradient(170deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0.03) 55%), rgb(20 22 30 / 0.3);
-    -webkit-backdrop-filter: blur(16px) saturate(1.8);
-    backdrop-filter: blur(16px) saturate(1.8);
+    background: linear-gradient(170deg, var(--t-spec-soft), transparent 60%), var(--t-glass);
+    -webkit-backdrop-filter: blur(16px) saturate(1.5);
+    backdrop-filter: blur(16px) saturate(1.5);
     box-shadow:
-      inset 0 1px 0.5px rgb(255 255 255 / 0.42),
-      inset 0 -1px 0.5px rgb(255 255 255 / 0.08),
-      inset 0 0 0 0.5px rgb(255 255 255 / 0.1),
-      0 8px 20px -10px rgb(0 0 0 / 0.6);
+      inset 0 1px 0.5px var(--t-spec),
+      inset 0 -1px 0.5px var(--t-spec-soft),
+      inset 0 0 0 0.5px var(--t-line),
+      0 8px 20px -12px var(--t-drop);
   }
 
   /* Inner-corner notch that cradles the orb, centred exactly on the grid centre. */
@@ -297,8 +408,8 @@ button {
     border-radius: 50%;
     background: radial-gradient(
       circle,
-      var(--mood-1, rgb(47 79 207)) 0%,
-      color-mix(in srgb, var(--mood-2, rgb(123 94 167)) 60%, transparent) 35%,
+      var(--mood-1, #6f9f9c) 0%,
+      color-mix(in srgb, var(--mood-2, #577e89) 60%, transparent) 35%,
       transparent 68%
     );
     filter: blur(30px);
@@ -315,12 +426,26 @@ button {
   }
 }
 
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass {
-    --tint: 0.72;
+/* Soft shimmer for Wendy-written chips arriving and the thinking line. */
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
   }
+  to {
+    background-position: -200% 0;
+  }
+}
+.shimmer {
+  background-image: linear-gradient(100deg, transparent 30%, var(--t-spec-soft) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
   .glass-pill {
-    background-color: rgb(20 22 30 / 0.85);
+    --fill: var(--t-glass-thick);
+    background-color: var(--t-glass-thick);
   }
 }
 
@@ -336,7 +461,7 @@ button {
 
 /* Wendy's Markdown */
 .md {
-  font-size: 0.975rem;
+  font-size: 1rem;
   line-height: 1.55;
 }
 .md p {
@@ -357,24 +482,26 @@ button {
 .md ul > li::before {
   content: '';
   display: inline-block;
-  width: 5px;
-  height: 5px;
-  margin: 0 0.6em 0.15em -0.9em;
-  border-radius: 1px;
-  background: var(--color-lime);
-  transform: rotate(45deg);
+  width: 6px;
+  height: 6px;
+  margin: 0 0.6em 0.12em -0.9em;
+  border-radius: 50%;
+  background: var(--color-apricot);
 }
 .md ol {
   list-style: decimal;
 }
 .md a {
-  color: var(--color-sky);
+  color: var(--color-slate);
   text-decoration: underline;
   text-underline-offset: 3px;
-  text-decoration-color: rgb(143 196 240 / 0.4);
+  text-decoration-color: color-mix(in srgb, var(--color-slate) 45%, transparent);
+}
+:root[data-theme='dusk'] .md a {
+  color: var(--color-sage);
 }
 .md strong {
-  color: #fff;
+  color: var(--t-strong);
   font-weight: 600;
 }
 .md code {
@@ -382,13 +509,13 @@ button {
   font-size: 0.85em;
   padding: 0.1em 0.35em;
   border-radius: 6px;
-  background: rgb(255 255 255 / 0.07);
+  background: color-mix(in srgb, var(--t-text) 8%, transparent);
 }
 .md pre {
   overflow-x: auto;
   padding: 0.8em;
   border-radius: 12px;
-  background: rgb(0 0 0 / 0.35);
+  background: color-mix(in srgb, var(--t-text) 8%, transparent);
 }
 .md img {
   max-width: 100%;
@@ -403,7 +530,7 @@ button {
 }
 .md th,
 .md td {
-  border-bottom: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--t-line);
   padding: 0.35em 0.6em;
   text-align: left;
 }
@@ -411,7 +538,8 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .ambient > i,
   .ambient.sky-storm,
-  .spill {
+  .spill,
+  .shimmer {
     animation: none;
   }
 }

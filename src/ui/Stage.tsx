@@ -1,14 +1,24 @@
 import { AnimatePresence, LayoutGroup, motion, MotionConfig } from 'motion/react'
 import { useEffect } from 'react'
-import { useAgent } from '../stores/agent'
-import { watchMetrics } from '../stores/metrics'
-import { ui, useUi } from '../stores/ui'
+import { markNotificationRead } from '../aelora/client'
+import { startGreeting } from '../aelora/greeting'
+import { useContextKey } from '../options/useOptions'
+import { startWendyOptions } from '../options/wendy'
+import { initPush, setNotificationOpener } from '../push/push'
+import { agent, useAgent } from '../stores/agent'
+import { useEntities } from '../stores/entities'
+import { useMetrics, watchMetrics } from '../stores/metrics'
+import { contextKeyOf, ui, useUi } from '../stores/ui'
+import { Ambient } from '../weather/Ambient'
 import { ChatSheet } from './ChatSheet'
 import { Grid } from './Grid'
-import { Ambient } from '../weather/Ambient'
 import { Header } from './Header'
+import { KeyboardSheet } from './KeyboardSheet'
 import { MoodLight } from './MoodLight'
+import { OptionRail } from './OptionRail'
 import { OrbDock, OrbSocket } from './OrbDock'
+import { useThemeSync } from './Theme'
+import { WendyLine } from './WendyLine'
 
 export function Backdrop({ grain = true }: { grain?: boolean }) {
   return (
@@ -21,11 +31,56 @@ export function Backdrop({ grain = true }: { grain?: boolean }) {
 
 const Grain = () => <div className="grain z-50" aria-hidden />
 
+/** Lock-screen tap on a reminder: open Inbox on it and mark it read once data is in. */
+function openNotification(id: string): void {
+  ui.select({ kind: 'notification', id })
+  const tryMark = () => {
+    const n = useEntities.getState().notifications[id]
+    if (!n) return false
+    if (!n.read_at) void markNotificationRead(id)
+    return true
+  }
+  if (tryMark()) return
+  const off = useEntities.subscribe(() => tryMark() && off())
+}
+
 export function Stage({ onSignOut }: { onSignOut?: () => void }) {
   const focus = useUi((s) => s.focus)
+  const chatOpen = useUi((s) => s.chatOpen)
   const fatal = useAgent((s) => s.connection === 'fatal')
+  const key = useContextKey()
+  const rail = useMetrics((s) => s.rail)
+  useThemeSync()
 
   useEffect(() => watchMetrics(), [])
+  useEffect(() => startWendyOptions(), [])
+  useEffect(() => startGreeting(), [])
+  useEffect(() => {
+    void initPush()
+    return setNotificationOpener(openNotification)
+  }, [])
+  // Moving somewhere new returns Wendy's line from a finished reply to her greeting.
+  // A reminder stays until it's acknowledged ("Got it" or read in the inbox).
+  useEffect(
+    () =>
+      useUi.subscribe((s, p) => {
+        const a = useAgent.getState()
+        const transient = a.line === 'reply' || a.line === 'message'
+        if (contextKeyOf(s) !== contextKeyOf(p) && transient && !a.turnId && !a.awaitingTurn) {
+          agent.showGreeting()
+        }
+      }),
+    [],
+  )
+  // …and once it's read anywhere (inbox, "Mark all read", another device), the line lets it go.
+  useEffect(
+    () =>
+      useEntities.subscribe((s) => {
+        const a = useAgent.getState()
+        if (a.line === 'notice' && a.notice && s.notifications[a.notice.notificationId]?.read_at) agent.showGreeting()
+      }),
+    [],
+  )
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && ui.closeAll()
     window.addEventListener('keydown', onKey)
@@ -38,12 +93,34 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
       <MoodLight />
       <Header onSignOut={onSignOut} />
       {focus && <div className="fixed inset-0" onClick={() => ui.focus(null)} aria-hidden />}
+      <AnimatePresence>
+        {!chatOpen && (
+          <motion.div key="line" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <WendyLine />
+          </motion.div>
+        )}
+      </AnimatePresence>
       <LayoutGroup>
         <Grid />
         <OrbSocket />
         <ChatSheet />
         <OrbDock />
       </LayoutGroup>
+      <AnimatePresence>
+        {!chatOpen && (
+          <motion.div
+            key="rail"
+            className="fixed z-30"
+            style={{ left: rail.x, top: rail.y, width: rail.w, paddingBottom: rail.padBottom }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+          >
+            <OptionRail contextKey={key} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <KeyboardSheet />
       <AnimatePresence>{fatal && <FatalCard key="fatal" />}</AnimatePresence>
       {/* Grain sits above the glass, as on a real render, rather than being blurred by it. */}
       <Grain />
@@ -54,7 +131,7 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
 function FatalCard() {
   return (
     <motion.div
-      className="fixed inset-0 z-50 grid place-items-center bg-ink/70 p-6"
+      className="fixed inset-0 z-50 grid place-items-center bg-scrim p-6"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -62,14 +139,14 @@ function FatalCard() {
       <motion.div
         initial={{ y: 16, scale: 0.97 }}
         animate={{ y: 0, scale: 1 }}
-        className="glass max-w-sm p-7 text-center"
+        className="glass glass-thick max-w-sm p-7 text-center"
         style={{ borderRadius: 28 }}
       >
-        <div className="mb-2 text-lg font-medium text-white">Session ended</div>
+        <div className="display mb-2 text-3xl text-strong">Session ended</div>
         <p className="mb-6 text-sm text-muted">The connection to Wendy was closed. Reload to start a new session.</p>
         <button
           onClick={() => window.location.reload()}
-          className="h-12 w-full rounded-full bg-lime font-medium text-ink"
+          className="h-12 w-full rounded-full bg-apricot font-medium text-on-accent"
         >
           Reload
         </button>

@@ -7,10 +7,18 @@ import type { FrameBus } from './socket'
 //   chat → [conversation.created] → chat.start → token* / tool.progress* → done | error
 // Frames are matched to the turn by conversationId, so a concurrent system_chat
 // (which carries only channelId) never leaks into the bubble.
+//
+// system_chat is used for Wendy's welcome line: same stream shape, but its
+// frames carry only channelId "system:<userId>" and no conversationId.
 
 const TURN_TIMEOUT_MS = 120_000 // the server has no turn timeout of its own
 let seq = 0
 let turnTimer: ReturnType<typeof setTimeout> | undefined
+
+const GREETING_TIMEOUT_MS = 45_000
+let greetingTimer: ReturnType<typeof setTimeout> | undefined
+const isSystem = (f: ServerFrame) =>
+  typeof f.conversationId !== 'string' && typeof f.channelId === 'string' && f.channelId.startsWith('system:')
 
 const bubbleId = () => `b${Date.now().toString(36)}${(++seq).toString(36)}`
 const set = useAgent.setState
@@ -40,8 +48,56 @@ export function sendChat(bus: FrameBus, text: string): boolean {
   return true
 }
 
+/**
+ * Ask Wendy for a welcome line over system_chat (no history, mood or fact
+ * side effects). The directive is an app event, never a user turn.
+ */
+export function sendGreeting(bus: FrameBus, directive: string, onDone?: (text: string) => void): boolean {
+  const s = get()
+  if (s.greetingPending || s.turnId || s.awaitingTurn) return false
+  if (!bus.send({ type: 'system_chat', message: directive })) return false
+  greetingDone = onDone
+  set({ greetingPending: true })
+  clearTimeout(greetingTimer)
+  greetingTimer = setTimeout(
+    () => set({ greetingPending: false, greeting: { ...get().greeting, streaming: false } }),
+    GREETING_TIMEOUT_MS,
+  )
+  return true
+}
+let greetingDone: ((text: string) => void) | undefined
+
+function handleSystemFrame(f: ServerFrame): boolean {
+  const s = get()
+  if (!s.greetingPending) return true
+  switch (f.type) {
+    case 'chat.start':
+      set({ greeting: { text: '', streaming: true } })
+      return true
+    case 'token':
+      set({ greeting: { text: s.greeting.text + String(f.delta ?? ''), streaming: true } })
+      if (s.line === 'greeting' && !s.turnId) set({ phase: 'speaking' })
+      orbSignals.bump(0.12)
+      return true
+    case 'done': {
+      clearTimeout(greetingTimer)
+      const text = String(f.text ?? s.greeting.text)
+      set({
+        greeting: { text, streaming: false },
+        greetingPending: false,
+        ...(s.turnId || s.awaitingTurn ? {} : { phase: 'idle' as const }),
+      })
+      greetingDone?.(text)
+      greetingDone = undefined
+      return true
+    }
+  }
+  return false
+}
+
 /** Applies a frame to the chat state. Returns true when the frame was chat-related. */
 export function handleChatFrame(f: ServerFrame): boolean {
+  if (isSystem(f) && (f.type === 'chat.start' || f.type === 'token' || f.type === 'done')) return handleSystemFrame(f)
   const s = get()
   const cid = typeof f.conversationId === 'string' ? f.conversationId : null
   const mine = cid !== null && cid === s.turnId

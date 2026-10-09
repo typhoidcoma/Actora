@@ -54,7 +54,7 @@ export function Grid() {
   )
 }
 
-function Glow({ accent, at, strength = 0.16 }: { accent: string; at: string; strength?: number }) {
+function Glow({ accent, at, strength = 0.22 }: { accent: string; at: string; strength?: number }) {
   return (
     <div
       aria-hidden
@@ -119,17 +119,14 @@ function ExpandedTile({ id }: { id: TileId }) {
         className="flex shrink-0 touch-none items-center justify-between gap-4 px-6 pt-5 pb-3"
       >
         <div className="flex items-center gap-3">
-          <span
-            className="h-2 w-2 rotate-45 rounded-[2px]"
-            style={{ background: accent, boxShadow: `0 0 12px ${accent}` }}
-          />
-          <h2 className="text-2xl font-medium tracking-tight text-white">{label}</h2>
+          <span className="h-2.5 w-2.5 rounded-full" style={{ background: accent }} />
+          <h2 className="display text-[28px] leading-none text-strong">{label}</h2>
         </div>
         <motion.button
           whileTap={press}
           onClick={() => ui.focus(null)}
           aria-label="Close"
-          className="glass-pill grid h-11 w-11 place-items-center rounded-full text-text/80"
+          className="glass-pill grid h-11 w-11 place-items-center rounded-full text-muted"
         >
           <svg viewBox="0 0 16 16" className="h-4 w-4">
             <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />

@@ -2,8 +2,9 @@ import { config } from '../config'
 import { useAgent } from '../stores/agent'
 import { entities, useEntities } from '../stores/entities'
 import { useUi } from '../stores/ui'
-import { abortTurnOnDisconnect, sendChat } from './chat'
-import type { Notification, Task } from './protocol'
+import { abortTurnOnDisconnect, sendChat, sendGreeting } from './chat'
+import { setTokenSource } from './http'
+import type { ClientMessage, Notification, ServerFrame, Task } from './protocol'
 import { request } from './request'
 import { routeFrame, sendClientState } from './router'
 import { AeloraSocket, type WebSocketLike } from './socket'
@@ -35,6 +36,7 @@ export function startAelora(opts: StartOptions): () => void {
 async function connect(opts: StartOptions, cancelled: () => boolean): Promise<(() => void) | null> {
   const Mock = config.mock ? (await import('./mock')).MockWebSocket : null
   if (cancelled()) return null
+  setTokenSource(opts.getToken)
 
   const sock = new AeloraSocket({
     getToken: opts.getToken,
@@ -57,7 +59,7 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
   })
   // Keep Wendy's idea of what's on screen in sync with what is actually on screen.
   const offUi = useUi.subscribe((s, prev) => {
-    if (s.focus !== prev.focus || s.chatOpen !== prev.chatOpen) sendClientState(sock)
+    if (s.focus !== prev.focus || s.chatOpen !== prev.chatOpen || s.selected !== prev.selected) sendClientState(sock)
   })
 
   sock.start()
@@ -66,7 +68,10 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
     offStatus()
     offUi()
     sock.stop()
-    if (socket === sock) socket = null
+    if (socket === sock) {
+      socket = null
+      setTokenSource(null)
+    }
     entities.reset()
   }
 }
@@ -79,6 +84,30 @@ export function reconnectAelora(): void {
 
 export function chat(text: string): boolean {
   return socket ? sendChat(socket, text) : false
+}
+
+/** Welcome line over system_chat (an app event, not a user turn). */
+export function greet(directive: string, onDone?: (text: string) => void): boolean {
+  return socket ? sendGreeting(socket, directive, onDone) : false
+}
+
+/** Fire-and-forget message on the live socket. */
+export function send(msg: ClientMessage): boolean {
+  return socket?.send(msg) ?? false
+}
+
+/** Request/reply on the live socket (correlated by reply type). */
+export function ask<T extends ServerFrame = ServerFrame>(msg: ClientMessage, replyType: string): Promise<T | null> {
+  return socket ? request<T>(socket, msg, replyType) : Promise.resolve(null)
+}
+
+/** Move a task to another day (YYYY-MM-DD); optimistic with rollback. */
+export async function rescheduleTask(id: string, due: string): Promise<void> {
+  const before = useEntities.getState().tasks[id]
+  if (!socket || !before || before.due_date === due) return
+  useEntities.setState((s) => ({ tasks: { ...s.tasks, [id]: { ...before, due_date: due } } }))
+  const reply = await request(socket, { type: 'task.update', id, patch: { due_date: due } }, 'task.updated')
+  if (!reply) useEntities.setState((s) => ({ tasks: { ...s.tasks, [id]: before } }))
 }
 
 /** Optimistically completes a task; rolls back if the server doesn't confirm. */

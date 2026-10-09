@@ -24,6 +24,8 @@ uniform float uReact;   // -1..1 reaction (positive flare / negative contract)
 uniform float uWobble;  // cognitive wobble
 uniform float uEnergy;  // speaking energy 0..1
 uniform float uRing;    // tool ring 0..1
+uniform float uBreath;  // -1..1 slow idle breathing
+uniform float uDay;     // 0 dusk .. 1 daylight (glow becomes a soft tinted shadow)
 uniform vec3 uC1;
 uniform vec3 uC2;
 uniform vec3 uC3;
@@ -64,7 +66,7 @@ void main() {
   vec2 dir = vec2(cos(ang), sin(ang));
 
   // Silhouette: noise on the unit circle, so the edge stays continuous.
-  float base = 0.6 * (1.0 + uReact * 0.07);
+  float base = 0.6 * (1.0 + uReact * 0.07 + uBreath * 0.03);
   float n = fbm(vec3(dir * (1.25 + uWobble * 1.6), uTime * 0.55));
   float disp = (n - 0.5) * 2.0 * uAmp + sin(ang * 3.0 + uTime * 1.2) * uAmp * 0.3;
   float R = base + disp;
@@ -85,7 +87,7 @@ void main() {
   float rr = clamp(r / R, 0.0, 1.0);
   col *= mix(1.06, 0.5, pow(rr, 2.3));
   float key = smoothstep(0.95, 0.0, length(p - vec2(-0.26, 0.3)));
-  col += key * 0.07 * vec3(1.0, 0.98, 0.9);
+  col += key * 0.09 * vec3(1.0, 0.95, 0.85);
 
   // Gentle rim.
   float rim = smoothstep(0.72, 1.0, rr) * body;
@@ -95,11 +97,15 @@ void main() {
   col *= 1.0 + min(uReact, 0.0) * 0.25;
 
   float lum = dot(col, vec3(0.299, 0.587, 0.114));
-  col = mix(col, vec3(lum) * 0.65, uDesat);
+  col = mix(col, vec3(lum) * mix(0.65, 0.9, uDay), uDesat);
 
-  // Outer glow.
-  float glow = exp(-max(d, 0.0) * 8.5) * (1.0 - body) * uGlow;
+  // Outer glow at dusk; in daylight a light glow reads as dirt on cream, so it
+  // becomes a soft, mood-tinted contact shadow beneath the blob instead.
+  float glow = exp(-max(d, 0.0) * 8.5) * (1.0 - body) * uGlow * (1.0 - uDay * 0.75);
   vec3 gcol = mix(uC1, uC2, 0.5) * mix(1.0, 0.35, uDesat);
+  float sd = length(p - vec2(0.0, -0.07)) - R;
+  float shadow = exp(-max(sd, 0.0) * 7.0) * (1.0 - body) * 0.32 * uDay;
+  vec3 scol = uC2 * 0.45;
 
   // Tool ring: a thin dashed orbit that spins while a tool runs.
   float ringR = R + 0.12;
@@ -108,10 +114,11 @@ void main() {
 
   // Film grain.
   float g = hash(vec3(gl_FragCoord.xy, floor(uClock * 24.0))) - 0.5;
-  col += g * 0.04 * body;
+  col += g * 0.025 * body;
 
-  vec3 outc = col * body + gcol * glow + vec3(0.94, 0.96, 0.86) * ring;
-  float a = clamp(body + glow * 0.85 + ring, 0.0, 1.0);
+  vec3 ringCol = mix(vec3(0.94, 0.92, 0.82), vec3(0.34, 0.49, 0.54), uDay);
+  vec3 outc = col * body + gcol * glow + scol * shadow + ringCol * ring;
+  float a = clamp(body + glow * 0.85 + shadow + ring, 0.0, 1.0);
   gl_FragColor = vec4(outc, a);
 }
 `

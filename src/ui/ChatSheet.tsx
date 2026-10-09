@@ -1,12 +1,12 @@
 import { AnimatePresence, motion, useDragControls, type PanInfo } from 'motion/react'
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
-import { chat } from '../aelora/client'
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from 'react'
 import { useAgent, type ChatBubble } from '../stores/agent'
 import { useMetrics } from '../stores/metrics'
 import { ui, useUi } from '../stores/ui'
 import { toolLabel } from './format'
 import { stableMarkdown } from './markdownText'
 import { glide, morph, press } from './motion'
+import { OptionRail } from './OptionRail'
 import { sheen } from './sheen'
 
 // The Markdown stack is the heaviest dependency; load it with the first chat open.
@@ -19,13 +19,6 @@ function Markdown({ text }: { text: string }) {
     </Suspense>
   )
 }
-
-const CHIPS: Array<{ label: string; send?: string; prefill?: string }> = [
-  { label: 'Plan my day', send: 'Plan my day' },
-  { label: "What's next?", send: "What's next on my calendar?" },
-  { label: 'Goal check-in', send: 'How are my goals going?' },
-  { label: 'Add a task…', prefill: 'Add a task: ' },
-]
 
 export function ChatSheet() {
   const open = useUi((s) => s.chatOpen)
@@ -47,7 +40,7 @@ function Sheet() {
   return (
     <>
       <motion.div
-        className="fixed inset-0 z-10 bg-ink/50"
+        className="fixed inset-0 z-10 bg-scrim"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -82,7 +75,9 @@ function Sheet() {
         >
           <SheetHeader onPointerDown={(e) => drag.start(e)} />
           <Transcript />
-          <Composer />
+          <div className="shrink-0 border-t border-line px-3 pt-1 pb-[max(8px,env(safe-area-inset-bottom))]">
+            <OptionRail contextKey="chat" />
+          </div>
         </motion.div>
       </motion.div>
     </>
@@ -102,20 +97,20 @@ function SheetHeader({ onPointerDown }: { onPointerDown: (e: React.PointerEvent)
           ? `${toolLabel(tool) || 'Working'}…`
           : phase === 'speaking'
             ? 'Speaking'
-            : 'Here'
+            : 'Here for you'
 
   return (
     <header
       onPointerDown={onPointerDown}
       className="relative flex h-[76px] shrink-0 touch-none items-center gap-3 pr-4 pl-[76px]"
     >
-      <div className="absolute top-2 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-white/15" />
+      <div className="absolute top-2 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-text/15" />
       <div className="min-w-0 flex-1">
-        <div className="text-lg leading-tight font-medium text-white">{botName}</div>
+        <div className="display text-[26px] leading-none text-strong">{botName}</div>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={status}
-            className="num text-xs tracking-wide text-muted"
+            className="mt-1 text-xs text-muted"
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
@@ -129,7 +124,7 @@ function SheetHeader({ onPointerDown }: { onPointerDown: (e: React.PointerEvent)
         whileTap={press}
         onClick={ui.closeChat}
         aria-label="Close chat"
-        className="glass-pill grid h-11 w-11 place-items-center rounded-full text-text/80"
+        className="glass-pill grid h-11 w-11 place-items-center rounded-full text-muted"
       >
         <svg viewBox="0 0 16 16" className="h-4 w-4">
           <path
@@ -163,7 +158,7 @@ function Transcript() {
   return (
     <div ref={ref} className="scroll-y min-h-0 flex-1 px-5 pt-1 pb-4">
       {messages.length === 0 && !awaiting && (
-        <p className="pt-10 text-center text-sm text-muted">Tap a suggestion or say anything.</p>
+        <p className="display pt-10 text-center text-2xl text-muted">Tap anything below to start.</p>
       )}
       <div className="flex flex-col gap-3">
         {messages.slice(-60).map((b) => (
@@ -180,7 +175,7 @@ function Transcript() {
             {streaming ? (
               <div className="text-text">
                 <Markdown text={stableMarkdown(streaming)} />
-                <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-[3px] animate-pulse bg-lime" />
+                <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-[3px] animate-pulse bg-apricot" />
               </div>
             ) : (
               <TypingDots />
@@ -199,14 +194,14 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
         initial={{ opacity: 0, y: 10, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={morph}
-        className="max-w-[80%] self-end rounded-[20px] rounded-br-md bg-white/10 px-4 py-2.5 text-[15px] text-white"
+        className="max-w-[80%] self-end rounded-[20px] rounded-br-md bg-apricot/25 px-4 py-2.5 text-[15px] text-strong"
       >
         {bubble.text}
       </motion.div>
     )
   }
   if (bubble.role === 'error') {
-    return <div className="self-start text-sm text-coral/90">{bubble.text}</div>
+    return <div className="self-start text-sm text-clay">{bubble.text}</div>
   }
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-[88%] self-start text-text">
@@ -221,80 +216,11 @@ function TypingDots() {
       {[0, 1, 2].map((i) => (
         <motion.span
           key={i}
-          className="h-1.5 w-1.5 rounded-full bg-lime"
+          className="h-1.5 w-1.5 rounded-full bg-apricot"
           animate={{ opacity: [0.25, 1, 0.25], y: [0, -3, 0] }}
           transition={{ duration: 1, repeat: Infinity, delay: i * 0.15, ease: 'easeInOut' }}
         />
       ))}
-    </div>
-  )
-}
-
-function Composer() {
-  const [text, setText] = useState('')
-  const busy = useAgent((s) => s.awaitingTurn || s.turnId !== null)
-  const offline = useAgent((s) => s.connection !== 'open')
-  const input = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    // Don't pop the iPad keyboard on open; chips are the primary input.
-    if (!matchMedia('(pointer: coarse)').matches) input.current?.focus()
-  }, [])
-
-  const submit = (e?: FormEvent) => {
-    e?.preventDefault()
-    if (chat(text)) setText('')
-  }
-
-  return (
-    <div className="shrink-0 border-t border-line px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
-      <div className="scroll-y -mx-4 mb-3 flex gap-2 overflow-x-auto px-4">
-        {CHIPS.map((c) => (
-          <motion.button
-            key={c.label}
-            whileTap={press}
-            disabled={busy || offline}
-            onClick={() => {
-              if (c.send) chat(c.send)
-              else if (c.prefill) {
-                setText(c.prefill)
-                input.current?.focus()
-              }
-            }}
-            className="glass-pill h-10 shrink-0 rounded-full px-4 text-sm whitespace-nowrap text-text/90 transition-opacity disabled:opacity-40"
-          >
-            {c.label}
-          </motion.button>
-        ))}
-      </div>
-      <form onSubmit={submit} className="flex items-center gap-2">
-        <input
-          ref={input}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={offline ? 'Reconnecting…' : 'Message Wendy'}
-          enterKeyHint="send"
-          className="glass-pill h-12 min-w-0 flex-1 rounded-full px-5 text-white placeholder:text-faint focus:shadow-[inset_0_0_0_1px_rgb(205_224_74/0.45)] focus:outline-none"
-        />
-        <motion.button
-          whileTap={press}
-          type="submit"
-          disabled={!text.trim() || busy || offline}
-          aria-label="Send"
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-lime text-ink transition-opacity disabled:opacity-30"
-        >
-          <svg viewBox="0 0 16 16" className="h-4 w-4">
-            <path
-              d="M8 13V3M3.5 7.5L8 3l4.5 4.5"
-              stroke="currentColor"
-              strokeWidth={1.8}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </motion.button>
-      </form>
     </div>
   )
 }

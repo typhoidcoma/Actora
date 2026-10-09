@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CalendarOccurrence, Goal, Notification, Task } from '../../aelora/protocol'
 import { useEntities } from '../../stores/entities'
+import { useUi, type ItemKind } from '../../stores/ui'
 
 export function useNow(intervalMs = 30_000): number {
   const [now, setNow] = useState(() => Date.now())
@@ -107,4 +108,9 @@ export function useInbox(now: number): { items: Notification[]; unread: number; 
       .sort((a, b) => (b.sent_at ?? b.created_at).localeCompare(a.sent_at ?? a.created_at))
     return { items, unread: items.filter((n) => !n.read_at).length, hydrated }
   }, [notes, hydrated, now])
+}
+
+/** Is this row the selected one (its options are on the rail)? */
+export function useSelected(kind: ItemKind, id: string): boolean {
+  return useUi((s) => s.selected?.kind === kind && s.selected.id === id)
 }

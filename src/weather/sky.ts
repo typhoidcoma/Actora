@@ -12,6 +12,22 @@ export interface Sky {
   temp: number | null
   unit: 'C' | 'F'
   source: 'live' | 'clock'
+  /** Local wall-clock ISO (no zone) for today's sunrise/sunset at the user's location. */
+  sunrise?: string | null
+  sunset?: string | null
+}
+
+/** Is the sun up right now? Uses today's sunrise/sunset when known, else the last reading. */
+export function isDaylight(sky: Sky, now = new Date()): boolean {
+  if (sky.sunrise && sky.sunset) {
+    const t = now.getTime()
+    return t >= new Date(sky.sunrise).getTime() && t < new Date(sky.sunset).getTime()
+  }
+  if (sky.source === 'clock') {
+    const h = now.getHours()
+    return h >= 6 && h < 19
+  }
+  return sky.isDay
 }
 
 const CACHE_KEY = 'actora.sky.v1'
@@ -83,10 +99,14 @@ async function fetchSky(): Promise<Sky> {
   const unit = preferredUnit()
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}` +
-    `&current=weather_code,is_day,temperature_2m${unit === 'F' ? '&temperature_unit=fahrenheit' : ''}`
+    `&current=weather_code,is_day,temperature_2m&daily=sunrise,sunset&timezone=auto&forecast_days=1` +
+    (unit === 'F' ? '&temperature_unit=fahrenheit' : '')
   const res = await fetch(url)
   if (!res.ok) throw new Error(`weather ${res.status}`)
-  const body = (await res.json()) as { current?: { weather_code?: number; is_day?: number; temperature_2m?: number } }
+  const body = (await res.json()) as {
+    current?: { weather_code?: number; is_day?: number; temperature_2m?: number }
+    daily?: { sunrise?: string[]; sunset?: string[] }
+  }
   const c = body.current
   if (!c || typeof c.weather_code !== 'number') return clockSky()
   return {
@@ -95,6 +115,8 @@ async function fetchSky(): Promise<Sky> {
     temp: typeof c.temperature_2m === 'number' ? c.temperature_2m : null,
     unit,
     source: 'live',
+    sunrise: body.daily?.sunrise?.[0] ?? null,
+    sunset: body.daily?.sunset?.[0] ?? null,
   }
 }
 
