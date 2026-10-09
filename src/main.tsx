@@ -7,6 +7,9 @@ import { restoreLocalTheme } from './stores/appearance'
 
 initScheme()
 restoreLocalTheme()
+// Claim the preloaded Satoshi now: the first screen can sit text-free for a few
+// seconds (orb only), and an unused preload is fetched for nothing and warned about.
+void document.fonts?.load('500 16px Satoshi').catch(() => {})
 // Deployed builds pick up newer deploys on their own (dev has HMR).
 if (import.meta.env.PROD) void import('./freshness').then((m) => m.startFreshness())
 
