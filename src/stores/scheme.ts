@@ -53,6 +53,15 @@ export function setColors(input: SchemeInput, hours?: number): string[] {
   return scheme.notes
 }
 
+/** A palette saved on the account (another device or an earlier visit), until its own expiry. */
+export function restoreColors(input: SchemeInput, until: number): void {
+  if (until <= Date.now()) return resetColors()
+  const next: SchemeState = { source: 'wendy', input, until, scheme: buildScheme(input) }
+  useScheme.setState(next)
+  save(next)
+  schedule(until)
+}
+
 export function resetColors(): void {
   const next: SchemeState = { source: 'brand', input: null, until: null, scheme: BRAND_SCHEME }
   useScheme.setState(next)

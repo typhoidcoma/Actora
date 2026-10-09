@@ -4,6 +4,7 @@ import { reconnectAelora, startAelora } from './aelora/client'
 import { getSupabase, signOut } from './auth/supabase'
 import { SignIn } from './auth/SignIn'
 import { config } from './config'
+import { startAppearanceSync } from './stores/appearance'
 import { useAgent } from './stores/agent'
 import { Backdrop, Stage } from './ui/Stage'
 import { useThemeSync } from './ui/Theme'
@@ -91,6 +92,8 @@ function AuthedApp() {
 }
 
 function Connected({ sb }: { sb: SupabaseClient }) {
+  // Her day/dusk and colour changes follow the account to every device.
+  useEffect(() => startAppearanceSync(sb), [sb])
   useEffect(
     () =>
       startAelora({
