@@ -50,8 +50,8 @@ const TRAILING = new Set(['enablePush', 'snoozePush', 'installHelp'])
  */
 export function mergeOptions(local: Option[], wendy: Option[], pushed: Option[], max = 6): Option[] {
   const trailing = local.filter((o) => o.act && TRAILING.has(o.act.type))
-  const acts = local.filter((o) => o.act && !TRAILING.has(o.act.type))
-  const says = local.filter((o) => !o.act)
+  const acts = local.filter((o) => (o.act && !TRAILING.has(o.act.type)) || (o.pin && !o.act))
+  const says = local.filter((o) => !o.act && !o.pin)
   const seen = new Set<string>()
   const out: Option[] = []
   const room = max - trailing.length

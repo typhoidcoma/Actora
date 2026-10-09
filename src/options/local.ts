@@ -1,6 +1,7 @@
 import type { CalendarOccurrence, Goal, Notification, Task } from '../aelora/protocol'
 import type { AgentState } from '../stores/agent'
 import type { EntitiesState } from '../stores/entities'
+import type { PriorityItem } from '../priority/score'
 import type { PushState } from '../stores/push'
 import { actOption, sayOption, type Option } from './types'
 
@@ -12,6 +13,29 @@ export interface Snapshot {
   agent: Pick<AgentState, 'messages' | 'line' | 'notice' | 'turnId' | 'awaitingTurn'>
   push: Pick<PushState, 'status' | 'snoozedUntil'>
   now: number
+  /** The three priority cards on screen, in order; home options act on them by name. */
+  cards?: Array<Pick<PriorityItem, 'kind' | 'id' | 'title' | 'urgency'>>
+}
+
+/** One option that moves a specific card forward, phrased for what kind of thing it is. */
+function forCard(c: NonNullable<Snapshot['cards']>[number]): Option {
+  return { ...cardOption(c), pin: true }
+}
+
+function cardOption(c: NonNullable<Snapshot['cards']>[number]): Option {
+  const t = short(c.title, 20)
+  switch (c.kind) {
+    case 'event':
+      return c.urgency >= 0.75
+        ? sayOption(`Prep: ${t}`, `Help me prep for "${c.title}".`)
+        : sayOption(`Before ${t}?`, `What should I get done before "${c.title}"?`)
+    case 'task':
+      return sayOption(`Start: ${t}`, `Help me get started on "${c.title}".`)
+    case 'notification':
+      return sayOption(`Later: ${t}`, `Remind me about "${c.title}" again in an hour.`)
+    case 'goal':
+      return sayOption(`Next step: ${t}`, `What's my next step for "${c.title}"?`)
+  }
 }
 
 const MAX = 4
@@ -70,6 +94,11 @@ function home(s: Snapshot): Option[] {
     ]
   }
   if (line === 'reply' && s.agent.messages.at(-1)?.role === 'assistant') return followUps()
+
+  if (s.cards?.length) {
+    // Act on what is on screen: one option per card, in rank order, then the day.
+    return [...s.cards.slice(0, 3).map(forCard), sayOption('Plan my day'), ...pushOffer(s)]
+  }
 
   const out: Option[] = [sayOption('Plan my day')]
   const ev = nextEvent(s)

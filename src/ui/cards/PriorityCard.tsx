@@ -52,7 +52,7 @@ export function PriorityCard({
             runOption(actOption(item.primary!.label, item.primary!.act))
           }}
           aria-label={`${item.primary.label}: ${item.title}`}
-          className="glass-pill grid h-9 min-w-9 shrink-0 place-items-center rounded-full px-2 text-[12px] font-semibold text-strong"
+          className="glass-pill grid h-9 min-w-9 shrink-0 place-items-center rounded-[10px] px-2.5 text-[12px] font-semibold text-strong"
         >
           {item.primary.act.type === 'complete' ? <Check /> : item.primary.label}
         </motion.button>
@@ -60,30 +60,54 @@ export function PriorityCard({
     </div>
   )
 
+  // Heroic title: the thing itself, big and tight, like the old hero numbers.
   const body = (
     <div className={`min-w-0 ${right ? 'text-right' : ''}`}>
       <div
-        className="display line-clamp-2 text-strong"
-        style={{ fontSize: 'clamp(16px, calc(var(--grid) * 0.062), 30px)', lineHeight: 1.08 }}
+        className={`display text-strong ${compact ? 'line-clamp-2' : 'line-clamp-3'}`}
+        style={{
+          fontSize: compact
+            ? 'clamp(17px, calc(var(--grid) * 0.072), 24px)'
+            : 'clamp(22px, calc(var(--grid) * 0.096), 52px)',
+          lineHeight: 0.98,
+          paddingBottom: '0.12em',
+          fontWeight: 700,
+          letterSpacing: '-0.045em',
+        }}
       >
         {item.title}
       </div>
-      <div className="mt-1 truncate text-[max(12px,calc(var(--grid)*0.024))] text-muted">{item.meta}</div>
+      <div className="mt-2 truncate text-[max(12px,calc(var(--grid)*0.025))] font-medium text-muted">{item.meta}</div>
     </div>
   )
 
+  // Why it matters now: a small tinted callout in the card's colour, signed by
+  // Wendy (orb dot) when it is her reasoning rather than the local default.
   const why = !compact && (
     <div
-      className={`flex max-w-[78%] items-baseline gap-1.5 text-[max(12px,calc(var(--grid)*0.023))] text-text italic ${
-        right ? 'ml-auto flex-row-reverse text-right' : ''
-      }`}
+      className={`flex max-w-[74%] items-start gap-2.5 rounded-[10px] px-3 py-2 ${right ? 'ml-auto flex-row-reverse text-right' : ''}`}
+      style={{
+        background: `color-mix(in srgb, ${kind.color} 13%, transparent)`,
+        boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${kind.color} 22%, transparent)`,
+      }}
     >
-      {item.whyFrom === 'wendy' && (
-        <span aria-hidden className="text-[10px] text-accent not-italic">
-          ✦
-        </span>
+      {item.whyFrom === 'wendy' ? (
+        <span
+          aria-hidden
+          className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full"
+          style={{ background: 'radial-gradient(circle at 35% 30%, #F4EEE2, #EB7B59 45%, #A7C5BD 80%)' }}
+        />
+      ) : (
+        <span aria-hidden className="mt-1 h-2.5 w-[3px] shrink-0 rounded-full" style={{ background: kind.color }} />
       )}
-      <span className="line-clamp-2">{item.why}</span>
+      <div className="min-w-0">
+        <div className="text-[11px] font-bold" style={{ color: kind.color }}>
+          {item.whyFrom === 'wendy' ? 'Wendy says' : 'Why now'}
+        </div>
+        <div className="line-clamp-2 text-[max(13px,calc(var(--grid)*0.024))] leading-snug font-medium text-strong">
+          {item.why}
+        </div>
+      </div>
     </div>
   )
 

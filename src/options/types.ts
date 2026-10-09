@@ -27,6 +27,8 @@ export interface Option {
   say?: string
   act?: LocalAct
   source: 'local' | 'wendy' | 'pushed'
+  /** Pinned ahead of Wendy-written options (e.g. one per priority card). */
+  pin?: boolean
 }
 
 export const sayOption = (label: string, say = label, source: Option['source'] = 'local'): Option => ({

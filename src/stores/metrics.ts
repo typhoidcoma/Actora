@@ -56,7 +56,8 @@ export function measure(): Metrics {
   const reserveX = Math.max(safe.left, safe.right) + 16
 
   // Vertical stack: header · Wendy's line · grid · option rail.
-  const headerH = safe.top + (short ? 52 : 64)
+  // No top bar: Wendy's line starts just under the safe area.
+  const headerH = safe.top + (short ? 10 : 18)
   const baseLineH = Math.round(short ? 46 : clamp(vh * 0.1, 72, 116))
   const railH = Math.max(safe.bottom, 10) + 66
   const availW = vw - reserveX * 2

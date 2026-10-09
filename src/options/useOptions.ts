@@ -6,6 +6,7 @@ import { mergeOptions, useOptionsStore } from '../stores/options'
 import { usePush } from '../stores/push'
 import { contextKeyOf, useUi } from '../stores/ui'
 import { useNow } from '../ui/tiles/data'
+import { usePriorities } from '../priority/usePriorities'
 import { localOptions } from './local'
 import type { Option } from './types'
 
@@ -31,8 +32,12 @@ export function useOptions(key: string): { options: Option[]; loading: boolean }
   )
   const push = usePush(useShallow((s) => ({ status: s.status, snoozedUntil: s.snoozedUntil })))
   const now = useNow(60_000)
+  const cards = usePriorities()
 
-  const local = useMemo(() => localOptions(key, { entities, agent, push, now }), [key, entities, agent, push, now])
+  const local = useMemo(
+    () => localOptions(key, { entities, agent, push, now, cards }),
+    [key, entities, agent, push, now, cards],
+  )
   const wendy = useOptionsStore((s) => s.byKey[key]?.wendy ?? EMPTY)
   const loading = useOptionsStore((s) => s.byKey[key]?.loading ?? false)
   const pushed = useOptionsStore((s) => (s.pushed?.key === key ? s.pushed.options : EMPTY))

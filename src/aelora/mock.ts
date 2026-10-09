@@ -405,6 +405,21 @@ export async function mockLlm(req: { prompt: string }, signal?: AbortSignal): Pr
     ]
   } else if (p.includes('reminder')) {
     options = [opt('On it', 'On it, thanks for the nudge.'), opt('Push to tonight', 'Remind me again tonight.')]
+  } else if (/#1 \w+ "/.test(p)) {
+    // Home: act on the cards by name, like the real prompt asks.
+    const cards = [...p.matchAll(/#\d (\w+) "([^"]+)"/g)].slice(0, 2)
+    const verb: Record<string, string> = {
+      event: 'Ready for',
+      task: 'Knock out',
+      notification: 'Sort out',
+      goal: 'Push on',
+    }
+    options = cards.map(([, kind, title]) =>
+      opt(
+        `${verb[kind] ?? 'Do'} ${title.split(' ').slice(0, 2).join(' ')}`.slice(0, 28),
+        `Help me with "${title}" now.`,
+      ),
+    )
   } else {
     options = [
       opt('Ease me in', 'Ease me into the day with something small.'),

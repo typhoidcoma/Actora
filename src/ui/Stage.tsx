@@ -13,7 +13,7 @@ import { contextKeyOf, ui, useUi } from '../stores/ui'
 import { Ambient } from '../weather/Ambient'
 import { ChatSheet } from './ChatSheet'
 import { Grid } from './Grid'
-import { Header } from './Header'
+import { MenuButton } from './Menu'
 import { KeyboardSheet } from './KeyboardSheet'
 import { MoodLight } from './MoodLight'
 import { OptionRail } from './OptionRail'
@@ -93,7 +93,6 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
     <MotionConfig reducedMotion="user">
       <Backdrop grain={false} />
       <MoodLight />
-      <Header onSignOut={onSignOut} />
       {focus && <div className="fixed inset-0" onClick={() => ui.focus(null)} aria-hidden />}
       <AnimatePresence>
         {!chatOpen && (
@@ -118,7 +117,7 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 12 }}
           >
-            <OptionRail contextKey={key} />
+            <OptionRail contextKey={key} trailing={<MenuButton onSignOut={onSignOut} />} />
           </motion.div>
         )}
       </AnimatePresence>

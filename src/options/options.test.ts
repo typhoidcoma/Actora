@@ -85,6 +85,26 @@ describe('local options', () => {
   })
 })
 
+describe('card-aware home options', () => {
+  it('names each card, in rank order, phrased for its kind, and pins them ahead of Wendy', () => {
+    const s = snap()
+    s.cards = [
+      { kind: 'event', id: 'e', title: 'Standup', urgency: 0.95 },
+      { kind: 'task', id: 't', title: 'Write the report', urgency: 0.6 },
+      { kind: 'notification', id: 'n', title: 'Stretch', urgency: 0.7 },
+    ]
+    const opts = localOptions('home', s)
+    expect(opts.map((o) => o.label)).toEqual([
+      'Prep: Standup',
+      'Start: Write the report',
+      'Later: Stretch',
+      'Plan my day',
+    ])
+    const merged = mergeOptions(opts, [sayOption('Generic idea', 'x', 'wendy')], []).map((o) => o.label)
+    expect(merged.slice(0, 3)).toEqual(['Prep: Standup', 'Start: Write the report', 'Later: Stretch'])
+  })
+})
+
 describe('merge', () => {
   it('keeps local acts first, then pushed, Wendy, local says; dedupes and caps', () => {
     const local = [sayOption('Plan my day'), actOption('Done', { type: 'complete', id: 'a' })]

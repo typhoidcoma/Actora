@@ -164,6 +164,7 @@ Rules:
 - 3 to 5 options. "label": 1-4 words, at most ${MAX_LABEL} characters, sentence case, no emoji, no trailing period. "say": exactly what the user says to Wendy when they tap it, first person, natural, at most 120 characters.
 - If Wendy's last message asks a question or offers choices, the options must be direct answers to it (include a yes and a no style answer for yes/no questions).
 - Otherwise suggest the most useful next things for what is on screen, using the user's real item titles.
+- On the home screen, most options should act on the three priority cards by name (for example "Prep for Standup" or "Start the report"), matching what each card is: an event to prepare for, a task to start, a reminder to handle, a goal to push.
 - Make them distinct; never two options that do the same thing. Match a relaxed, adult, friendly tone.`
 
 export function buildRequest(key: string, s: Snapshot, existing: Option[]): LlmRequest {
@@ -191,11 +192,19 @@ export function buildRequest(key: string, s: Snapshot, existing: Option[]): LlmR
 }
 
 export function snapshot(): Snapshot {
+  const now = Date.now()
+  const entities = useEntities.getState()
+  const p = usePriorityStore.getState()
   return {
-    entities: useEntities.getState(),
+    entities,
     agent: useAgent.getState(),
     push: usePush.getState(),
-    now: Date.now(),
+    now,
+    cards: mergePriorities(
+      scoreItems(entities, now),
+      p.wendy,
+      p.pushed && p.pushed.until > now ? p.pushed.entries : null,
+    ),
   }
 }
 

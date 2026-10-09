@@ -13,7 +13,15 @@ import { sheen } from './sheen'
  * (instant local ones, refined by Wendy). The orb is the microphone; the
  * keyboard is tucked at the end. Nothing in the app requires typing.
  */
-export function OptionRail({ contextKey, className = '' }: { contextKey: string; className?: string }) {
+export function OptionRail({
+  contextKey,
+  className = '',
+  trailing,
+}: {
+  contextKey: string
+  className?: string
+  trailing?: React.ReactNode
+}) {
   const { options, loading } = useOptions(contextKey)
   const busy = useAgent((s) => s.awaitingTurn || s.turnId !== null)
   const offline = useAgent((s) => s.connection !== 'open')
@@ -33,7 +41,7 @@ export function OptionRail({ contextKey, className = '' }: { contextKey: string;
               exit={{ opacity: 0, scale: 0.96 }}
               transition={morph}
               onClick={toggleVoice}
-              className="glass-pill flex h-12 min-w-0 flex-1 items-center gap-3 rounded-full px-5 text-left text-[15px] text-strong"
+              className="glass-pill flex h-12 min-w-0 flex-1 items-center gap-3 rounded-[12px] px-5 text-left text-[15px] text-strong"
             >
               <motion.span
                 className="h-2.5 w-2.5 shrink-0 rounded-full bg-urgent"
@@ -52,7 +60,7 @@ export function OptionRail({ contextKey, className = '' }: { contextKey: string;
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="glass-pill shimmer h-12 w-24 shrink-0 rounded-full"
+              className="glass-pill shimmer h-12 w-24 shrink-0 rounded-[12px]"
               aria-hidden
             />
           )}
@@ -65,7 +73,7 @@ export function OptionRail({ contextKey, className = '' }: { contextKey: string;
             whileTap={jelly}
             onClick={ui.openChat}
             aria-label="Open the conversation"
-            className="glass-pill grid h-10 w-10 place-items-center rounded-full text-muted"
+            className="glass-pill grid h-10 w-10 place-items-center rounded-[12px] text-muted"
           >
             <ChatIcon />
           </motion.button>
@@ -75,10 +83,11 @@ export function OptionRail({ contextKey, className = '' }: { contextKey: string;
           onClick={() => ui.keyboard(true)}
           disabled={offline}
           aria-label="Type instead"
-          className="glass-pill grid h-10 w-10 place-items-center rounded-full text-muted disabled:opacity-40"
+          className="glass-pill grid h-10 w-10 place-items-center rounded-[12px] text-muted disabled:opacity-40"
         >
           <KeyboardIcon />
         </motion.button>
+        {trailing}
       </div>
     </div>
   )
@@ -96,7 +105,7 @@ function Chip({ option, index, disabled }: { option: Option; index: number; disa
       {...sheen}
       disabled={disabled}
       onClick={() => runOption(option)}
-      className={`glass-pill flex h-12 shrink-0 items-center gap-2 rounded-full px-5 text-[15px] whitespace-nowrap transition-opacity disabled:opacity-40 ${
+      className={`glass-pill flex h-12 shrink-0 items-center gap-2 rounded-[12px] px-5 text-[15px] whitespace-nowrap transition-opacity disabled:opacity-40 ${
         option.act ? 'font-medium text-strong' : 'text-text'
       }`}
     >
