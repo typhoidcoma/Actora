@@ -1,4 +1,3 @@
-import { inkOf } from '../brand'
 import { motion } from 'motion/react'
 import { runOption } from '../../options/run'
 import { actOption } from '../../options/types'
@@ -10,8 +9,8 @@ import { CardShell } from './CardShell'
 import { KIND, urgencyColor } from './kinds'
 
 /**
- * One thing to tackle. Rank and kind up top, the title big, a factual meta line,
- * and why it matters now (Wendy's words when she has ranked it). Mirrored for
+ * One thing to tackle: its kind up top, the title big, a factual meta line.
+ * (No "why now" text: it only restated the title; Wendy's ranking is the order.) Mirrored for
  * the right-hand column; bottom-row cards read upward so nothing sits under the
  * orb's notch.
  */
@@ -84,29 +83,6 @@ export function PriorityCard({
     </div>
   )
 
-  // Why it matters now: a tinted band right across the card (edge to edge, past
-  // the padding), fading away from the text side, signed "Wendy says" when it's
-  // her reasoning rather than the local default.
-  const why = !compact && (
-    <div
-      className={`-mx-[max(12px,calc(var(--grid)*0.035))] flex px-[max(12px,calc(var(--grid)*0.035))] py-2.5 ${right ? 'justify-end text-right' : ''}`}
-      style={{
-        background: `linear-gradient(${right ? 270 : 90}deg, color-mix(in srgb, ${kind.color} 18%, transparent), color-mix(in srgb, ${kind.color} 5%, transparent))`,
-        boxShadow: `inset 0 1px 0 color-mix(in srgb, ${kind.color} 24%, transparent), inset 0 -1px 0 color-mix(in srgb, ${kind.color} 14%, transparent)`,
-      }}
-    >
-      {/* Text stays clear of the orb's notch on the inner side. */}
-      <div className="min-w-0 max-w-[78%]">
-        <div className="text-[13px] font-bold" style={{ color: inkOf(kind.color) }}>
-          {item.whyFrom === 'wendy' ? 'Wendy says' : 'Why now'}
-        </div>
-        <div className="line-clamp-2 text-[max(13px,calc(var(--grid)*0.024))] leading-snug font-medium text-strong">
-          {item.why}
-        </div>
-      </div>
-    </div>
-  )
-
   return (
     <CardShell
       layoutId={`card-${item.key}`}
@@ -120,7 +96,8 @@ export function PriorityCard({
       <div className="flex h-full flex-col justify-between gap-2 p-[max(12px,calc(var(--grid)*0.035))]">
         {bottom ? (
           <>
-            {why || <span />}
+            {/* spacer: keeps the title centred, clear of the notch */}
+            <span />
             {body}
             {header}
           </>
@@ -128,7 +105,8 @@ export function PriorityCard({
           <>
             {header}
             {body}
-            {why || <span />}
+            {/* spacer: keeps the title centred, clear of the notch */}
+            <span />
           </>
         )}
       </div>
