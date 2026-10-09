@@ -3,7 +3,6 @@ import { useShallow } from 'zustand/react/shallow'
 import { thinkingWords, type StepIcon } from '../aelora/activity'
 import { useAgent } from '../stores/agent'
 import { useNow } from './tiles/data'
-import { DotRipple } from './DotRipple'
 
 /**
  * What Wendy is doing right now, narrated: the current step large with a
@@ -109,18 +108,10 @@ const PATHS: Record<StepIcon, string> = {
 
 function ActivityIcon({ icon, size }: { icon: StepIcon; size: number }) {
   const reduced = useReducedMotion()
-  // Thinking: a ripple of tiny circles spreading out from a pulsing centre.
+  // Thinking: a mini Wendy, a glowing bead in her mood colours that breathes
+  // while a soft halo pulses out from it (think-pulse in index.css).
   if (icon === 'think')
-    return (
-      <DotRipple
-        rings={3}
-        dots={9}
-        dotR={5}
-        center
-        className="shrink-0 text-accent"
-        style={{ width: size, height: size }}
-      />
-    )
+    return <span aria-hidden className="think-pulse shrink-0" style={{ width: size * 0.78, height: size * 0.78 }} />
   const loop = reduced
     ? {}
     : icon === 'search'

@@ -3,7 +3,7 @@ import { useUi } from '../stores/ui'
 import { isDaylight, useSky } from '../weather/sky'
 import { useScheme } from '../stores/scheme'
 
-export type ResolvedTheme = 'day' | 'dusk'
+type ResolvedTheme = 'day' | 'dusk'
 
 /** Current theme: Wendy's or the user's override, else the sun at the user's location. */
 export function useTheme(): ResolvedTheme {

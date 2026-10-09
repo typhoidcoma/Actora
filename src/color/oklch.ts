@@ -96,7 +96,7 @@ export function oklchToHex(color: Oklch): string {
 }
 
 /** WCAG 2 relative luminance. */
-export function luminance(hex: string): number {
+function luminance(hex: string): number {
   const rgb = parseHex(hex)
   if (!rgb) return 0
   const [r, g, b] = rgb.map(toLinear)

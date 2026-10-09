@@ -104,7 +104,7 @@ export interface ServerFrame {
   [key: string]: unknown
 }
 
-export interface EventFrame extends ServerFrame {
+interface EventFrame extends ServerFrame {
   type: 'event'
   event: string
   data: Record<string, unknown> & { type?: string }

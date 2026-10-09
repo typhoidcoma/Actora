@@ -41,7 +41,7 @@ const SKIES: Record<SkyKind, { day: string[]; dusk: string[] }> = {
 const WARM = BRAND.amber
 const COLD = EXT.mint
 
-export interface Blob {
+interface Blob {
   color: string
   left: number
   top: number
@@ -64,7 +64,7 @@ function tempAccent(sky: Sky): string | null {
   return null
 }
 
-export function skyColors(sky: Sky, day: boolean): string[] {
+function skyColors(sky: Sky, day: boolean): string[] {
   const base = [...SKIES[sky.kind][day ? 'day' : 'dusk']]
   const accent = tempAccent(sky)
   if (accent) base[3] = accent

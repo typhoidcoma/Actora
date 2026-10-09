@@ -6,7 +6,7 @@ import { useNow } from '../ui/tiles/data'
 import { scoreItems, type PriorityItem } from './score'
 
 /** All scored candidates, best first (recomputed as data or the clock moves). */
-export function useCandidates(): PriorityItem[] {
+function useCandidates(): PriorityItem[] {
   const e = useEntities(
     useShallow((s) => ({ tasks: s.tasks, goals: s.goals, events: s.events, notifications: s.notifications })),
   )

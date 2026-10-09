@@ -6,7 +6,7 @@ export interface RankEntry {
   why?: string
 }
 
-export interface PriorityState {
+interface PriorityState {
   /** Wendy's re-ranking (from /api/llm), for the candidate set it was made for. */
   wendy: RankEntry[] | null
   /** Ranking Wendy pushed with priorities.set; wins until it expires. */

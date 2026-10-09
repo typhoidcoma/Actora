@@ -14,7 +14,7 @@ const DEBOUNCE_MS = 2000
 const MIN_INTERVAL_MS = 2 * 60_000
 const MAX_WHY = 60
 
-export const RANK_MARKER = 'RANK THESE CANDIDATES'
+const RANK_MARKER = 'RANK THESE CANDIDATES'
 
 export function parseRanking(text: string, known: Set<string>): RankEntry[] {
   const cleaned = text
@@ -49,7 +49,7 @@ Weigh real urgency (time, overdue, waiting on them) over busywork, and favour a 
 Return JSON only: {"top":[{"key":"<candidate key>","why":"<why now, at most ${MAX_WHY} characters, your voice, no emoji>"}]}
 Use only the given keys.`
 
-export function buildRankRequest(candidates: PriorityItem[], now = new Date()): LlmRequest {
+function buildRankRequest(candidates: PriorityItem[], now = new Date()): LlmRequest {
   const sky = useSky.getState()
   const lines = candidates.map((c) => `- key: ${c.key} | ${c.kind} | "${c.title}" | ${c.meta} | ${c.why}`)
   return {

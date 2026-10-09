@@ -3,7 +3,7 @@ import { useOptionsStore } from '../stores/options'
 import { panelOpen, ui, useUi } from '../stores/ui'
 
 /** Left alone this long with something open, the app eases back to the home view. */
-export const IDLE_HOME_MS = 2 * 60_000
+const IDLE_HOME_MS = 2 * 60_000
 
 const away = () => {
   const u = useUi.getState()

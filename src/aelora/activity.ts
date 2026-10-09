@@ -17,7 +17,7 @@ export type StepIcon =
   | 'screen'
   | 'tool'
 
-export interface ToolWords {
+interface ToolWords {
   doing: string
   done: string
   icon: StepIcon

@@ -11,7 +11,7 @@ export interface Selected {
 
 export type ThemeMode = 'auto' | 'day' | 'dusk'
 
-export interface UiState {
+interface UiState {
   /** Full list panel for a domain (Tasks, Calendar, Goals, Inbox). */
   focus: TileId | null
   chatOpen: boolean
@@ -33,7 +33,7 @@ export interface UiState {
   keyboardOpen: boolean
 }
 
-export const ITEM_TILE: Record<ItemKind, TileId> = {
+const ITEM_TILE: Record<ItemKind, TileId> = {
   task: 'tasks',
   goal: 'goals',
   event: 'calendar',
@@ -115,7 +115,7 @@ export function openAppsFor(state: Pick<UiState, 'focus' | 'chatOpen' | 'vault'>
 }
 
 /** Where the user is, as an options context key: home, tile:<id>, item:<kind>:<id>, chat. */
-export type ContextKey = string
+type ContextKey = string
 
 export function contextKeyOf(
   state: Pick<UiState, 'focus' | 'chatOpen' | 'selected' | 'reader' | 'finds' | 'find' | 'vault'>,

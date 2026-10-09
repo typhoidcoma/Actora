@@ -47,7 +47,7 @@ export async function llm(body: LlmRequest, signal?: AbortSignal): Promise<strin
 }
 
 let publicConfig: Promise<PublicConfig> | null = null
-export interface PublicConfig {
+interface PublicConfig {
   supabase: { url: string; anonKey: string } | null
   push: { publicKey: string } | null
 }

@@ -42,7 +42,6 @@
 
   --font-sans: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -525,8 +524,9 @@ button {
   font-weight: 600;
 }
 .md code {
-  font-family: var(--font-mono);
-  font-size: 0.85em;
+  /* Satoshi everywhere, code included: set apart by its tint, not a second typeface. */
+  font-family: var(--font-sans);
+  font-size: 0.92em;
   padding: 0.1em 0.35em;
   border-radius: 6px;
   background: color-mix(in srgb, var(--t-text) 8%, transparent);
@@ -697,4 +697,51 @@ button {
 .selectable a,
 .selectable button {
   cursor: pointer;
+}
+
+/* Wendy thinking (activity line): a mini orb that breathes, with a halo pulsing out. */
+.think-pulse {
+  position: relative;
+  display: inline-block;
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle at 34% 30%, rgb(255 255 255 / 0.75), transparent 42%),
+    radial-gradient(circle at 50% 55%, var(--mood-1, var(--role-accent)), var(--mood-2, var(--role-wendy)) 92%);
+  box-shadow: 0 0 10px -1px var(--mood-1, var(--role-accent));
+  animation: think-breathe 1.5s ease-in-out infinite;
+}
+.think-pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(closest-side, var(--mood-1, var(--role-accent)), transparent);
+  animation: think-halo 1.5s ease-out infinite;
+}
+@keyframes think-breathe {
+  0%,
+  100% {
+    transform: scale(0.82);
+    filter: brightness(0.95);
+  }
+  50% {
+    transform: scale(1.06);
+    filter: brightness(1.15);
+  }
+}
+@keyframes think-halo {
+  0% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .think-pulse,
+  .think-pulse::after {
+    animation: none;
+  }
 }

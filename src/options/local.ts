@@ -62,7 +62,7 @@ function cardOptions(c: Card): Option[] {
 
 const MAX = 4
 
-export const localDate = (d: Date) =>
+const localDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 const tomorrow = (now: number) => localDate(new Date(now + 86_400_000))

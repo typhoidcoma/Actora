@@ -94,7 +94,7 @@ export const AVAILABLE_ACTIONS = [
 ] as const
 
 /** Reaction states the orb can play (AVATAR-INTEGRATION.md DEFAULT_STATES). */
-export const ANIMATIONS = [
+const ANIMATIONS = [
   'idle',
   'happy',
   'laughing',
@@ -158,7 +158,7 @@ export function sendClientState(bus: FrameBus): void {
   })
 }
 
-export function refreshCalendar(bus: FrameBus) {
+function refreshCalendar(bus: FrameBus) {
   const from = new Date()
   from.setHours(0, 0, 0, 0)
   const to = new Date(from.getTime() + 14 * 86_400_000)

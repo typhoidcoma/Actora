@@ -19,7 +19,7 @@ const todayStr = () => {
 
 const isOpen = (t: Task) => t.status !== 'done' && t.status !== 'skipped'
 
-export interface TaskSummary {
+interface TaskSummary {
   open: Task[]
   done: Task[]
   todayTotal: number

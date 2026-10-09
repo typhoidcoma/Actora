@@ -5,7 +5,7 @@
  *   1013 server busy     → retry slowly (150-connection cap)
  *   anything else        → retry with exponential backoff + jitter
  */
-export type CloseAction = 'fatal' | 'reauth' | 'retry' | 'retry-slow'
+type CloseAction = 'fatal' | 'reauth' | 'retry' | 'retry-slow'
 
 export function closeAction(code: number): CloseAction {
   switch (code) {

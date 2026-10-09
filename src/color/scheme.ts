@@ -21,7 +21,7 @@ import { clamp, contrast, deltaE, ensureContrast, hexToOklch, hueDiff, type Oklc
 
 export const ROLES = ['accent', 'urgent', 'mid', 'calm', 'task', 'event', 'reminder', 'goal', 'wendy', 'finds'] as const
 export type Role = (typeof ROLES)[number]
-export type Theme = 'day' | 'dusk'
+type Theme = 'day' | 'dusk'
 export type Harmony = 'analogous' | 'complementary' | 'triadic' | 'split'
 const HARMONIES: Harmony[] = ['analogous', 'complementary', 'triadic', 'split']
 
@@ -37,7 +37,7 @@ export interface SchemeInput extends Partial<Record<Role, string>> {
   orb?: string[]
 }
 
-export interface Surface {
+interface Surface {
   bg: string
   bg2: string
   text: string
@@ -69,7 +69,7 @@ export interface Scheme {
   notes: string[]
 }
 
-export const BRAND_INPUT: Required<Omit<SchemeInput, 'seed' | 'harmony' | 'ambient' | 'orb'>> = {
+const BRAND_INPUT: Required<Omit<SchemeInput, 'seed' | 'harmony' | 'ambient' | 'orb'>> = {
   accent: BRAND.turquoise,
   urgent: BRAND.crimson,
   mid: BRAND.amber,

@@ -9,7 +9,11 @@ import type { Step } from '../stores/agent'
 let stepSeq = 0
 
 /** A tool call began; or, if it's already showing (tool.progress and mindmap both report it), fill in its detail. */
+/** Tools that are Wendy's own housekeeping (avatar beats, reading app state), not work for the user. */
+const BACKSTAGE = new Set(['perform_reaction', 'get_app_state'])
+
 function startStep(steps: Step[], name: string, detail: string | null): Step[] {
+  if (BACKSTAGE.has(name)) return steps
   const open = steps.findLastIndex((x) => x.name === name && x.status === 'running')
   if (open >= 0) {
     if (!detail || steps[open].detail) return steps

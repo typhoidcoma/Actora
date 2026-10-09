@@ -29,8 +29,6 @@ function ctor(): RecognizerCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
 }
 
-export const speechSupported = () => ctor() !== null
-
 /** What to tell the user when listening ends without words (null: say nothing). */
 export function speechProblem(error: string | undefined): string | null {
   switch (error) {
@@ -55,7 +53,7 @@ export function speechProblem(error: string | undefined): string | null {
   }
 }
 
-export interface ListenHandlers {
+interface ListenHandlers {
   onInterim: (text: string) => void
   onFinal: (text: string) => void
   /** Always called once, after final/error/stop. `error` is set when nothing usable was heard. */

@@ -16,7 +16,7 @@ const HISTORY = 4
 
 type Part = 'morning' | 'afternoon' | 'evening' | 'night'
 
-export function partOfDay(d = new Date()): Part {
+function partOfDay(d = new Date()): Part {
   const h = d.getHours()
   return h >= 5 && h < 12 ? 'morning' : h >= 12 && h < 17 ? 'afternoon' : h >= 17 && h < 22 ? 'evening' : 'night'
 }

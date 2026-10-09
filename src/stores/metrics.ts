@@ -5,7 +5,7 @@ import { create } from 'zustand'
  * the orb's dock positions and the chat sheet, so every animation can be
  * expressed as transforms between known boxes. Mirrored into CSS variables.
  */
-export interface Metrics {
+interface Metrics {
   vw: number
   vh: number
   /** Shorter grid side; drives orb and type scale. */
@@ -56,7 +56,7 @@ function safeInsets() {
   return out
 }
 
-export function measure(): Metrics {
+function measure(): Metrics {
   const vw = window.innerWidth
   const vh = window.innerHeight
   const safe = safeInsets()

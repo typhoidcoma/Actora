@@ -64,7 +64,7 @@ function partOfDay(d: Date): string {
 }
 
 /** What is on screen, in a few compact lines, with real item titles. */
-export function screenSummary(key: string, s: Snapshot): string {
+function screenSummary(key: string, s: Snapshot): string {
   const now = new Date(s.now)
   const sky = useSky.getState()
   const lines = [
@@ -231,7 +231,7 @@ Rules:
 - Follow the conversation: if they're mid-topic, offer the natural next steps in that topic rather than jumping back to the cards.
 - Don't repeat what the user just tapped or what they keep ignoring (listed below); find a fresher, more specific idea instead.`
 
-export function buildRequest(key: string, s: Snapshot, existing: Option[]): LlmRequest {
+function buildRequest(key: string, s: Snapshot, existing: Option[]): LlmRequest {
   const summary = screenSummary(key, s)
   const turns = s.agent.messages
     .filter((m) => m.role !== 'error')
@@ -341,7 +341,7 @@ export function feasible(o: Option): boolean {
   return !CANT.test(`${o.label} ${o.say ?? ''}`)
 }
 
-export function snapshot(): Snapshot {
+function snapshot(): Snapshot {
   const now = Date.now()
   const entities = useEntities.getState()
   const p = usePriorityStore.getState()

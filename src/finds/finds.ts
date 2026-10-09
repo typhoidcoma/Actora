@@ -20,7 +20,7 @@ export interface Find {
   tag: string
 }
 
-export type FindsStatus = 'idle' | 'hunting' | 'ready' | 'error' | 'unavailable'
+type FindsStatus = 'idle' | 'hunting' | 'ready' | 'error' | 'unavailable'
 
 interface FindsState {
   items: Find[]
@@ -137,7 +137,7 @@ const isHttp = (u: unknown): u is string => typeof u === 'string' && /^https?:\/
  * title and an http(s) url; caps every field (the server passes args through
  * unchecked); drops duplicates; at most six.
  */
-export function cleanFinds(list: unknown[]): Find[] {
+function cleanFinds(list: unknown[]): Find[] {
   const out: Find[] = []
   const seen = new Set<string>()
   for (const raw of list) {

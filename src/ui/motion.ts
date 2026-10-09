@@ -14,9 +14,3 @@ export const jelly = {
 
 /** Instant press feedback. */
 export const press = { scale: 0.965, transition: { type: 'spring', stiffness: 600, damping: 30 } } as const
-
-export const fadeUp = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: 4 },
-} as const

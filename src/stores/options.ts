@@ -6,7 +6,7 @@ interface Entry {
   loading: boolean
 }
 
-export interface OptionsState {
+interface OptionsState {
   /** Wendy-written options per context key. */
   byKey: Record<string, Entry>
   /** Options Wendy pushed via the options.set ui_action; win until the context changes. */
