@@ -1,4 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { secureUrl } from '../../secureUrl'
 import { useEffect, useState } from 'react'
 import { hunt, unseenCount, useFinds } from '../../finds/finds'
 import { ui } from '../../stores/ui'
@@ -47,7 +48,7 @@ export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean 
           {f?.image ? (
             <motion.img
               key={f.id}
-              src={f.image}
+              src={secureUrl(f.image)}
               alt=""
               referrerPolicy="no-referrer"
               onError={(e) => (e.currentTarget.style.visibility = 'hidden')}

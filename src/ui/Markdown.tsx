@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { secureUrl } from '../secureUrl'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -7,9 +8,10 @@ import remarkGfm from 'remark-gfm'
 // react-markdown never renders raw HTML, so no sanitiser is needed.
 const components: Components = {
   a: ({ node: _node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,
-  img: ({ node: _node, alt, ...props }) => (
+  img: ({ node: _node, alt, src, ...props }) => (
     <img
       {...props}
+      src={typeof src === 'string' ? secureUrl(src) : src}
       alt={alt ?? ''}
       loading="lazy"
       referrerPolicy="no-referrer"

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { secureUrl } from '../secureUrl'
 import type { ServerFrame } from '../aelora/protocol'
 import type { FrameBus } from '../aelora/socket'
 import { useAgent } from '../stores/agent'
@@ -145,7 +146,7 @@ function cleanFinds(list: unknown[]): Find[] {
     if (!raw || typeof raw !== 'object') continue
     const r = raw as Record<string, unknown>
     const title = String(r.title ?? '').trim()
-    const url = isHttp(r.url) ? String(r.url).trim() : ''
+    const url = isHttp(r.url) ? secureUrl(String(r.url)) : ''
     if (!title || !url || seen.has(url)) continue
     seen.add(url)
     out.push({
@@ -158,7 +159,7 @@ function cleanFinds(list: unknown[]): Find[] {
         .trim()
         .slice(0, 90),
       url,
-      image: isHttp(r.image) ? String(r.image).trim() : null,
+      image: isHttp(r.image) ? secureUrl(String(r.image)) : null,
       source: String(r.source || new URL(url).hostname.replace(/^www\./, '')).slice(0, 40),
       tag: String(r.tag || 'Find').slice(0, 16),
     })
@@ -190,7 +191,7 @@ export function parseFinds(text: string): Find[] {
   // Fallback: Markdown links, paired with the nearest preceding image.
   let lastImage: string | null = null
   for (const m of text.matchAll(/!\[[^\]]*]\((https?:[^)\s]+)\)|\[([^\]]+)]\((https?:[^)\s]+)\)/g)) {
-    if (m[1]) lastImage = m[1]
+    if (m[1]) lastImage = secureUrl(m[1])
     else if (m[2] && m[3] && !seen.has(m[3])) {
       seen.add(m[3])
       out.push({

@@ -1,4 +1,5 @@
 import { motion } from 'motion/react'
+import { secureUrl } from '../../secureUrl'
 import { useEffect, useRef } from 'react'
 import { markSeen, unseenCount, useFinds, type Find } from '../../finds/finds'
 import { ui, useUi } from '../../stores/ui'
@@ -90,7 +91,7 @@ function FindItem({
       <button onClick={() => ui.selectFind(f.id)} className="block w-full text-left">
         {f.image && (
           <img
-            src={f.image}
+            src={secureUrl(f.image)}
             alt=""
             loading="lazy"
             referrerPolicy="no-referrer"
