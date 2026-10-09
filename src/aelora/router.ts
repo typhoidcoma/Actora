@@ -49,6 +49,7 @@ import { describeScheme, type SchemeInput } from '../color/scheme'
 import { resetColors, setColors, useScheme } from '../stores/scheme'
 import type { FrameBus } from './socket'
 import { actionArgs, AVAILABLE_ACTIONS, strayAction } from './actions'
+import { eventVerdict } from './owner'
 
 /**
  * ui_action names we accept; advertised in client_state so Wendy can drive the
@@ -415,6 +416,23 @@ function threadsPurged(): void {
   useAgent.setState({ conversationId: null, messages: [], history: { hasMore: false, cursor: null } })
 }
 
+/** A data change we couldn't prove is ours (admin fan-out): reload our own copy, debounced. */
+const refetchTimers = new Map<string, ReturnType<typeof setTimeout>>()
+function refetchOwn(bus: FrameBus, event: string): void {
+  clearTimeout(refetchTimers.get(event))
+  refetchTimers.set(
+    event,
+    setTimeout(() => {
+      if (event === 'task') void request(bus, { type: 'task.list' }, 'task.list')
+      else if (event === 'goal') void request(bus, { type: 'goal.list' }, 'goal.list')
+      else if (event === 'notification') void request(bus, { type: 'notification.list' }, 'notification.list')
+      else if (event === 'calendar') void refreshCalendar(bus)
+      else if (event === 'vault' && useVault.getState().status === 'ready')
+        void import('./client').then((m) => m.loadVault())
+    }, 400),
+  )
+}
+
 function routeEvent(bus: FrameBus, event: string, data: Record<string, unknown> & { type?: string }): void {
   const sub = data.type
   switch (event) {
@@ -470,9 +488,24 @@ function routeEvent(bus: FrameBus, event: string, data: Record<string, unknown> 
 }
 
 export function routeFrame(f: ServerFrame, bus: FrameBus): void {
+  // Only this user's events, before anything else sees them (owner.ts: admin
+  // sockets also get every other user's events from the server).
+  if (isEventFrame(f)) {
+    const a = useAgent.getState()
+    const verdict = eventVerdict(f.event, f as { userId?: unknown }, f.data, a.userId, a.isAdmin)
+    if (verdict === 'drop') return
+    if (verdict === 'refetch') return refetchOwn(bus, f.event)
+  }
   // Wendy sometimes calls a ui_action by name as if it were its own tool
   // (colors_set{…}); the server refuses it as unknown, so run it here instead.
-  if (f.type === 'tool.progress' && f.phase === 'called') {
+  // Only for a turn of ours: the user's own, or the finds hunt.
+  const turn = typeof f.conversationId === 'string' ? f.conversationId : null
+  if (
+    f.type === 'tool.progress' &&
+    f.phase === 'called' &&
+    turn &&
+    (turn === useAgent.getState().turnId || isFindsThread(turn))
+  ) {
     const action = strayAction(f.name)
     const args = action ? actionArgs(f.argsSummary) : null
     if (action && args) runUiAction(action, args)
@@ -493,6 +526,7 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
         userId,
         botName: typeof f.botName === 'string' ? f.botName : 'Wendy',
         email: typeof f.email === 'string' ? f.email : null,
+        isAdmin: f.isAdmin === true,
         ...(f.mood && typeof f.mood === 'object' ? { mood: f.mood as MoodState } : {}),
       })
       bootstrap(bus)

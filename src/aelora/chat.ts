@@ -187,6 +187,8 @@ export function handleChatFrame(f: ServerFrame): boolean {
     case 'conversation.created':
       // The finds thread's own creation is claimed before this (finds.ts).
       if (!cid) return true
+      // Only a thread we asked for (a message waiting for one), or our first.
+      if (!pendingMessage && s.conversationId) return true
       set({ conversationId: cid })
       rememberMain(cid)
       if (pendingMessage && pendingBus) {

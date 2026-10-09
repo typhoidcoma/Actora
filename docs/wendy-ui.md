@@ -15,6 +15,11 @@ the reference copy; keep the two in sync.
 - `screen.priorities[].key` carries real ids (`task:<uuid>`, `event:<uuid>`…), `screen.visible` lists the open
   list's rows with their ids, and `screen.box4.items` the finds with theirs. Wendy only knows ids from that snapshot,
   or from a lookup in the same turn. Actions that name an item that doesn't exist here are ignored.
+- Actora acts only on its own user's events. It refuses a `hello` for a different user than the one signed in,
+  and drops any event whose `userId` (or entity `user_id`) is someone else's. On an admin socket, which also gets
+  every user's events from the server, it drops unlabelled screen events and refetches its own lists for
+  unlabelled data events. Labelling the event envelope with `userId`, or not fanning out to `client: "actora"`
+  sockets, would make this exact.
 - The fun finds thread is created with `conversation.new`, its id is kept, and it's named with
   `conversation.rename` (the server can't look a conversation up by title).
 - The server keeps one UI state per user, so with Active Mirror open at the same time, whichever app updated last

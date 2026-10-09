@@ -219,6 +219,11 @@ export class AeloraSocket implements FrameBus {
     }
   }
 
+  /** Stop for good, showing the fatal state (e.g. the server says we're someone else). */
+  giveUp(reason: string): void {
+    this.fail(reason)
+  }
+
   private fail(reason: string): void {
     console.warn(`[aelora] giving up: ${reason}`)
     this.wanted = false

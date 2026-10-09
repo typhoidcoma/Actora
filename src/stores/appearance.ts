@@ -38,6 +38,23 @@ export function restoreLocalTheme(): void {
   })
 }
 
+/** Whose look this browser's local theme and colours are. */
+const OWNER_KEY = 'actora.look.owner.v1'
+const readOwner = () => {
+  try {
+    return localStorage.getItem(OWNER_KEY)
+  } catch {
+    return null
+  }
+}
+const writeOwner = (id: string) => {
+  try {
+    localStorage.setItem(OWNER_KEY, id)
+  } catch {
+    /* private mode */
+  }
+}
+
 /** Pull the user's saved look once, then push every change (debounced). */
 export function startAppearanceSync(sb: SupabaseClient): () => void {
   let applying = true
@@ -67,6 +84,16 @@ export function startAppearanceSync(sb: SupabaseClient): () => void {
     .getUser()
     .then(({ data }) => {
       if (stopped) return
+      // Someone else signed in on this browser: drop the last person's look first,
+      // so a user with nothing saved gets the defaults, not theirs.
+      const uid = data.user?.id
+      if (uid && readOwner() !== uid) {
+        if (readOwner()) {
+          useUi.setState({ theme: 'auto' })
+          if (useScheme.getState().source === 'wendy') resetColors()
+        }
+        writeOwner(uid)
+      }
       const saved = data.user?.user_metadata?.[META_KEY] as Saved | undefined
       if (!saved) return
       if (saved.theme && MODES.has(saved.theme)) useUi.setState({ theme: saved.theme })

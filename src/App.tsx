@@ -88,21 +88,22 @@ function AuthedApp() {
 
   if (auth.status === 'loading') return <Loading />
   if (auth.status === 'signed-out') return <SignIn error={auth.error} />
-  return <Connected key={auth.userId} sb={auth.sb} />
+  return <Connected key={auth.userId} sb={auth.sb} userId={auth.userId} />
 }
 
-function Connected({ sb }: { sb: SupabaseClient }) {
+function Connected({ sb, userId }: { sb: SupabaseClient; userId: string }) {
   // Her day/dusk and colour changes follow the account to every device.
   useEffect(() => startAppearanceSync(sb), [sb])
   useEffect(
     () =>
       startAelora({
+        userId,
         getToken: async () => (await sb.auth.getSession()).data.session?.access_token ?? null,
         onReauth: async () => {
           await sb.auth.refreshSession()
         },
       }),
-    [sb],
+    [sb, userId],
   )
 
   return <Stage onSignOut={() => void signOut()} />

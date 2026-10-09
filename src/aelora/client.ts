@@ -17,6 +17,8 @@ let socket: AeloraSocket | null = null
 interface StartOptions {
   getToken: () => Promise<string | null>
   onReauth?: () => Promise<void>
+  /** The signed-in Supabase user; a socket that says it is anyone else is refused. */
+  userId?: string
 }
 
 /**
@@ -53,7 +55,12 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
   })
   socket = sock
 
-  const offFrames = sock.subscribe((f) => routeFrame(f, sock))
+  const offFrames = sock.subscribe((f) => {
+    if (f.type === 'hello' && opts.userId && f.userId !== opts.userId) {
+      return sock.giveUp(`signed in as ${opts.userId} but the server says ${String(f.userId)}`)
+    }
+    routeFrame(f, sock)
+  })
   const offStatus = sock.onStatus((status) => {
     const prev = useAgent.getState()
     useAgent.setState({

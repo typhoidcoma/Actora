@@ -54,6 +54,8 @@ export interface AgentState {
   email: string | null
   /** Supabase user id from hello; scopes per-user caches on shared devices. */
   userId: string | null
+  /** Admin accounts also receive other users' events from the server (owner.ts filters them). */
+  isAdmin: boolean
   /** First name from the sign-in profile, for greetings. */
   userName: string | null
   mood: MoodState | null
@@ -92,6 +94,7 @@ export const useAgent = create<AgentState>(() => ({
   botName: 'Wendy',
   email: null,
   userId: null,
+  isAdmin: false,
   userName: null,
   mood: null,
   emotion: {},
