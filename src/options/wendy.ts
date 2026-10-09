@@ -157,7 +157,7 @@ export function screenSummary(key: string, s: Snapshot): string {
   } else if (key === 'vault') {
     const mem = Object.values(useVault.getState().entries).slice(0, 12)
     lines.push(
-      `Screen: the Memories panel, everything Wendy remembers about the user (${mem.length} shown): ${mem.map((m) => `"${m.content.slice(0, 80)}"`).join('; ') || 'nothing yet'}.`,
+      `Screen: the Vault, everything Wendy remembers about the user (${mem.length} shown): ${mem.map((m) => `"${m.content.slice(0, 80)}"`).join('; ') || 'nothing yet'}.`,
       'Options should help curate it: correct or update something, forget something outdated, or add something new about themselves.',
     )
   } else if (key === 'finds' || key.startsWith('find:')) {

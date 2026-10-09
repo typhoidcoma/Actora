@@ -123,7 +123,7 @@ export class MockWebSocket implements WebSocketLike {
   onerror: WebSocketLike['onerror'] = null
 
   private static db = seed()
-  /** What Wendy "remembers" in the mock (Memories panel). */
+  /** What Wendy "remembers" in the mock (the Vault). */
   private static vault = [
     ['identity', 'Lives in Seattle and works as a front-end engineer'],
     ['preference', 'Loves jazz, especially live sets'],

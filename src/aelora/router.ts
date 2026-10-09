@@ -57,7 +57,7 @@ import type { FrameBus } from './socket'
  *   reader.open · reader.close                             her full answer, in the reader
  *   finds.open · finds.refresh                             box 4: open the fun finds / hunt for more
  *   finds.set {items: [{title, blurb, why, url, image, source, tag}]}   the fun finds cards
- *   vault.open · vault.close                               Memories: what she knows about the user
+ *   vault.open · vault.close                               the Vault: what she knows about the user
  *   options.set {options: [{label, say}]}                  replace the tap options here
  *   chat.open · chat.close · reply.show · reply.hide
  *   theme.set {mode: auto|day|dusk} · voice.listen · push.offer

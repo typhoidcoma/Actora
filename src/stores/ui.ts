@@ -26,7 +26,7 @@ export interface UiState {
   finds: boolean
   /** The find being looked at inside Discover (its options are on the rail). */
   find: string | null
-  /** Memories: what Wendy knows about the user (Aelora's vault). Opened from the menu. */
+  /** The Vault: what Wendy knows about the user (Aelora's vault). Opened from the menu. */
   vault: boolean
   theme: ThemeMode
   /** Hidden text fallback (behind the mic chip). */

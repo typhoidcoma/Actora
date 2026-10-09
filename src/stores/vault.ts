@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 /**
  * What Wendy remembers about the user (Aelora's vault: the unified memory
- * facts + vault store). Loaded when the Memories panel opens; kept live by
+ * facts + vault store). Loaded when the Vault opens; kept live by
  * `vault:*` broadcasts, including the ones her own remember/forget tools send.
  */
 export interface VaultEntry {

@@ -173,9 +173,9 @@ export async function markNotificationRead(id: string): Promise<void> {
   if (!reply) entities.upsertNotification(before)
 }
 
-// ── Memories (Aelora's vault) ──────────────────────────────────────────────
+// ── The Vault (what Wendy remembers) ──────────────────────────────────────────────
 
-/** Load everything Wendy remembers (refreshed each time the Memories panel opens). */
+/** Load everything Wendy remembers (refreshed each time the Vault opens). */
 export async function loadVault(): Promise<void> {
   vault.loading()
   const r = await ask<{ type: string; entries?: VaultEntry[] }>({ type: 'vault.list' }, 'vault.list')

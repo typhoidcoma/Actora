@@ -13,7 +13,7 @@ const ADD_AS = ['preference', 'routine', 'relationship', 'identity', 'value', 'i
 const label = (id: string) => CATEGORIES.find((c) => c.id === id)?.label ?? 'Context'
 
 /**
- * Memories: everything Wendy remembers about the user, grouped by kind. The
+ * The Vault: everything Wendy remembers about the user, grouped by kind. The
  * user can add one directly or forget one (two taps, so nothing goes by
  * accident); Wendy's own remember/forget tools update it live.
  */
@@ -34,7 +34,7 @@ export function VaultPanel() {
         : 'Nothing remembered yet'
 
   return (
-    <Panel layoutId="vault" accent={ROLE.wendy} kicker={kicker} title={`What ${botName} knows`} onClose={ui.closeVault}>
+    <Panel layoutId="vault" accent={ROLE.wendy} kicker={kicker} title="Vault" onClose={ui.closeVault}>
       <AddMemory />
       {status === 'error' && !count && (
         <p className="mt-6 text-[15px] text-muted">Couldn't load her memories just now. Close and open this again.</p>
