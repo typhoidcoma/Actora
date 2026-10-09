@@ -34,12 +34,18 @@ export const CATEGORIES: Array<{ id: string; label: string }> = [
 interface VaultState {
   entries: Record<string, VaultEntry>
   status: 'idle' | 'loading' | 'ready' | 'error'
+  /** The panel's search and category chip (here so Wendy can set them too). */
+  query: string
+  category: string | null
 }
 
-export const useVault = create<VaultState>(() => ({ entries: {}, status: 'idle' }))
+export const useVault = create<VaultState>(() => ({ entries: {}, status: 'idle', query: '', category: null }))
 
 export const vault = {
-  reset: () => useVault.setState({ entries: {}, status: 'idle' }),
+  reset: () => useVault.setState({ entries: {}, status: 'idle', query: '', category: null }),
+  search: (query: string) => useVault.setState({ query }),
+  showCategory: (category: string | null) => useVault.setState({ category }),
+  clearFilter: () => useVault.setState({ query: '', category: null }),
   loading: () => useVault.setState((s) => ({ status: s.status === 'ready' ? 'ready' : 'loading' })),
   failed: () => useVault.setState((s) => ({ status: s.status === 'ready' ? 'ready' : 'error' })),
   set: (list: VaultEntry[]) =>

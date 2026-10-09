@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { Notification, Task } from '../aelora/protocol'
 import { runUiAction } from '../aelora/router'
 import { isStale, mergeOptions, useOptionsStore, type OptionHistory } from '../stores/options'
+import { useEntities } from '../stores/entities'
 import { useUi } from '../stores/ui'
 import { localOptions, type Snapshot } from './local'
 import { feasible, parseWendyOptions } from './wendy'
@@ -162,6 +163,10 @@ describe('Wendy-driven UI actions', () => {
   beforeEach(() => {
     useUi.setState({ focus: null, chatOpen: false, selected: null, theme: 'auto', keyboardOpen: false })
     useOptionsStore.setState({ pushed: null })
+    useEntities.setState({
+      tasks: { t1: task('t1') },
+      events: { e1: { id: 'e1', title: 'E' } as never },
+    })
   })
 
   it('item.focus opens the item in its own panel', () => {

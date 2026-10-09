@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { vault } from './vault'
 
 export const TILE_IDS = ['tasks', 'goals', 'calendar', 'inbox'] as const
 export type TileId = (typeof TILE_IDS)[number]
@@ -89,7 +90,11 @@ export const ui = {
   closeReader: () => useUi.setState({ reader: false }),
   openFinds: () => useUi.setState({ ...CLOSED, finds: true }),
   closeFinds: () => useUi.setState({ finds: false, find: null }),
-  openVault: () => useUi.setState({ ...CLOSED, vault: true }),
+  /** Each visit starts unfiltered (Wendy's vault.search filters after opening). */
+  openVault: () => {
+    if (!useUi.getState().vault) vault.clearFilter()
+    useUi.setState({ ...CLOSED, vault: true })
+  },
   closeVault: () => useUi.setState({ vault: false }),
   /** Toggle which find is selected in Discover. */
   selectFind: (id: string | null) => useUi.setState((s) => ({ find: id && s.find !== id ? id : null })),

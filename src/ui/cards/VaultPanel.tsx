@@ -10,6 +10,7 @@ import {
   grouped,
   searchTerms,
   useVault,
+  vault,
   type VaultEntry,
 } from '../../stores/vault'
 import { ROLE } from '../brand'
@@ -26,10 +27,10 @@ const label = (id: string) => CATEGORIES.find((c) => c.id === id)?.label ?? 'Con
  * accident); Wendy's own remember/forget tools update it live.
  */
 export function VaultPanel() {
-  const { entries, status } = useVault()
+  const { entries, status, query, category } = useVault()
   const botName = useAgent((s) => s.botName)
-  const [query, setQuery] = useState('')
-  const [category, setCategory] = useState<string | null>(null)
+  const setQuery = vault.search
+  const setCategory = vault.showCategory
   const [adding, setAdding] = useState(false)
   const shown = useMemo(() => filterEntries(entries, query, category), [entries, query, category])
   const groups = useMemo(() => grouped(shown), [shown])
@@ -42,7 +43,11 @@ export function VaultPanel() {
   // Fresh every time it opens: she may have learned things since.
   useEffect(() => void loadVault(), [])
   // A category that just emptied (its last memory forgotten) drops back to All.
-  if (category && !cats.some((c) => c.id === category)) setCategory(null)
+  // (Only once loaded, so a category Wendy picked survives the first fetch.)
+  const emptied = status === 'ready' && !!category && !cats.some((c) => c.id === category)
+  useEffect(() => {
+    if (emptied) setCategory(null)
+  }, [emptied, setCategory])
 
   const kicker =
     status === 'loading' && !count

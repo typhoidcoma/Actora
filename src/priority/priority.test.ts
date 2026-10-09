@@ -144,10 +144,34 @@ describe('Wendy actions', () => {
   })
 
   it('card.open opens the item panel (no list); reader.open shows the answer', () => {
+    useEntities.setState({ events: { e1: event('e1', 30) } })
     runUiAction('card.open', { kind: 'event', id: 'e1' })
     expect(useUi.getState()).toMatchObject({ selected: { kind: 'event', id: 'e1' }, focus: null })
     runUiAction('reader.open', {})
     expect(useUi.getState()).toMatchObject({ reader: true, selected: null })
+  })
+
+  it('opens only items that exist; list.open can highlight one; home.show closes all', () => {
+    useEntities.setState({ tasks: { a: { id: 'a', title: 'A', status: 'todo' } as never } })
+    runUiAction('card.open', { kind: 'task', id: 'gone' })
+    expect(useUi.getState().selected).toBeNull()
+    runUiAction('list.open', { tile: 'nope' })
+    expect(useUi.getState().focus).toBeNull()
+    runUiAction('list.open', { tile: 'tasks', kind: 'task', id: 'a' })
+    expect(useUi.getState()).toMatchObject({ focus: 'tasks', selected: { kind: 'task', id: 'a' } })
+    runUiAction('card.close', {})
+    expect(useUi.getState()).toMatchObject({ focus: 'tasks', selected: null })
+    runUiAction('home.show', {})
+    expect(useUi.getState().focus).toBeNull()
+  })
+
+  it('vault.search opens the Vault filtered, keeping only known categories', async () => {
+    const { useVault } = await import('../stores/vault')
+    runUiAction('vault.search', { query: ' coffee ', category: 'preference' })
+    expect(useUi.getState().vault).toBe(true)
+    expect(useVault.getState()).toMatchObject({ query: 'coffee', category: 'preference' })
+    runUiAction('vault.search', { category: 'made-up' })
+    expect(useVault.getState()).toMatchObject({ query: '', category: null })
   })
 })
 

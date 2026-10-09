@@ -10,7 +10,7 @@ import {
 } from '../finds/finds'
 import { adoptGreetingUser } from './greeting'
 import { adoptMainUser, recallMain, rememberMain } from './mainThread'
-import { vault, type VaultEntry } from '../stores/vault'
+import { CATEGORIES, useVault, vault, type VaultEntry } from '../stores/vault'
 import { actOption, sayOption } from '../options/types'
 import { notifyInBackground, resubscribe } from '../push/push'
 import { agent, useAgent, type Reaction } from '../stores/agent'
@@ -22,6 +22,7 @@ import { usePush } from '../stores/push'
 import {
   APP_TO_TILE,
   contextKeyOf,
+  TILE_IDS,
   openAppsFor,
   ui,
   useUi,
@@ -52,12 +53,16 @@ import type { FrameBus } from './socket'
  * ui_action names we accept; advertised in client_state so Wendy can drive the
  * whole screen (WEBSOCKET.md → client-advertised catalogs). Playbook: docs/wendy-ui.md.
  *   priorities.set {items: [{kind, id, why?}]}             rank the three cards (30 min)
- *   card.open / item.focus {kind, id}                      open one item in its panel
- *   list.open / tile.focus {tile} · tile.close             full Tasks/Calendar/Goals/Inbox list
+ *   home.show                                              close everything: back to the cards
+ *   card.open / item.focus {kind, id} · card.close         one item in its own panel
+ *   list.open / tile.focus {tile, kind?, id?} · tile.close full Tasks/Calendar/Goals/Inbox list
+ *                                                          (with kind+id: that row highlighted)
  *   reader.open · reader.close                             her full answer, in the reader
- *   finds.open · finds.refresh                             box 4: open the fun finds / hunt for more
+ *   finds.open · finds.close · finds.refresh               box 4: the fun finds / hunt for more
+ *   finds.focus {id}                                       open the finds with one picked
  *   finds.set {items: [{title, blurb, why, url, image, source, tag}]}   the fun finds cards
  *   vault.open · vault.close                               the Vault: what she knows about the user
+ *   vault.search {query?, category?}                       open the Vault filtered
  *   options.set {options: [{label, say}]}                  replace the tap options here
  *   chat.open · chat.close · reply.show · reply.hide
  *   theme.set {mode: auto|day|dusk} · voice.listen · push.offer
@@ -68,8 +73,10 @@ import type { FrameBus } from './socket'
  * meaning and separation guardrails; what it changed comes back in screen.colors.notes.
  */
 export const AVAILABLE_ACTIONS = [
+  'home.show',
   'priorities.set',
   'card.open',
+  'card.close',
   'item.focus',
   'list.open',
   'tile.focus',
@@ -77,10 +84,13 @@ export const AVAILABLE_ACTIONS = [
   'reader.open',
   'reader.close',
   'finds.open',
+  'finds.close',
+  'finds.focus',
   'finds.refresh',
   'finds.set',
   'vault.open',
   'vault.close',
+  'vault.search',
   'chat.open',
   'chat.close',
   'options.set',
@@ -112,17 +122,18 @@ const ANIMATIONS = [
 function screen() {
   const u = useUi.getState()
   const e = useEntities.getState()
+  // The open list's rows, with ids so she can point at one (card.open / list.open).
   const visible =
     u.focus === 'tasks'
       ? Object.values(e.tasks)
           .filter((t) => t.status !== 'done')
-          .map((t) => t.title)
+          .map((t) => ({ kind: 'task', id: t.id, title: t.title }))
       : u.focus === 'goals'
-        ? Object.values(e.goals).map((g) => g.title)
+        ? Object.values(e.goals).map((g) => ({ kind: 'goal', id: g.id, title: g.title }))
         : u.focus === 'calendar'
-          ? Object.values(e.events).map((x) => x.title)
+          ? Object.values(e.events).map((x) => ({ kind: 'event', id: x.id, title: x.title }))
           : u.focus === 'inbox'
-            ? Object.values(e.notifications).map((n) => n.title)
+            ? Object.values(e.notifications).map((n) => ({ kind: 'notification', id: n.id, title: n.title }))
             : []
   const p = usePriorityStore.getState()
   const priorities = mergePriorities(
@@ -131,13 +142,24 @@ function screen() {
     p.pushed && p.pushed.until > Date.now() ? p.pushed.entries : null,
   ).map((i) => ({ key: i.key, title: i.title, why: i.why }))
   const f = useFinds.getState()
-  const box4 = { type: 'fun finds', count: f.items.length, unseen: unseenCount(f), titles: f.items.map((x) => x.title) }
+  const box4 = {
+    type: 'fun finds',
+    open: u.finds,
+    picked: u.find,
+    count: f.items.length,
+    unseen: unseenCount(f),
+    items: f.items.map((x) => ({ id: x.id, title: x.title })),
+  }
+  const v = useVault.getState()
   return {
     context: contextKeyOf(u),
     focus: u.focus,
     selected: u.selected,
+    chat: u.chatOpen,
     reader: u.reader,
-    memories: u.vault,
+    vault: u.vault ? { open: true, query: v.query, category: v.category } : { open: false },
+    theme: u.theme,
+    reminders: usePush.getState().status,
     priorities,
     box4,
     colors: describeScheme(useScheme.getState().scheme, useScheme.getState().source),
@@ -238,6 +260,7 @@ function runCommand(cmd: AgentCommand | undefined): void {
 
 const ITEM_KINDS = new Set<ItemKind>(['task', 'goal', 'event', 'notification'])
 const THEMES = new Set<ThemeMode>(['auto', 'day', 'dusk'])
+const TILES = new Set<TileId>(TILE_IDS)
 
 function itemExists(kind: ItemKind, id: string): boolean {
   const e = useEntities.getState()
@@ -271,16 +294,38 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
       else priorityStore.clearPushed()
       return
     }
+    case 'home.show':
+      return ui.closeAll()
     case 'list.open':
-    case 'tile.focus':
-      if (typeof args.tile === 'string') ui.focus(args.tile as TileId)
+    case 'tile.focus': {
+      // With an item, show it highlighted in its list; otherwise just the list.
+      if (
+        ITEM_KINDS.has(args.kind as ItemKind) &&
+        typeof args.id === 'string' &&
+        itemExists(args.kind as ItemKind, args.id)
+      ) {
+        return ui.reveal({ kind: args.kind as ItemKind, id: args.id })
+      }
+      if (TILES.has(args.tile as TileId)) ui.focus(args.tile as TileId)
       return
+    }
     case 'tile.close':
       return ui.focus(null)
+    case 'card.close':
+      if (useUi.getState().selected) ui.select(null)
+      return
     case 'reader.open':
       return ui.openReader()
     case 'finds.open':
       return ui.openFinds()
+    case 'finds.close':
+      return ui.closeFinds()
+    case 'finds.focus':
+      if (typeof args.id === 'string' && useFinds.getState().items.some((x) => x.id === args.id)) {
+        ui.openFinds()
+        ui.selectFind(args.id)
+      }
+      return
     case 'finds.refresh':
       return hunt()
     case 'reader.close':
@@ -291,7 +336,11 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
       return ui.closeChat()
     case 'card.open':
     case 'item.focus':
-      if (ITEM_KINDS.has(args.kind as ItemKind) && typeof args.id === 'string') {
+      if (
+        ITEM_KINDS.has(args.kind as ItemKind) &&
+        typeof args.id === 'string' &&
+        itemExists(args.kind as ItemKind, args.id)
+      ) {
         ui.open({ kind: args.kind as ItemKind, id: args.id })
       }
       return
@@ -333,6 +382,14 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
       return ui.openVault()
     case 'vault.close':
       return ui.closeVault()
+    case 'vault.search': {
+      const query = typeof args.query === 'string' ? args.query.trim().slice(0, 60) : ''
+      const category = CATEGORIES.some((c) => c.id === args.category) ? (args.category as string) : null
+      if (!useUi.getState().vault) ui.openVault()
+      vault.search(query)
+      vault.showCategory(category)
+      return
+    }
     case 'finds.set':
       setFinds(Array.isArray(args.items) ? args.items : [])
       return
