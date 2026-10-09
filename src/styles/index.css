@@ -635,3 +635,42 @@ button {
 .scroll-x::-webkit-scrollbar {
   display: none;
 }
+
+/* Wendy thinking: a ripple running round a ring of tiny circles (Activity.tsx). */
+.ripple-dot,
+.ripple-echo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ripple-dot 1.2s ease-in-out infinite both;
+}
+.ripple-echo {
+  animation-name: ripple-echo;
+}
+@keyframes ripple-dot {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.6);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.3);
+  }
+}
+@keyframes ripple-echo {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(1.1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ripple-dot,
+  .ripple-echo {
+    animation: none;
+  }
+}

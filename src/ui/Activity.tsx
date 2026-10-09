@@ -108,7 +108,7 @@ const PATHS: Record<StepIcon, string> = {
 
 function ActivityIcon({ icon, size }: { icon: StepIcon; size: number }) {
   const reduced = useReducedMotion()
-  if (icon === 'think') return <ThinkingArc size={size} reduced={!!reduced} />
+  if (icon === 'think') return <ThinkingRipple size={size} reduced={!!reduced} />
   const loop = reduced
     ? {}
     : icon === 'search'
@@ -142,32 +142,44 @@ function ActivityIcon({ icon, size }: { icon: StepIcon; size: number }) {
   )
 }
 
-/** Thinking: a thin arc sweeping round a faint ring, its length breathing as it goes. */
-function ThinkingArc({ size, reduced }: { size: number; reduced: boolean }) {
+/**
+ * Thinking: a ring of tiny circles with a ripple running round it (each one
+ * swells and brightens in turn), and a faint outer echo. Plain CSS keyframes:
+ * the AnimatePresence around the activity line disables mount animations for
+ * Motion children, and CSS is cheaper for a loop anyway.
+ */
+const DOTS = 8
+const RIPPLE_S = 1.2
+function ThinkingRipple({ size, reduced }: { size: number; reduced: boolean }) {
   return (
-    <motion.svg
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      className="shrink-0 text-accent"
-      aria-hidden
-      animate={reduced ? undefined : { rotate: 360 }}
-      transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }}
-    >
-      <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeOpacity={0.18} strokeWidth={2} />
-      <motion.circle
-        cx="12"
-        cy="12"
-        r="8.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        pathLength={1}
-        strokeDasharray="1 1"
-        animate={reduced ? { strokeDashoffset: 0.72 } : { strokeDashoffset: [0.85, 0.55, 0.85] }}
-        transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-      />
-    </motion.svg>
+    <svg viewBox="0 0 24 24" width={size} height={size} className="shrink-0 overflow-visible text-accent" aria-hidden>
+      {Array.from({ length: DOTS }, (_, i) => {
+        const a = (i / DOTS) * Math.PI * 2 - Math.PI / 2
+        const delay = `${(i * RIPPLE_S) / DOTS}s`
+        return (
+          <g key={i}>
+            {!reduced && (
+              <circle
+                className="ripple-echo"
+                cx={12 + Math.cos(a) * 10.5}
+                cy={12 + Math.sin(a) * 10.5}
+                r={0.9}
+                fill="currentColor"
+                style={{ animationDelay: `${(i * RIPPLE_S) / DOTS + 0.15}s` }}
+              />
+            )}
+            <circle
+              className={reduced ? undefined : 'ripple-dot'}
+              cx={12 + Math.cos(a) * 7}
+              cy={12 + Math.sin(a) * 7}
+              r={2.1}
+              fill="currentColor"
+              opacity={reduced ? 0.7 : undefined}
+              style={{ animationDelay: delay }}
+            />
+          </g>
+        )
+      })}
+    </svg>
   )
 }
