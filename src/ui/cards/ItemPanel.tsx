@@ -1,7 +1,9 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { deleteItem } from '../../aelora/client'
+import { agent } from '../../stores/agent'
 import { useShallow } from 'zustand/react/shallow'
 import { useEntities } from '../../stores/entities'
-import { ui, type Selected } from '../../stores/ui'
+import { ui, useUi, type Selected } from '../../stores/ui'
 import { ago, clockTime, dayLabel, dueLabel } from '../format'
 import { KIND } from './kinds'
 import { Panel } from './Panel'
@@ -23,10 +25,13 @@ export function ItemPanel({ item }: { item: Selected }) {
   )
 
   let title = 'Not found'
+  // Set when the item exists and can be deleted here (reminders can't be).
+  let removable: { kind: 'task' | 'goal' | 'event'; occurrence?: string } | null = null
   let body: ReactNode = <p className="text-muted">This item is gone — it may have been finished or removed.</p>
 
   if (item.kind === 'task' && e.tasks[item.id]) {
     const t = e.tasks[item.id]
+    removable = { kind: 'task' }
     const goal = t.goal_id ? e.goals[t.goal_id] : null
     title = t.title
     body = (
@@ -43,6 +48,7 @@ export function ItemPanel({ item }: { item: Selected }) {
     const ev = Object.values(e.events).find((x) => x.id === item.id)
     if (ev) {
       title = ev.title
+      removable = { kind: 'event', occurrence: ev.is_recurring ? (ev.occurrence_start ?? undefined) : undefined }
       body = (
         <>
           <Facts
@@ -78,6 +84,7 @@ export function ItemPanel({ item }: { item: Selected }) {
     )
   } else if (item.kind === 'goal' && e.goals[item.id]) {
     const g = e.goals[item.id]
+    removable = { kind: 'goal' }
     const linked = Object.values(e.tasks).filter((t) => t.goal_id === g.id && t.status !== 'skipped')
     const done = linked.filter((t) => t.status === 'done').length
     title = g.title
@@ -119,10 +126,86 @@ export function ItemPanel({ item }: { item: Selected }) {
       kicker={kind.label}
       title={title}
       onClose={close}
-      footer={seeAll}
+      footer={
+        <div className="flex items-center justify-between gap-3">
+          {seeAll}
+          {removable && (
+            <DeleteButton
+              key={`${item.kind}:${item.id}`}
+              title={title}
+              noun={kind.label.toLowerCase()}
+              occurrence={removable.occurrence}
+              onDelete={(occurrence) => deleteItem(removable.kind, item.id, occurrence)}
+            />
+          )}
+        </div>
+      }
     >
       {body}
     </Panel>
+  )
+}
+
+/**
+ * Two taps, so nothing goes by accident: the first asks, the second deletes. A
+ * repeating event asks which: just this occurrence, or the whole series.
+ */
+function DeleteButton({
+  title,
+  noun,
+  occurrence,
+  onDelete,
+}: {
+  title: string
+  noun: string
+  occurrence?: string
+  onDelete: (occurrence?: string) => Promise<boolean>
+}) {
+  const [asking, setAsking] = useState(false)
+  // "Delete…" from a list row or the rail opens the panel already asking.
+  const deleting = useUi((s) => s.deleting)
+  useEffect(() => {
+    if (!deleting) return
+    setAsking(true)
+    useUi.setState({ deleting: false })
+  }, [deleting])
+  // Left unanswered, the question quietly goes away.
+  useEffect(() => {
+    if (!asking) return
+    const t = setTimeout(() => setAsking(false), 5000)
+    return () => clearTimeout(t)
+  }, [asking])
+
+  const run = async (which?: string) => {
+    ui.select(null) // it's gone at once, and the panel closes with it
+    const ok = await onDelete(which)
+    agent.showMessage(ok ? `Deleted "${title}".` : `Couldn't delete "${title}", so it's back. Try again in a moment.`)
+  }
+
+  const btn = 'h-10 rounded-[8px] px-3.5 text-[14px] font-semibold transition-colors'
+  if (!asking) {
+    return (
+      <button onClick={() => setAsking(true)} className={`${btn} text-muted hover:text-urgent`}>
+        Delete
+      </button>
+    )
+  }
+  if (occurrence) {
+    return (
+      <div className="flex items-center gap-2">
+        <button onClick={() => void run(occurrence)} className={`${btn} glass-pill text-urgent`}>
+          Just this one
+        </button>
+        <button onClick={() => void run()} className={`${btn} glass-pill text-urgent`}>
+          Every one
+        </button>
+      </div>
+    )
+  }
+  return (
+    <button onClick={() => void run()} className={`${btn} bg-urgent text-white`}>
+      Delete {noun}
+    </button>
   )
 }
 

@@ -180,6 +180,44 @@ export async function markNotificationRead(id: string): Promise<void> {
   if (!reply) entities.upsertNotification(before)
 }
 
+/**
+ * Delete a task, goal or calendar event (or one occurrence of a repeating
+ * event). Optimistic: it disappears at once and comes back if the server says
+ * no (a Google-linked calendar can refuse the write).
+ */
+export async function deleteItem(
+  kind: 'task' | 'goal' | 'event',
+  id: string,
+  occurrenceStart?: string,
+): Promise<boolean> {
+  if (!socket) return false
+  const before = useEntities.getState()
+  if (kind === 'task') entities.removeTask(id)
+  else if (kind === 'goal') entities.removeGoal(id)
+  else if (occurrenceStart) {
+    useEntities.setState((s) => ({
+      events: Object.fromEntries(
+        Object.entries(s.events).filter(([, e]) => !(e.id === id && e.occurrence_start === occurrenceStart)),
+      ),
+    }))
+  } else entities.removeEvent(id)
+
+  const reply =
+    kind === 'task'
+      ? await request(socket, { type: 'task.delete', id }, 'task.deleted')
+      : kind === 'goal'
+        ? await request(socket, { type: 'goal.delete', id }, 'goal.deleted')
+        : occurrenceStart
+          ? // Cancelling one occurrence answers with the updated series.
+            await request(socket, { type: 'calendar.delete', id, occurrenceStart }, 'calendar.updated')
+          : await request(socket, { type: 'calendar.delete', id }, 'calendar.deleted')
+  if (!reply) {
+    useEntities.setState({ tasks: before.tasks, goals: before.goals, events: before.events })
+    return false
+  }
+  return true
+}
+
 // ── The Vault (what Wendy remembers) ──────────────────────────────────────────────
 
 /** Load everything Wendy remembers (refreshed each time the Vault opens). */

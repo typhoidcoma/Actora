@@ -111,6 +111,8 @@ function runAct(act: LocalAct): void {
     case 'saveFind':
       void saveFind(act.id)
       return
+    case 'askDelete':
+      return ui.askDelete(act.item)
   }
 }
 

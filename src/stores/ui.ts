@@ -30,6 +30,8 @@ interface UiState {
   /** The Vault: what Wendy knows about the user (Aelora's vault). Opened from the menu. */
   vault: boolean
   theme: ThemeMode
+  /** The open item panel should start by asking to delete it ("Delete…" from a list row). */
+  deleting: boolean
   /** Hidden text fallback (behind the mic chip). */
   keyboardOpen: boolean
 }
@@ -50,6 +52,7 @@ export const useUi = create<UiState>(() => ({
   find: null,
   vault: false,
   theme: 'auto',
+  deleting: false,
   keyboardOpen: false,
 }))
 
@@ -64,6 +67,7 @@ const CLOSED = {
   finds: false,
   find: null,
   vault: false,
+  deleting: false,
 } as const
 
 /** Is any panel open over the grid (the chat sheet aside)? */
@@ -77,6 +81,8 @@ export const ui = {
   closeAll: () => useUi.setState({ ...CLOSED, keyboardOpen: false }),
   /** Open an item in its own panel (from a card, or when Wendy points at it). */
   open: (item: Selected) => useUi.setState({ ...CLOSED, selected: item }),
+  /** Open an item in its panel, already asking whether to delete it. */
+  askDelete: (item: Selected) => useUi.setState({ ...CLOSED, selected: item, deleting: true }),
   /** Show an item in its full list, highlighted ("See all"). */
   reveal: (item: Selected) => useUi.setState({ ...CLOSED, focus: ITEM_TILE[item.kind], selected: item }),
   /** Toggle a highlighted row inside the open list. */

@@ -194,6 +194,7 @@ function item(kind: string, id: string, s: Snapshot): Option[] {
         actOption('Tomorrow', { type: 'reschedule', id, due: tomorrow(s.now) }),
         sayOption('Break it down', `Break "${t.title}" into small steps.`),
         sayOption('Why this?', `Why is "${t.title}" on my list?`),
+        actOption('Delete…', { type: 'askDelete', item: { kind: 'task', id } }),
       ]
     }
     case 'goal': {
@@ -203,6 +204,7 @@ function item(kind: string, id: string, s: Snapshot): Option[] {
         sayOption('Next step', `What's my next step for "${g.title}"?`),
         sayOption('Add a task for it', `Add a task for my goal "${g.title}".`),
         sayOption("How's it going?", `How am I doing on "${g.title}"?`),
+        actOption('Delete…', { type: 'askDelete', item: { kind: 'goal', id } }),
       ]
     }
     case 'event': {
@@ -212,6 +214,7 @@ function item(kind: string, id: string, s: Snapshot): Option[] {
         sayOption('Prep me', `Help me prep for "${ev.title}".`),
         sayOption('Move it', `Help me move "${ev.title}".`),
         sayOption('Details', `Tell me about "${ev.title}".`),
+        actOption('Delete…', { type: 'askDelete', item: { kind: 'event', id } }),
       ]
     }
     case 'notification': {

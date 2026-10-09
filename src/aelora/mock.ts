@@ -226,6 +226,23 @@ export class MockWebSocket implements WebSocketLike {
         })
       case 'system_chat':
         return this.systemChat()
+      case 'task.delete':
+      case 'goal.delete': {
+        const kind = msg.type === 'task.delete' ? 'task' : 'goal'
+        const list = kind === 'task' ? db.tasks : db.goals
+        const i = list.findIndex((x) => x.id === msg.id)
+        if (i < 0) return this.reply({ type: 'error', code: 'not_found', message: 'not found' })
+        list.splice(i, 1)
+        this.reply({ type: `${kind}.deleted`, id: msg.id })
+        return this.reply({ type: 'event', event: kind, data: { type: `${kind}:deleted`, id: msg.id } })
+      }
+      case 'calendar.delete': {
+        if (!db.events.some((x) => x.id === msg.id)) {
+          return this.reply({ type: 'error', code: 'not_found', message: 'not found' })
+        }
+        db.events = db.events.filter((x) => x.id !== msg.id)
+        return this.reply({ type: 'calendar.deleted', id: msg.id })
+      }
       case 'task.update': {
         const t = db.tasks.find((x) => x.id === msg.id)
         if (!t) return this.reply({ type: 'error', code: 'not_found', message: 'not found' })
