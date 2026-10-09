@@ -11,6 +11,7 @@ import { clockTime, toolLabel } from './format'
 import { jelly } from './motion'
 import { useNow } from './tiles/data'
 import { ROLE } from './brand'
+import { useMetrics } from '../stores/metrics'
 
 function useStatus(): { text: string; tone: 'ok' | 'busy' | 'warn' } {
   const connection = useAgent((s) => s.connection)
@@ -47,6 +48,7 @@ const THEME_LABEL: Record<ThemeMode, string> = { auto: 'Follows the sun', day: '
 export function MenuButton({ onSignOut }: { onSignOut?: () => void }) {
   const [open, setOpen] = useState(false)
   const status = useStatus()
+  const compact = useMetrics((m) => m.compact)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -63,7 +65,7 @@ export function MenuButton({ onSignOut }: { onSignOut?: () => void }) {
         onClick={() => setOpen((v) => !v)}
         aria-label={`Menu · ${status.text}`}
         aria-expanded={open}
-        className="glass-pill relative grid h-10 w-10 place-items-center rounded-[8px] text-muted"
+        className={`glass-pill relative grid place-items-center rounded-[8px] text-muted ${compact ? 'h-[44px] w-11' : 'h-10 w-10'}`}
       >
         {/* Quiet when all is well; the icon itself tints and pulses only when something's off. */}
         <motion.span
@@ -92,6 +94,7 @@ function Sheet({
 }) {
   const now = useNow(10_000)
   const sky = useSky()
+  const compact = useMetrics((m) => m.compact)
   const email = useAgent((s) => s.email)
   const theme = useUi((s) => s.theme)
   const push = usePush((s) => s.status)
@@ -159,6 +162,8 @@ function Sheet({
         Look
       </Item>
       <Item onClick={go(() => ui.openVault())}>Vault</Item>
+      {/* Phones have no keyboard button on the rail; typing lives here. */}
+      {compact && <Item onClick={go(() => ui.keyboard(true))}>Type instead</Item>}
       {push === 'on' && (
         <>
           <Item onClick={() => void disablePush().then(close)} hint="On">

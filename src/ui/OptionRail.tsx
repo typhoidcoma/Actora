@@ -40,7 +40,7 @@ export function OptionRail({
   }, [shownIds, busy, loading])
 
   const iconRow = (
-    <div className={`flex shrink-0 items-center gap-1.5 ${narrow ? 'float-right m-1 ml-2' : 'pr-1'}`}>
+    <div className="flex shrink-0 items-center gap-1.5 pr-1">
       {contextKey !== 'chat' && (
         <motion.button
           whileTap={jelly}
@@ -75,7 +75,7 @@ export function OptionRail({
           exit={{ opacity: 0, scale: 0.96 }}
           transition={morph}
           onClick={toggleVoice}
-          className={`glass-pill flex h-12 min-w-0 ${narrow ? 'm-1 overflow-hidden' : 'w-full'} items-center gap-3 rounded-[8px] px-5 text-left text-[15px] text-strong`}
+          className="glass-pill flex h-12 w-full min-w-0 items-center gap-3 rounded-[8px] px-5 text-left text-[15px] text-strong"
         >
           <motion.svg
             viewBox="0 0 24 24"
@@ -96,9 +96,7 @@ export function OptionRail({
           <span className="truncate">{interim || 'Listening…'}</span>
         </motion.button>
       ) : (
-        options.map((o, i) => (
-          <Chip key={o.id} option={o} index={i} small={narrow} disabled={offline || (busy && !o.act)} />
-        ))
+        options.map((o, i) => <Chip key={o.id} option={o} index={i} disabled={offline || (busy && !o.act)} />)
       )}
       {!listening && loading && (
         <motion.span
@@ -107,20 +105,73 @@ export function OptionRail({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className={`glass-pill shimmer w-24 shrink-0 rounded-[8px] ${narrow ? 'm-1 inline-block h-10 align-top' : 'h-11'}`}
+          className="glass-pill shimmer h-11 w-24 shrink-0 rounded-[8px]"
           aria-hidden
         />
       )}
     </AnimatePresence>
   )
 
-  // Phone: one flowing block, icons floated beside the first row; two rows of
-  // pills at most, so the cards keep their room. Pills that don't fit drop whole.
+  // Phone: a tidy 2×2 grid of equal tiles (the four most relevant, two lines of
+  // text each) with chat and the menu in a column beside it. Nothing reflows
+  // around anything, and the menu isn't inside a clipped box. Typing lives in
+  // the menu here (the chat sheet keeps its keyboard button).
   if (narrow) {
+    const shown = options.slice(0, 4)
     return (
-      <div className={`max-h-[100px] overflow-hidden px-0.5 py-0.5 text-center ${className}`}>
-        {iconRow}
-        {pills}
+      <div className={`flex items-stretch gap-2 ${className}`}>
+        <div className="grid min-w-0 flex-1 grid-cols-2 grid-rows-[44px_44px] gap-2">
+          <AnimatePresence mode="popLayout" initial={false}>
+            {listening ? (
+              <motion.button
+                key="listening"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={toggleVoice}
+                className="glass-pill col-span-2 row-span-2 flex min-w-0 items-center gap-3 rounded-[8px] px-4 text-left text-[15px] text-strong"
+              >
+                <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-urgent" aria-hidden />
+                <span className="line-clamp-2">{interim || 'Listening…'}</span>
+              </motion.button>
+            ) : (
+              shown.map((o, i) => <Tile key={o.id} option={o} index={i} disabled={offline || (busy && !o.act)} />)
+            )}
+            {!listening && loading && shown.length < 4 && (
+              <motion.span
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="glass-pill shimmer rounded-[8px]"
+                aria-hidden
+              />
+            )}
+          </AnimatePresence>
+        </div>
+        <div className="flex shrink-0 flex-col justify-between gap-2">
+          {contextKey !== 'chat' ? (
+            <motion.button
+              whileTap={jelly}
+              onClick={ui.openChat}
+              aria-label="Open the conversation"
+              className="glass-pill grid h-[44px] w-11 place-items-center rounded-[8px] text-muted"
+            >
+              <ChatIcon />
+            </motion.button>
+          ) : (
+            <motion.button
+              whileTap={jelly}
+              onClick={() => ui.keyboard(true)}
+              disabled={offline}
+              aria-label="Type instead"
+              className="glass-pill grid h-[44px] w-11 place-items-center rounded-[8px] text-muted disabled:opacity-40"
+            >
+              <KeyboardIcon />
+            </motion.button>
+          )}
+          {trailing}
+        </div>
       </div>
     )
   }
@@ -136,17 +187,27 @@ export function OptionRail({
   )
 }
 
-function Chip({
-  option,
-  index,
-  small,
-  disabled,
-}: {
-  option: Option
-  index: number
-  small: boolean
-  disabled: boolean
-}) {
+/** A phone option: one cell of the 2×2 grid, up to two lines. */
+function Tile({ option, index, disabled }: { option: Option; index: number; disabled: boolean }) {
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 380, damping: 28, delay: index * 0.04 } }}
+      exit={{ opacity: 0, transition: { duration: 0.1 } }}
+      whileTap={jelly}
+      {...sheen}
+      disabled={disabled}
+      onClick={() => runOption(option)}
+      className={`glass-pill flex min-w-0 items-center rounded-[8px] px-3 text-left text-[13.5px] leading-[1.2] transition-opacity disabled:opacity-40 ${
+        option.act ? 'font-medium text-strong' : 'text-text'
+      }`}
+    >
+      <span className="line-clamp-2">{option.label}</span>
+    </motion.button>
+  )
+}
+
+function Chip({ option, index, disabled }: { option: Option; index: number; disabled: boolean }) {
   return (
     <motion.button
       layout
@@ -169,7 +230,7 @@ function Chip({
       {...sheen}
       disabled={disabled}
       onClick={() => runOption(option)}
-      className={`glass-pill max-w-full min-w-0 items-center gap-2 rounded-[8px] whitespace-nowrap ${small ? 'm-1 inline-flex h-10 px-3.5 align-top text-[14px]' : 'flex h-11 px-4 text-[15px]'} transition-opacity disabled:opacity-40 ${
+      className={`glass-pill flex h-11 max-w-full min-w-0 items-center gap-2 rounded-[8px] px-4 text-[15px] whitespace-nowrap transition-opacity disabled:opacity-40 ${
         option.act ? 'font-medium text-strong' : 'text-text'
       }`}
     >

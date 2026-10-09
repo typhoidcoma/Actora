@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAgent } from '../stores/agent'
 import { ui, useUi, panelOpen } from '../stores/ui'
@@ -115,6 +115,27 @@ export function WendyLine() {
         ? Math.min(26, Math.max(20, m.line.h * 0.11))
         : Math.max(18, Math.min(26, m.grid * 0.04)),
   )
+  // Long lines step their size down until they fit the band (measured before
+  // paint), never below a readable minimum; past that, it ends in an ellipsis on
+  // the last line that fits (and replies keep their "Read all").
+  const textRef = useRef<HTMLDivElement>(null)
+  const [fit, setFit] = useState(size)
+  const [clamp, setClamp] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    const el = textRef.current
+    if (!el) return
+    const room = m.line.h - 6
+    const min = m.compact ? 14 : 16
+    let fs = size
+    el.style.display = 'block'
+    el.style.webkitLineClamp = 'unset'
+    el.style.fontSize = `${fs}px`
+    while (fs > min && el.scrollHeight > room) el.style.fontSize = `${--fs}px`
+    setFit(fs)
+    setClamp(el.scrollHeight > room ? Math.max(2, Math.floor(room / (fs * 1.22))) : null)
+    el.style.display = ''
+    el.style.webkitLineClamp = ''
+  }, [size, displayKey, content.text, m.line.h, m.line.w, m.compact])
 
   return (
     <motion.div
@@ -128,23 +149,24 @@ export function WendyLine() {
       // inert, not aria-hidden: hiding it also drops focus (e.g. from "Read all", which opens the reader).
       inert={hidden}
     >
-      <div
-        className="relative max-h-full overflow-hidden"
-        style={{
-          maskImage: 'linear-gradient(to bottom, transparent, #000 14px)',
-          WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 14px)',
-        }}
-      >
+      <div className="relative max-h-full overflow-hidden">
         <AnimatePresence mode="popLayout">
           <motion.div
             key={displayKey}
+            ref={textRef}
             initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, y: -8, filter: 'blur(4px)', transition: { duration: 0.2 } }}
             transition={{ type: 'spring', stiffness: 260, damping: 30, filter: { duration: 0.3, ease: 'easeOut' } }}
             // Her words can be selected and copied like any chat message.
             className="display selectable pointer-events-auto px-1 text-center text-strong"
-            style={{ fontSize: size, lineHeight: 1.22 }}
+            style={{
+              fontSize: fit,
+              lineHeight: 1.22,
+              ...(clamp
+                ? { display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: clamp, overflow: 'hidden' }
+                : {}),
+            }}
           >
             {content.kicker && (
               <span className="mr-2 align-middle font-sans text-[13px] font-medium tracking-wide text-accent not-italic">
