@@ -98,7 +98,10 @@ export function PriorityCard({
       }}
     >
       <div className="min-w-0">
-        <div className="text-[13px] font-bold" style={{ color: kind.color }}>
+        <div
+          className="text-[13px] font-bold"
+          style={{ color: `color-mix(in srgb, ${kind.color} 72%, var(--t-strong))` }}
+        >
           {item.whyFrom === 'wendy' ? 'Wendy says' : 'Why now'}
         </div>
         <div className="line-clamp-2 text-[max(13px,calc(var(--grid)*0.024))] leading-snug font-medium text-strong">

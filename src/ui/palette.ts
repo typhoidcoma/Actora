@@ -10,31 +10,33 @@ const hex = (h: string): RGB => {
 }
 
 // Brand palette + extensions (src/ui/brand.ts).
-const BLUE = hex(BRAND.blue)
-const GREEN = hex(BRAND.green)
-const PINK = hex(BRAND.pink)
-const SLATE = hex(BRAND.slate)
-const VIOLET = hex(EXT.violet)
-const CYAN = hex(EXT.cyan)
-const LIME = hex(EXT.lime)
-const ROSE = hex(EXT.rose)
-const RED = hex(EXT.red)
-const NAVY = hex(EXT.navy)
+const NAVY = hex(BRAND.navy)
+const ORANGE = hex(BRAND.orange)
+const YELLOW = hex(BRAND.yellow)
+const SAGE = hex(BRAND.sage)
+const TEAL = hex(BRAND.teal)
+const DEEP_TEAL = hex(EXT.deepTeal)
+const PEACH = hex(EXT.peach)
+const BUTTER = hex(EXT.butter)
+const SAGE_DEEP = hex(EXT.sageDeep)
+const EMBER = hex(EXT.ember)
+const AMBER = hex(EXT.amber)
+const MIST = hex(EXT.mist)
 const ICE = hex(EXT.ice)
 
 /** Orb interior colours per Plutchik emotion, all inside the brand palette. */
 const EMOTION_TRIADS: Record<PrimaryEmotion, Triad> = {
-  joy: [GREEN, LIME, ICE],
-  trust: [BLUE, CYAN, ICE],
-  fear: [VIOLET, NAVY, BLUE],
-  surprise: [ROSE, CYAN, ICE],
-  sadness: [NAVY, SLATE, BLUE],
-  disgust: [LIME, SLATE, VIOLET],
-  anger: [RED, PINK, VIOLET],
-  anticipation: [CYAN, GREEN, BLUE],
+  joy: [YELLOW, PEACH, BUTTER],
+  trust: [TEAL, SAGE, ICE],
+  fear: [DEEP_TEAL, NAVY, MIST],
+  surprise: [ORANGE, YELLOW, BUTTER],
+  sadness: [NAVY, MIST, DEEP_TEAL],
+  disgust: [SAGE_DEEP, NAVY, SAGE],
+  anger: [EMBER, ORANGE, AMBER],
+  anticipation: [SAGE, YELLOW, ICE],
 }
 
-export const NEUTRAL: Triad = [BLUE, VIOLET, ICE]
+export const NEUTRAL: Triad = [TEAL, SAGE, ICE]
 
 const isEmotion = (e: string): e is PrimaryEmotion => e in EMOTION_TRIADS
 
@@ -59,7 +61,7 @@ export function orbColors(mood: MoodState | null, emotion: EmotionVector): Triad
   if (!ranked.length) return NEUTRAL
 
   const [[top, w1], second] = ranked
-  // Weak feelings stay closer to the neutral cobalt base.
+  // Weak feelings stay closer to the neutral teal base.
   let out = mixTriad(NEUTRAL, EMOTION_TRIADS[top], Math.min(1, 0.45 + w1 * 0.7))
   if (second) out = mixTriad(out, EMOTION_TRIADS[second[0]], (second[1] / (w1 + second[1])) * 0.45)
   return out

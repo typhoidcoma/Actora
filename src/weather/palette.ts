@@ -3,42 +3,42 @@ import type { Sky, SkyKind } from './sky'
 
 /**
  * Ambient colours per sky, built from the brand palette (src/ui/brand.ts):
- * blue, green, pink and slate, with violet, cyan, lime and navy for range.
- * `day` sits on the cool light background; `dusk` glows on deep slate.
+ * navy, orange, yellow, sage and teal, with their tints for range.
+ * `day` sits on the cream background; `dusk` glows on deep navy.
  */
 const SKIES: Record<SkyKind, { day: string[]; dusk: string[] }> = {
   clear: {
-    day: [BRAND.blue, EXT.cyan, BRAND.green, EXT.rose],
-    dusk: [BRAND.blue, EXT.violet, EXT.cyan, BRAND.pink],
+    day: [BRAND.yellow, EXT.peach, EXT.tealLight, EXT.sageLight],
+    dusk: [BRAND.orange, EXT.deepTeal, BRAND.yellow, BRAND.teal],
   },
   partly: {
-    day: [EXT.cyan, BRAND.blue, EXT.slateLight, BRAND.green],
-    dusk: [EXT.navy, BRAND.blue, BRAND.slate, EXT.violet],
+    day: [EXT.tealLight, BRAND.yellow, EXT.sageLight, EXT.mist],
+    dusk: [BRAND.navy, BRAND.teal, EXT.deepTeal, EXT.amber],
   },
   cloudy: {
-    day: [EXT.slateLight, BRAND.blue, '#C3C6E0', EXT.violet],
-    dusk: [BRAND.slate, EXT.navy, '#2C3270', EXT.slateLight],
+    day: [EXT.mist, EXT.tealLight, '#C9D3D0', EXT.sageLight],
+    dusk: [BRAND.navy, EXT.ink, '#2E4A57', EXT.mist],
   },
   fog: {
-    day: ['#DCD8E6', '#E8E4EC', EXT.slateLight, '#C3C6E0'],
-    dusk: ['#4A4F82', '#343A6E', EXT.slateLight, BRAND.slate],
+    day: ['#DCDCD2', '#E9E6DC', EXT.mist, '#C9D3D0'],
+    dusk: ['#4E6470', '#34505E', EXT.mist, BRAND.navy],
   },
   rain: {
-    day: [BRAND.blue, EXT.navy, EXT.cyan, EXT.slateLight],
-    dusk: [EXT.navy, BRAND.blue, BRAND.slate, EXT.cyan],
+    day: [BRAND.teal, BRAND.navy, EXT.tealLight, EXT.mist],
+    dusk: [EXT.ink, BRAND.teal, BRAND.navy, EXT.deepTeal],
   },
   storm: {
-    day: [EXT.navy, EXT.violet, BRAND.pink, BRAND.slate],
-    dusk: [EXT.violet, EXT.navy, BRAND.pink, '#2A2F6A'],
+    day: [BRAND.navy, EXT.deepTeal, BRAND.orange, EXT.ink],
+    dusk: [EXT.ink, BRAND.navy, EXT.ember, '#1E3440'],
   },
   snow: {
-    day: [EXT.ice, '#D4E6FF', EXT.cyan, '#E8E4EC'],
-    dusk: ['#B4C8F2', EXT.slateLight, EXT.ice, BRAND.blue],
+    day: [EXT.ice, '#E3EEEA', EXT.tealLight, '#E9E6DC'],
+    dusk: ['#B9CFC9', EXT.mist, EXT.ice, BRAND.teal],
   },
 }
 
-const WARM = BRAND.pink
-const COLD = EXT.cyan
+const WARM = BRAND.orange
+const COLD = EXT.tealLight
 
 export interface Blob {
   color: string
@@ -54,7 +54,7 @@ const hexA = (hex: string, a: number) => {
   return `rgb(${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255} / ${a})`
 }
 
-/** Temperature tint: hot days pick up hot pink, freezing ones sky blue, in the sky's units. */
+/** Temperature tint: hot days pick up orange, freezing ones pale teal, in the sky's units. */
 function tempAccent(sky: Sky): string | null {
   if (sky.temp === null) return null
   const c = sky.unit === 'F' ? ((sky.temp - 32) * 5) / 9 : sky.temp

@@ -124,11 +124,11 @@ The setup follows Aelora's `docs/PUSH.md`:
 
 ### Look
 
-- **Palette.** Taken from the Wendy agent art (`src/ui/brand.ts`, mirrored as CSS tokens): periwinkle `#5A7BE6`, lime
-  `#B4D03A`, hot pink `#F23D7B` and indigo ink `#1F2A6B` on cream paper `#F2EEE4`, plus violet, sky, blush and navy for
-  emotion and weather range.
-  - The semantic tokens are `accent` (periwinkle), `urgent` (pink) and `calm` (deep lime `#7E9A14`, readable on cream).
-  - Priority heat runs pink, then periwinkle, then lime. Daylight is cream; dusk is deep indigo.
+- **Palette.** Designer palette (`src/ui/brand.ts`, mirrored as CSS tokens): navy `#233C4B`, orange `#FF7D2D`, yellow
+  `#FAC846`, sage `#A0C382` and teal `#5F9B8C`, plus tints (peach, butter, deep teal, mist) for emotion and weather range.
+  - The semantic tokens are `accent` (teal), `urgent` (orange) and `calm` (deep sage `#5F8A3F`, readable on cream).
+  - Priority heat runs orange, then amber (`#C98A0E`, a readable yellow), then sage. Daylight is cream `#F7F2E7`; dusk
+    is deep navy.
 - **Shape.** Cards are exactly 4:3 with 12px corners.
 - **Themes.**
   - **Daylight** is Hog Bristle and runs while the sun is up at your location (Open-Meteo sunrise/sunset).
