@@ -314,6 +314,10 @@ export class MockWebSocket implements WebSocketLike {
           this.event('task', { type: 'task:created', task })
         }
         if (tool === 'list_events') this.event('agent_command', { command: { type: 'open_app', id: 'calendar' } })
+        if (text === FINDS_REPLY)
+          this.event('agent_command', {
+            command: { type: 'ui_action', action: 'finds.set', args: { items: FIND_ITEMS } },
+          })
       })
     }
 
@@ -484,50 +488,50 @@ export async function mockLlm(req: { prompt: string }, signal?: AbortSignal): Pr
   return JSON.stringify({ options })
 }
 
-/** What a web-search "fun finds" turn returns (images via picsum for offline testing). */
-const FINDS_REPLY = [
-  'Here you go — ```json',
-  JSON.stringify({
-    finds: [
-      {
-        title: 'Octopuses caught "punching" fish on group hunts',
-        blurb:
-          'Researchers filmed octopuses swatting fish that slacked off during cooperative hunts. Workplace drama, but underwater.',
-        why: 'Peak weird-nature energy for your coffee break',
-        url: 'https://en.wikipedia.org/wiki/Octopus',
-        image: 'https://picsum.photos/seed/actora-octo/800/500',
-        source: 'Wikipedia',
-        tag: 'Weird',
-      },
-      {
-        title: 'A shader that paints with fluid physics in 40 lines',
-        blurb: 'A tiny WebGL demo going viral for turning mouse drags into ink in water.',
-        why: "You've been deep in orb shaders — this one's a gem",
-        url: 'https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API',
-        image: 'https://picsum.photos/seed/actora-shader/800/500',
-        source: 'MDN',
-        tag: 'Nerdy',
-      },
-      {
-        title: 'Seattle’s waterfront park finally opens its sky bridge',
-        blurb:
-          'The new Overlook Walk links Pike Place to the water with sunset views and a surprising amount of seating.',
-        why: 'A great new route for your evening runs',
-        url: 'https://www.seattle.gov/parks',
-        image: 'https://picsum.photos/seed/actora-park/800/500',
-        source: 'Seattle Parks',
-        tag: 'Local',
-      },
-      {
-        title: 'Astronomers spot a “cotton candy” planet',
-        blurb: 'A planet so puffy it has the density of spun sugar is orbiting a nearby star.',
-        why: 'Small wonder to end the day on',
-        url: 'https://science.nasa.gov/exoplanets/',
-        image: 'https://picsum.photos/seed/actora-planet/800/500',
-        source: 'NASA',
-        tag: 'Good news',
-      },
-    ],
-  }),
-  '```',
-].join('\n')
+/** The fun finds Wendy puts on the card with finds.set (images via picsum for offline testing). */
+const FIND_ITEMS = {
+  finds: [
+    {
+      title: 'Octopuses caught "punching" fish on group hunts',
+      blurb:
+        'Researchers filmed octopuses swatting fish that slacked off during cooperative hunts. Workplace drama, but underwater.',
+      why: 'Peak weird-nature energy for your coffee break',
+      url: 'https://en.wikipedia.org/wiki/Octopus',
+      image: 'https://picsum.photos/seed/actora-octo/800/500',
+      source: 'Wikipedia',
+      tag: 'Weird',
+    },
+    {
+      title: 'A shader that paints with fluid physics in 40 lines',
+      blurb: 'A tiny WebGL demo going viral for turning mouse drags into ink in water.',
+      why: "You've been deep in orb shaders — this one's a gem",
+      url: 'https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API',
+      image: 'https://picsum.photos/seed/actora-shader/800/500',
+      source: 'MDN',
+      tag: 'Nerdy',
+    },
+    {
+      title: 'Seattle’s waterfront park finally opens its sky bridge',
+      blurb:
+        'The new Overlook Walk links Pike Place to the water with sunset views and a surprising amount of seating.',
+      why: 'A great new route for your evening runs',
+      url: 'https://www.seattle.gov/parks',
+      image: 'https://picsum.photos/seed/actora-park/800/500',
+      source: 'Seattle Parks',
+      tag: 'Local',
+    },
+    {
+      title: 'Astronomers spot a “cotton candy” planet',
+      blurb: 'A planet so puffy it has the density of spun sugar is orbiting a nearby star.',
+      why: 'Small wonder to end the day on',
+      url: 'https://science.nasa.gov/exoplanets/',
+      image: 'https://picsum.photos/seed/actora-planet/800/500',
+      source: 'NASA',
+      tag: 'Good news',
+    },
+  ],
+}.finds
+
+/** Her Markdown reply in the finds thread (finds.set carries the cards). */
+const FINDS_REPLY =
+  'Four little gems today: octopuses with **workplace drama**, a shader you will want to fork, a new sunset route by the water, and a planet made of cotton candy. They are on your *For you* card.'

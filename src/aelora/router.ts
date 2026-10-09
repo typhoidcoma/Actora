@@ -1,4 +1,12 @@
-import { adoptFindsUser, forgetFindsThread, handleFindsFrame, hunt, unseenCount, useFinds } from '../finds/finds'
+import {
+  adoptFindsUser,
+  forgetFindsThread,
+  handleFindsFrame,
+  hunt,
+  setFinds,
+  unseenCount,
+  useFinds,
+} from '../finds/finds'
 import { adoptGreetingUser } from './greeting'
 import { actOption, sayOption } from '../options/types'
 import { resubscribe } from '../push/push'
@@ -45,6 +53,7 @@ import type { FrameBus } from './socket'
  *   list.open / tile.focus {tile} · tile.close             full Tasks/Calendar/Goals/Inbox list
  *   reader.open · reader.close                             her full answer, in the reader
  *   finds.open · finds.refresh                             box 4: open the fun finds / hunt for more
+ *   finds.set {items: [{title, blurb, why, url, image, source, tag}]}   the fun finds cards
  *   options.set {options: [{label, say}]}                  replace the tap options here
  *   chat.open · chat.close · reply.show · reply.hide
  *   theme.set {mode: auto|day|dusk} · voice.listen · push.offer
@@ -65,6 +74,7 @@ export const AVAILABLE_ACTIONS = [
   'reader.close',
   'finds.open',
   'finds.refresh',
+  'finds.set',
   'chat.open',
   'chat.close',
   'options.set',
@@ -133,7 +143,10 @@ export function sendClientState(bus: FrameBus): void {
     type: 'client_state',
     openApps: openAppsFor(useUi.getState()),
     focus: contextKeyOf(useUi.getState()),
-    ui: { availableActions: [...AVAILABLE_ACTIONS], animations: [...ANIMATIONS], screen: screen() },
+    // The whole ui object every time: the server replaces its copy per frame, and
+    // a frame without availableActions would have every action refused.
+    // client: 'actora' selects the Actora playbook server-side.
+    ui: { client: 'actora', availableActions: [...AVAILABLE_ACTIONS], animations: [...ANIMATIONS], screen: screen() },
     timestamp: new Date().toISOString(),
   })
 }
@@ -217,6 +230,14 @@ function runCommand(cmd: AgentCommand | undefined): void {
 const ITEM_KINDS = new Set<ItemKind>(['task', 'goal', 'event', 'notification'])
 const THEMES = new Set<ThemeMode>(['auto', 'day', 'dusk'])
 
+function itemExists(kind: ItemKind, id: string): boolean {
+  const e = useEntities.getState()
+  if (kind === 'task') return !!e.tasks[id]
+  if (kind === 'goal') return !!e.goals[id]
+  if (kind === 'notification') return !!e.notifications[id]
+  return Object.values(e.events).some((x) => x.id === id)
+}
+
 export function runUiAction(action: string, args: Record<string, unknown>): void {
   switch (action) {
     case 'priorities.set': {
@@ -224,10 +245,19 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
       const entries = items
         .map((o) => (o && typeof o === 'object' ? (o as { kind?: unknown; id?: unknown; why?: unknown }) : null))
         .filter((o): o is { kind: ItemKind; id: string; why?: unknown } => {
-          return !!o && ITEM_KINDS.has(o.kind as ItemKind) && typeof o.id === 'string' && !!o.id
+          // Only items that exist here: the server passes args through unchecked.
+          return (
+            !!o &&
+            ITEM_KINDS.has(o.kind as ItemKind) &&
+            typeof o.id === 'string' &&
+            itemExists(o.kind as ItemKind, o.id)
+          )
         })
         .slice(0, 3)
-        .map((o) => ({ key: `${o.kind}:${o.id}`, why: typeof o.why === 'string' ? o.why.slice(0, 80) : undefined }))
+        .map((o) => ({
+          key: `${o.kind}:${o.id}`,
+          why: typeof o.why === 'string' && o.why.trim() ? o.why.trim().slice(0, 60) : undefined,
+        }))
       if (entries.length) priorityStore.push(entries)
       else priorityStore.clearPushed()
       return
@@ -263,9 +293,14 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
         .filter((o): o is { label: unknown; say?: unknown } => !!o && typeof o.label === 'string' && !!o.label.trim())
         .slice(0, 5)
         .map((o) =>
-          sayOption(String(o.label).slice(0, 28), typeof o.say === 'string' ? o.say : String(o.label), 'pushed'),
+          sayOption(
+            String(o.label).trim().slice(0, 28),
+            (typeof o.say === 'string' && o.say.trim() ? o.say.trim() : String(o.label)).slice(0, 160),
+            'pushed',
+          ),
         )
-      optionsStore.push(contextKeyOf(useUi.getState()), options)
+      // 2–5 answers; a lone option isn't a choice, so keep the current ones instead.
+      if (options.length >= 2) optionsStore.push(contextKeyOf(useUi.getState()), options)
       return
     }
     case 'reply.show':
@@ -280,10 +315,14 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
       optionsStore.push(contextKeyOf(useUi.getState()), [actOption('Tap to talk', { type: 'voice' })])
       return
     case 'colors.set': {
-      const { hours, ...input } = args as SchemeInput & { hours?: number }
-      setColors(input, hours)
+      // Hex colours are checked by the scheme engine; hours must be a number, capped at 168.
+      const { hours, ...input } = args as SchemeInput & { hours?: unknown }
+      setColors(input, typeof hours === 'number' && Number.isFinite(hours) ? Math.min(hours, 168) : undefined)
       return
     }
+    case 'finds.set':
+      setFinds(Array.isArray(args.items) ? args.items : [])
+      return
     case 'colors.reset':
       resetColors()
       return

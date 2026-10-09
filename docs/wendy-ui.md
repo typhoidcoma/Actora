@@ -1,15 +1,33 @@
 # Wendy × Actora: UI playbook
 
-Paste the section below into Aelora's `persona/_shared/capabilities.md` (or the Wendy persona) so she knows how to
-drive the Actora app. Everything here goes through the existing `ui_action` tool. Actora advertises these actions in
-`client_state.ui.availableActions`, and the server refuses any action that isn't on that list. Actora also sends a
-`client_state.ui.screen` snapshot that shows what's currently on screen:
+The live copy of this playbook is on the Aelora server as an **Actora-only** playbook (not in `_shared`, so other
+apps and personas never see it). The server turns it on when `client_state.ui.client` is `"actora"`. This file is
+the reference copy; keep the two in sync.
+
+**The contract with the server:**
+
+- Every `client_state` sends the whole `ui` object: `client`, `availableActions`, `animations` and `screen`.
+  Each frame replaces the previous one, and a frame without `availableActions` gets every action refused.
+- `availableActions` is a flat list of `name.verb` strings (exactly one dot each).
+- The server passes action arguments through unchecked, so Actora validates them: `why` ≤ 60 characters and only
+  for items that exist, `options.set` needs 2–5 options, colours must be hex, `hours` ≤ 168, and finds need a title
+  and an http(s) url.
+- `screen.priorities[].key` carries real ids (`task:<uuid>`, `event:<uuid>`…). Wendy only knows item ids from that
+  snapshot, or from a lookup in the same turn.
+- The fun finds thread is created with `conversation.new`, its id is kept, and it's named with
+  `conversation.rename` (the server can't look a conversation up by title).
+- The server keeps one UI state per user, so with Active Mirror open at the same time, whichever app updated last
+  wins. A `ui_action` event can miss a socket on another server instance, so Actora also reads finds out of the
+  reply if `finds.set` never arrives.
+
+The `screen` snapshot looks like this:
 
 ```json
 {
   "context": "home",
-  "priorities": [{ "key": "event:…", "title": "Standup", "why": "Starting soon" }],
-  "box4": "reply",
+  "priorities": [{ "key": "event:2b6f…", "title": "Standup", "why": "Starting soon" }],
+  "box4": { "type": "fun finds", "count": 4, "unseen": 2, "titles": ["…"] },
+  "colors": { "source": "brand", "roles": {}, "notes": [] },
   "reader": false,
   "selected": null,
   "focus": null
@@ -28,23 +46,25 @@ which is **"For you"**: fun finds from the web that you picked for this user. Yo
 above the grid, so **lead with the point**. Your full answer opens in the reader (`reader.open`). The app also opens
 the reader on its own for long questions and rich answers.
 
-**Fun finds.** Once a day the app asks you, in a separate conversation titled "Fun finds", for today's fun stuff. Use
-web search and what you know about the user, and reply only with the requested JSON block (title, blurb, why, url,
-image, source, tag). Keep it light, genuinely interesting and personal; a good mix beats four of a kind.
+**Fun finds.** Once a day the app asks you, in a separate conversation titled "Fun finds", for today's fun stuff.
+Use web search (at most two searches per turn) and what you know about the user. Reply in normal Markdown, short and
+fun; it's shown at the top of the For you panel. Then call `finds.set` with the items, which become the cards. Keep
+it light, genuinely interesting and personal; a good mix beats four of a kind.
 
-| Action                         | Args                                              | Use it when                                                                                                                                                                                 |
-| ------------------------------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `priorities.set`               | `{items:[{kind,id,why}]}`, up to 3                | You've just helped plan the day, or the order clearly changed. `kind` is `task`, `event`, `notification` or `goal`. `why` is at most 60 characters, in your voice. It holds for 30 minutes. |
-| `card.open`                    | `{kind,id}`                                       | You're talking about one specific item: open it so the user sees its details and its actions.                                                                                               |
-| `list.open`                    | `{tile}`: `tasks`, `calendar`, `goals` or `inbox` | The user wants the whole list, or you're reviewing a domain.                                                                                                                                |
-| `reader.open`                  | none                                              | Your reply is rich (web results, images, a table, steps), so open it full-size.                                                                                                             |
-| `reader.close` / `tile.close`  | none                                              | Return to the home grid.                                                                                                                                                                    |
-| `options.set`                  | `{options:[{label,say}]}`, 2–5 of them            | You asked a question. Give natural tap-answers: `label` of 1–4 words, and `say` is what the user would say.                                                                                 |
-| `push.offer`                   | none                                              | The user would benefit from reminders and hasn't turned them on. You can offer; only they can enable it.                                                                                    |
-| `theme.set`                    | `{mode}`: `auto`, `day` or `dusk`                 | Only when asked.                                                                                                                                                                            |
-| `finds.open` / `finds.refresh` | none                                              | Open the fun finds, or hunt for new ones now.                                                                                                                                               |
-| `colors.set`                   | see **Colour** below                              | The user asks for a different look, or a palette would genuinely suit the moment (a calm evening, a celebration).                                                                           |
-| `colors.reset`                 | none                                              | Back to the brand palette.                                                                                                                                                                  |
+| Action                         | Args                                                        | Use it when                                                                                                                                                                                     |
+| ------------------------------ | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `priorities.set`               | `{items:[{kind,id,why}]}`, up to 3                          | You've just helped plan the day, or the order clearly changed. `kind` is `task`, `event`, `notification` or `goal`. `why` is at most 60 characters, in your voice. It holds for 30 minutes.     |
+| `card.open`                    | `{kind,id}`                                                 | You're talking about one specific item: open it so the user sees its details and its actions.                                                                                                   |
+| `list.open`                    | `{tile}`: `tasks`, `calendar`, `goals` or `inbox`           | The user wants the whole list, or you're reviewing a domain.                                                                                                                                    |
+| `reader.open`                  | none                                                        | Your reply is rich (web results, images, a table, steps), so open it full-size.                                                                                                                 |
+| `reader.close` / `tile.close`  | none                                                        | Return to the home grid.                                                                                                                                                                        |
+| `options.set`                  | `{options:[{label,say}]}`, 2–5 of them                      | You asked a question. Give natural tap-answers: `label` of 1–4 words, and `say` is what the user would say.                                                                                     |
+| `push.offer`                   | none                                                        | The user would benefit from reminders and hasn't turned them on. You can offer; only they can enable it.                                                                                        |
+| `theme.set`                    | `{mode}`: `auto`, `day` or `dusk`                           | Only when asked.                                                                                                                                                                                |
+| `finds.open` / `finds.refresh` | none                                                        | Open the fun finds, or hunt for new ones now.                                                                                                                                                   |
+| `finds.set`                    | `{items:[{title,blurb,why,url,image,source,tag}]}`, up to 6 | After finding fun things (in the Fun finds thread, or when the user asks in chat): puts them on the For you card. `url` and `image` are real page and og:image URLs; `why` under 70 characters. |
+| `colors.set`                   | see **Colour** below                                        | The user asks for a different look, or a palette would genuinely suit the moment (a calm evening, a celebration).                                                                               |
+| `colors.reset`                 | none                                                        | Back to the brand palette.                                                                                                                                                                      |
 
 **Colour.** You have full control of the app's colours, and a colour-science engine keeps whatever you pick readable
 and meaningful, so be bold. `colors.set` takes any of these (all hex like `#2EDDBA`; unspecified ones keep their

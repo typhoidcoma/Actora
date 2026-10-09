@@ -152,10 +152,13 @@ describe('Wendy-driven UI actions', () => {
 
   it('options.set pushes sanitized options for the current context', () => {
     runUiAction('item.focus', { kind: 'task', id: 't1' })
+    // A lone valid option isn't a choice: ignored.
     runUiAction('options.set', { options: [{ label: 'Yes', say: 'Yes please' }, { nope: 1 }, { label: '' }] })
+    expect(useOptionsStore.getState().pushed).toBeNull()
+    runUiAction('options.set', { options: [{ label: 'Yes', say: 'Yes please' }, { label: 'No' }, { nope: 1 }] })
     const pushed = useOptionsStore.getState().pushed
     expect(pushed?.key).toBe('item:task:t1')
-    expect(pushed?.options.map((o) => o.say)).toEqual(['Yes please'])
+    expect(pushed?.options.map((o) => o.say)).toEqual(['Yes please', 'No'])
   })
 
   it('theme.set accepts only known modes', () => {

@@ -608,7 +608,7 @@ button {
 }
 
 /* Wendy's current step: a highlight sweeping through the words. */
-.shimmer {
+.text-sweep {
   background: linear-gradient(
       100deg,
       var(--t-strong) 0%,
@@ -632,7 +632,7 @@ button {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .shimmer {
+  .text-sweep {
     animation: none;
     color: var(--t-strong);
     background: none;

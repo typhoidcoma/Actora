@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { localOptions } from '../options/local'
 import { parseFinds, unseenCount } from './finds'
 
@@ -56,5 +56,73 @@ describe('parseFinds', () => {
       'More like this',
       'Save for later',
     ])
+  })
+})
+
+describe('finds.set flow', () => {
+  const item = (n: number) => ({
+    title: `Find ${n}`,
+    blurb: 'Fun.',
+    why: 'You will like it',
+    url: `https://example.com/${n}`,
+    image: `https://example.com/${n}.jpg`,
+    source: 'Example',
+    tag: 'Nerdy',
+  })
+  const sent: Array<Record<string, unknown>> = []
+  const bus = { send: (m: Record<string, unknown>) => (sent.push(m), true) } as never
+
+  it('lands the cards with her Markdown note when the hunt finishes', async () => {
+    const { adoptFindsUser, startFinds, hunt, handleFindsFrame, useFinds } = await import('./finds')
+    const { runUiAction } = await import('../aelora/router')
+    adoptFindsUser('u1')
+    const stop = startFinds(bus)
+    hunt()
+    expect(sent.at(-1)).toMatchObject({ type: 'conversation.new' })
+    handleFindsFrame({ type: 'conversation.created', conversationId: 'th' } as never)
+    expect(sent.some((m) => m.type === 'conversation.rename' && m.title === 'Fun finds')).toBe(true)
+    runUiAction('finds.set', { items: [item(1), item(2), { title: 'no url' }] })
+    expect(useFinds.getState().status).toBe('hunting') // waits for her reply
+    handleFindsFrame({ type: 'done', conversationId: 'th', text: 'Two **fun** things today.' } as never)
+    expect(useFinds.getState()).toMatchObject({ status: 'ready', note: 'Two **fun** things today.' })
+    expect(useFinds.getState().items.map((f) => f.title)).toEqual(['Find 1', 'Find 2'])
+    stop()
+  })
+
+  it('falls back to her reply if finds.set never arrives', async () => {
+    vi.useFakeTimers()
+    const { startFinds, hunt, handleFindsFrame, useFinds } = await import('./finds')
+    const stop = startFinds(bus)
+    hunt()
+    handleFindsFrame({
+      type: 'done',
+      conversationId: 'th',
+      text: 'Look: [A comet](https://example.com/comet)',
+    } as never)
+    expect(useFinds.getState().status).toBe('hunting')
+    vi.advanceTimersByTime(1600)
+    expect(useFinds.getState().items.map((f) => f.title)).toEqual(['A comet'])
+    stop()
+    vi.useRealTimers()
+  })
+
+  it('updates the card straight away when she sets finds outside a hunt', async () => {
+    const { useFinds } = await import('./finds')
+    const { runUiAction } = await import('../aelora/router')
+    runUiAction('finds.set', { items: [item(9)] })
+    expect(useFinds.getState().items.map((f) => f.title)).toEqual(['Find 9'])
+  })
+})
+
+describe('client_state', () => {
+  it('names the client, sends the whole ui object, and every action has exactly one dot', async () => {
+    const { sendClientState, AVAILABLE_ACTIONS } = await import('../aelora/router')
+    const frames: Array<Record<string, unknown>> = []
+    sendClientState({ send: (m: Record<string, unknown>) => (frames.push(m), true) } as never)
+    const ui = frames[0].ui as Record<string, unknown>
+    expect(ui.client).toBe('actora')
+    expect(Object.keys(ui).sort()).toEqual(['animations', 'availableActions', 'client', 'screen'])
+    expect(AVAILABLE_ACTIONS).toContain('finds.set')
+    for (const a of AVAILABLE_ACTIONS) expect(a.split('.').length, a).toBe(2)
   })
 })

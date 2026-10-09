@@ -6,10 +6,11 @@ import { morph } from '../motion'
 import { Panel } from './Panel'
 import { SelectedWash } from '../tiles/parts'
 import { ROLE } from '../brand'
+import { LazyMarkdown } from '../LazyMarkdown'
 
 /** Box 4 expanded: today's fun finds as rich cards. Each counts as seen once it's actually looked at. */
 export function FindsPanel() {
-  const { items, status, seen } = useFinds()
+  const { items, status, seen, note } = useFinds()
   const unseen = unseenCount({ items, seen })
   const selected = useUi((s) => s.find)
   const kicker =
@@ -21,6 +22,18 @@ export function FindsPanel() {
 
   return (
     <Panel layoutId="finds-card" accent={ROLE.finds} kicker={kicker} title="For you" onClose={ui.closeFinds}>
+      {/* Her own words about today's finds (the Markdown reply from the hunt). */}
+      {note && status !== 'hunting' && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={morph}
+          className="mb-6 border-l-2 pl-4 text-[16px] text-text"
+          style={{ borderColor: 'var(--role-finds)' }}
+        >
+          <LazyMarkdown text={note} />
+        </motion.div>
+      )}
       <ul className="grid gap-5 sm:grid-cols-2">
         {items.map((f, i) => (
           <FindItem key={f.id} find={f} index={i} selected={selected === f.id} isNew={!seen.includes(f.id)} />

@@ -1,3 +1,4 @@
+import { useEntities } from '../stores/entities'
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { CalendarOccurrence, Notification, Task } from '../aelora/protocol'
 import { runUiAction } from '../aelora/router'
@@ -128,13 +129,18 @@ describe('Wendy actions', () => {
   })
 
   it('priorities.set stores a sanitized ranking', () => {
+    useEntities.setState({ tasks: { a: { id: 'a', title: 'A', status: 'todo' } as never } })
     runUiAction('priorities.set', {
       items: [
-        { kind: 'task', id: 'a', why: 'First' },
+        { kind: 'task', id: 'a', why: 'First '.repeat(20) },
         { kind: 'bogus', id: 'x' },
+        { kind: 'task', id: 'not-here' },
       ],
     })
-    expect(usePriorityStore.getState().pushed?.entries).toEqual([{ key: 'task:a', why: 'First' }])
+    // Unknown kinds and ids that don't exist are dropped; why is capped at 60.
+    expect(usePriorityStore.getState().pushed?.entries).toEqual([
+      { key: 'task:a', why: 'First '.repeat(20).trim().slice(0, 60) },
+    ])
   })
 
   it('card.open opens the item panel (no list); reader.open shows the answer', () => {
