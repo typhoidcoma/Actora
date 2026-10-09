@@ -15,6 +15,12 @@ import { firstSentence, plainText } from './markdownText'
 /** How long her line lingers once nothing new is arriving. */
 const FADE_AFTER_MS = 10_000
 
+// Lines already shown (and already faded) this session. Coming back home
+// switches the line back to her greeting; it must not retype like a new
+// message, and once it has faded away it stays away until something new comes.
+const revealed = new Set<string>()
+const fadedAway = new Set<string>()
+
 export function WendyLine() {
   const m = useMetrics()
   const stalled = useStalled()
@@ -74,15 +80,27 @@ export function WendyLine() {
   // (a reminder, a dead connection) and live work (thinking, streaming) stay.
   const holds = content.live || content.key === 'thinking' || !!stalled || content.kicker === 'Reminder'
   const signature = `${content.key}|${content.text}`
-  const [settled, setSettled] = useState({ signature, faded: false })
-  if (settled.signature !== signature) setSettled({ signature, faded: false })
+  // Whether it's new is decided once, when the text first appears, so a re-render
+  // mid-reveal can't cut the animation short.
+  const [settled, setSettled] = useState({
+    signature,
+    faded: fadedAway.has(signature),
+    fresh: !revealed.has(signature),
+  })
+  if (settled.signature !== signature)
+    setSettled({ signature, faded: fadedAway.has(signature), fresh: !revealed.has(signature) })
   useEffect(() => {
     if (holds || !content.text) return
-    const t = setTimeout(
-      () => setSettled((p) => (p.signature === signature ? { ...p, faded: true } : p)),
-      FADE_AFTER_MS,
-    )
+    const t = setTimeout(() => {
+      fadedAway.add(signature)
+      setSettled((p) => (p.signature === signature ? { ...p, faded: true } : p))
+    }, FADE_AFTER_MS)
     return () => clearTimeout(t)
+  }, [signature, holds, content.text])
+  // Seen in full once (revealed, or streamed in live): from now on it just sits there.
+  const seenBefore = settled.signature === signature && !settled.fresh
+  useEffect(() => {
+    if (content.text && !holds) revealed.add(signature)
   }, [signature, holds, content.text])
   const faded = settled.faded && settled.signature === signature && !holds
   const hidden = quiet || faded
@@ -128,6 +146,8 @@ export function WendyLine() {
               <Activity />
             ) : content.live ? (
               <Words text={content.text} />
+            ) : seenBefore ? (
+              content.text
             ) : (
               <Reveal text={content.text} />
             )}
