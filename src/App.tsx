@@ -39,6 +39,7 @@ function AuthedApp() {
 
   useEffect(() => {
     let off: (() => void) | undefined
+    let cancelled = false
     const apply = (sb: SupabaseClient, session: Session | null) => {
       if (session) useAgent.setState({ userName: firstName(session) })
       setAuth((prev) =>
@@ -53,6 +54,7 @@ function AuthedApp() {
     getSupabase()
       .then(async (sb) => {
         const { data } = await sb.auth.getSession()
+        if (cancelled) return
         apply(sb, data.session)
         const sub = sb.auth.onAuthStateChange((event, session) => {
           apply(sb, session)
@@ -64,7 +66,10 @@ function AuthedApp() {
       .catch((e: unknown) =>
         setAuth({ status: 'signed-out', error: e instanceof Error ? e.message : 'Could not reach Aelora' }),
       )
-    return () => off?.()
+    return () => {
+      cancelled = true
+      off?.()
+    }
   }, [])
 
   if (auth.status === 'loading') return <Loading />

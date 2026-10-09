@@ -26,7 +26,9 @@ export function startAelora(opts: StartOptions): () => void {
   let stopped = false
   let teardown: (() => void) | undefined
   void connect(opts, () => stopped).then((stop) => {
-    teardown = stop ?? undefined
+    // Stopped while connecting (e.g. StrictMode's mount/unmount/mount): tear down now.
+    if (stopped) stop?.()
+    else teardown = stop ?? undefined
   })
   return () => {
     stopped = true
