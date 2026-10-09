@@ -30,6 +30,8 @@ export function OptionRail({
   const listening = useOptionsStore((s) => s.listening)
   const interim = useOptionsStore((s) => s.interim)
   const narrow = useMetrics((s) => s.compact)
+  // Inside the chat there's a real message box, so no keyboard/chat buttons here.
+  const inChat = contextKey === 'chat'
   // Count what the user actually got to see (settled, not mid-turn), for staleness.
   const shownIds = options.map((o) => o.id).join('|')
   useEffect(() => {
@@ -149,28 +151,31 @@ export function OptionRail({
             )}
           </AnimatePresence>
         </div>
-        <div className="flex shrink-0 flex-col justify-between gap-2">
-          {contextKey !== 'chat' ? (
-            <motion.button
-              whileTap={jelly}
-              onClick={ui.openChat}
-              aria-label="Open the conversation"
-              className="glass-pill grid h-[44px] w-11 place-items-center rounded-[8px] text-muted"
-            >
-              <ChatIcon />
-            </motion.button>
-          ) : (
-            <motion.button
-              whileTap={jelly}
-              onClick={() => ui.keyboard(true)}
-              aria-label="Type instead"
-              className="glass-pill grid h-[44px] w-11 place-items-center rounded-[8px] text-muted disabled:opacity-40"
-            >
-              <KeyboardIcon />
-            </motion.button>
-          )}
-          {trailing}
-        </div>
+        {/* In the chat, the message box (Composer) replaces these. */}
+        {!inChat && (
+          <div className="flex shrink-0 flex-col justify-between gap-2">
+            {contextKey !== 'chat' ? (
+              <motion.button
+                whileTap={jelly}
+                onClick={ui.openChat}
+                aria-label="Open the conversation"
+                className="glass-pill grid h-[44px] w-11 place-items-center rounded-[8px] text-muted"
+              >
+                <ChatIcon />
+              </motion.button>
+            ) : (
+              <motion.button
+                whileTap={jelly}
+                onClick={() => ui.keyboard(true)}
+                aria-label="Type instead"
+                className="glass-pill grid h-[44px] w-11 place-items-center rounded-[8px] text-muted disabled:opacity-40"
+              >
+                <KeyboardIcon />
+              </motion.button>
+            )}
+            {trailing}
+          </div>
+        )}
       </div>
     )
   }
@@ -181,7 +186,7 @@ export function OptionRail({
       <div className="flex max-h-[108px] min-w-0 flex-1 flex-wrap content-center items-center justify-center gap-2 overflow-hidden px-1 py-1.5">
         {pills}
       </div>
-      {iconRow}
+      {!inChat && iconRow}
     </div>
   )
 }

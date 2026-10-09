@@ -11,6 +11,7 @@ import { LazyMarkdown as Markdown } from './LazyMarkdown'
 import { copyableText, stableMarkdown } from './markdownText'
 import { glide, morph, press } from './motion'
 import { OptionRail } from './OptionRail'
+import { Composer } from './Composer'
 import { PendingBody } from './cards/PendingCard'
 import { usePendingAction } from '../stores/pending'
 import { sheen } from './sheen'
@@ -75,7 +76,12 @@ function Sheet() {
           <Transcript />
           <PendingStrip />
           <div className="shrink-0 border-t border-line px-3 pt-1 pb-[max(8px,env(safe-area-inset-bottom))]">
-            <OptionRail contextKey="chat" />
+            <div className="mx-auto w-full max-w-[780px]">
+              <OptionRail contextKey="chat" />
+              <div className="pt-2">
+                <Composer />
+              </div>
+            </div>
           </div>
         </motion.div>
       </motion.div>
@@ -88,7 +94,7 @@ function PendingStrip() {
   const p = usePendingAction()
   if (!p) return null
   return (
-    <div className="mx-3 mb-2 shrink-0 rounded-[8px] border border-urgent/30 bg-urgent/6 px-4 py-3">
+    <div className="mx-auto mb-2 w-[calc(100%-24px)] max-w-[780px] shrink-0 rounded-[8px] border border-urgent/30 bg-urgent/6 px-4 py-3">
       <PendingBody p={p} compact />
     </div>
   )
@@ -194,7 +200,7 @@ function Transcript() {
       {messages.length === 0 && !awaiting && (
         <p className="display pt-10 text-center text-2xl text-muted">Tap anything below to start.</p>
       )}
-      <div className="flex flex-col gap-3">
+      <div className="mx-auto flex w-full max-w-[780px] flex-col gap-3">
         {messages.map((b) => (
           <Bubble key={b.id} bubble={b} />
         ))}

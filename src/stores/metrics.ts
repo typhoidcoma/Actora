@@ -100,9 +100,10 @@ function measure(): Metrics {
   // Her line owns the whole band above the cards; text is centred in it.
   const line = { x: Math.round((vw - lineW) / 2), y: safe.top, w: lineW, h: Math.max(lineH, gridY - safe.top) }
 
-  const sheetW = compact ? vw : Math.min(700, vw - 48)
-  // Phones: the conversation takes the whole height below the status bar.
-  const sheetH = compact ? Math.round(vh - safe.top - 8) : Math.min(vh - 80, 840)
+  // The chat is where Wendy's words live in full: as big as the screen allows,
+  // still a sheet (a margin all round on tablets; the whole height on phones).
+  const sheetW = compact ? vw : Math.round(Math.min(vw - 32, 1000))
+  const sheetH = compact ? Math.round(vh - safe.top - 8) : Math.round(Math.min(vh - 32 - safe.top - safe.bottom, 1100))
   const sheet = {
     w: sheetW,
     h: sheetH,

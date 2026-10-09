@@ -32,13 +32,17 @@ export function startIdleHome(chatMs = CHAT_IDLE_MS, panelMs = PANEL_IDLE_MS): (
   const busy = () => {
     const a = useAgent.getState()
     const selecting = typeof window.getSelection === 'function' && !!window.getSelection()?.toString()
+    // Writing in the chat's message box (or any field): never whisk it away mid-thought.
+    const el = typeof document !== 'undefined' ? document.activeElement : null
+    const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')
     return (
       a.awaitingTurn ||
       a.turnId !== null ||
       a.streaming !== null ||
       useOptionsStore.getState().listening ||
       useUi.getState().keyboardOpen ||
-      selecting
+      selecting ||
+      typing
     )
   }
 
