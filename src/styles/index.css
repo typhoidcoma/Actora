@@ -362,6 +362,8 @@ button {
     content: '';
     position: absolute;
     inset: 0;
+    /* Above the content, so a full-bleed image (the finds card) keeps the lit edge. */
+    z-index: 3;
     padding: 1px;
     border-radius: inherit;
     background: linear-gradient(180deg, var(--t-spec) 0%, var(--hair) 18%, var(--hair) 100%);

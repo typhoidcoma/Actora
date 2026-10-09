@@ -88,17 +88,19 @@ export function PriorityCard({
     </div>
   )
 
-  // Why it matters now: a small tinted callout in the card's colour, signed by
-  // Wendy (orb dot) when it is her reasoning rather than the local default.
+  // Why it matters now: a tinted band right across the card (edge to edge, past
+  // the padding), fading away from the text side, signed "Wendy says" when it's
+  // her reasoning rather than the local default.
   const why = !compact && (
     <div
-      className={`flex max-w-[74%] items-start gap-2.5 rounded-[6px] px-3 py-2 ${right ? 'ml-auto flex-row-reverse text-right' : ''}`}
+      className={`-mx-[max(12px,calc(var(--grid)*0.035))] flex px-[max(12px,calc(var(--grid)*0.035))] py-2.5 ${right ? 'justify-end text-right' : ''}`}
       style={{
-        background: `color-mix(in srgb, ${kind.color} 13%, transparent)`,
-        boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${kind.color} 22%, transparent)`,
+        background: `linear-gradient(${right ? 270 : 90}deg, color-mix(in srgb, ${kind.color} 18%, transparent), color-mix(in srgb, ${kind.color} 5%, transparent))`,
+        boxShadow: `inset 0 1px 0 color-mix(in srgb, ${kind.color} 24%, transparent), inset 0 -1px 0 color-mix(in srgb, ${kind.color} 14%, transparent)`,
       }}
     >
-      <div className="min-w-0">
+      {/* Text stays clear of the orb's notch on the inner side. */}
+      <div className="min-w-0 max-w-[78%]">
         <div className="text-[13px] font-bold" style={{ color: inkOf(kind.color) }}>
           {item.whyFrom === 'wendy' ? 'Wendy says' : 'Why now'}
         </div>
