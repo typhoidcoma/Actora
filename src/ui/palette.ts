@@ -84,18 +84,22 @@ function triads(scheme: Scheme) {
 
 const isEmotion = (e: string): e is PrimaryEmotion => e in EMOTIONS
 
-const rad = (d: number) => (d * Math.PI) / 180
-
-/** Mixed in OKLab, so two hues blend through a clean in-between instead of sRGB mud. */
+/**
+ * Mixed like light: lightness and chroma interpolate on their own and hue
+ * takes the short way round, so amber → turquoise passes through a vivid
+ * green-gold instead of the grey an OKLab or sRGB average lands on.
+ */
 function mix(a: string, b: string, t: number): string {
   const x = hexToOklch(a) as Oklch
   const y = hexToOklch(b) as Oklch
-  const A = x.c * Math.cos(rad(x.h)) * (1 - t) + y.c * Math.cos(rad(y.h)) * t
-  const B = x.c * Math.sin(rad(x.h)) * (1 - t) + y.c * Math.sin(rad(y.h)) * t
+  // A near-grey has no meaningful hue; borrow the other colour's.
+  const hx = x.c < 0.02 ? y.h : x.h
+  const hy = y.c < 0.02 ? x.h : y.h
+  const dh = ((((hy - hx) % 360) + 540) % 360) - 180
   return oklchToHex({
     l: x.l + (y.l - x.l) * t,
-    c: Math.hypot(A, B),
-    h: ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360,
+    c: x.c + (y.c - x.c) * t,
+    h: (((hx + dh * t) % 360) + 360) % 360,
   })
 }
 const mixTriad = (a: string[], b: string[], t: number) => a.map((c, i) => mix(c, b[i], t))

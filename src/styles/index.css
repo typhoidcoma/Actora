@@ -638,3 +638,10 @@ button {
     background: none;
   }
 }
+
+/* At dusk the mood light adds light (like real light on glass) instead of
+   averaging over it; by day, on near-white, additive would wash out, so normal. */
+:root[data-theme='dusk'] .spill,
+:root[data-theme='dusk'] .orb-halo {
+  mix-blend-mode: plus-lighter;
+}

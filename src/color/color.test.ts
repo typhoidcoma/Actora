@@ -131,3 +131,19 @@ describe('mood colours', () => {
     expect(moodIntensity({ emotion: 'joy', intensity: 'high' } as never, {})).toBe(1)
   })
 })
+
+it('mood blends stay as vivid as what they blend', async () => {
+  const { orbColors } = await import('../ui/palette')
+  const toHex = (c: [number, number, number]) =>
+    '#' +
+    c
+      .map((v) =>
+        Math.round(v * 255)
+          .toString(16)
+          .padStart(2, '0'),
+      )
+      .join('')
+  // Amber-led anticipation mixed with turquoise trust: the case that used to go grey-green.
+  const [c1] = orbColors(null, { anticipation: 0.7, trust: 0.5 }, buildScheme())
+  expect(L(toHex(c1)).c).toBeGreaterThan(0.12)
+})

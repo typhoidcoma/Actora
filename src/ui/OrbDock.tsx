@@ -122,7 +122,7 @@ export function OrbDock() {
           style={{ transform: 'scale(calc(0.85 + var(--mood-glow, 0.45) * 0.35))' }}
         >
           <motion.span
-            className="absolute inset-0 rounded-full"
+            className="orb-halo absolute inset-0 rounded-full"
             style={{
               opacity: halo,
               background: 'radial-gradient(closest-side, var(--mood-1), transparent)',
