@@ -10,6 +10,7 @@ import {
 } from '../finds/finds'
 import { adoptGreetingUser } from './greeting'
 import { adoptMainUser, recallMain, rememberMain } from './mainThread'
+import { vault, type VaultEntry } from '../stores/vault'
 import { actOption, sayOption } from '../options/types'
 import { notifyInBackground, resubscribe } from '../push/push'
 import { agent, useAgent, type Reaction } from '../stores/agent'
@@ -56,6 +57,7 @@ import type { FrameBus } from './socket'
  *   reader.open · reader.close                             her full answer, in the reader
  *   finds.open · finds.refresh                             box 4: open the fun finds / hunt for more
  *   finds.set {items: [{title, blurb, why, url, image, source, tag}]}   the fun finds cards
+ *   vault.open · vault.close                               Memories: what she knows about the user
  *   options.set {options: [{label, say}]}                  replace the tap options here
  *   chat.open · chat.close · reply.show · reply.hide
  *   theme.set {mode: auto|day|dusk} · voice.listen · push.offer
@@ -77,6 +79,8 @@ export const AVAILABLE_ACTIONS = [
   'finds.open',
   'finds.refresh',
   'finds.set',
+  'vault.open',
+  'vault.close',
   'chat.open',
   'chat.close',
   'options.set',
@@ -133,6 +137,7 @@ function screen() {
     focus: u.focus,
     selected: u.selected,
     reader: u.reader,
+    memories: u.vault,
     priorities,
     box4,
     colors: describeScheme(useScheme.getState().scheme, useScheme.getState().source),
@@ -199,6 +204,7 @@ function runCommand(cmd: AgentCommand | undefined): void {
     case 'open_app': {
       const target = APP_TO_TILE[cmd.id]
       if (target === 'chat') ui.openChat()
+      else if (target === 'vault') ui.openVault()
       else if (target) ui.focus(target)
       return
     }
@@ -206,6 +212,7 @@ function runCommand(cmd: AgentCommand | undefined): void {
       const target = APP_TO_TILE[cmd.id]
       const s = useUi.getState()
       if (target === 'chat' && s.chatOpen) ui.closeChat()
+      else if (target === 'vault' && s.vault) ui.closeVault()
       else if (target && s.focus === target) ui.focus(null)
       return
     }
@@ -322,6 +329,10 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
       setColors(input, typeof hours === 'number' && Number.isFinite(hours) ? Math.min(hours, 168) : undefined)
       return
     }
+    case 'vault.open':
+      return ui.openVault()
+    case 'vault.close':
+      return ui.closeVault()
     case 'finds.set':
       setFinds(Array.isArray(args.items) ? args.items : [])
       return
@@ -386,6 +397,11 @@ function routeEvent(bus: FrameBus, event: string, data: Record<string, unknown> 
       if (sub === 'goal:deleted') entities.removeGoal(String(data.id))
       else if (data.goal) entities.upsertGoal(data.goal as Goal)
       return
+    case 'vault':
+      // Her remember/forget tools broadcast too; ignore ids we don't hold (forget_fact).
+      if (sub === 'vault:deleted') vault.remove(String(data.id))
+      else if (data.entry && typeof data.entry === 'object') vault.upsert(data.entry as VaultEntry)
+      return
     case 'notification':
       if (sub === 'notification:deleted') entities.removeNotification(String(data.id))
       else if (data.notification) {
@@ -436,6 +452,7 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
       adoptFindsUser(userId)
       adoptGreetingUser(userId)
       adoptMainUser(userId)
+      vault.reset()
       useAgent.setState({
         userId,
         botName: typeof f.botName === 'string' ? f.botName : 'Wendy',

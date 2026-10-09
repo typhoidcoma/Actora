@@ -123,6 +123,26 @@ export class MockWebSocket implements WebSocketLike {
   onerror: WebSocketLike['onerror'] = null
 
   private static db = seed()
+  /** What Wendy "remembers" in the mock (Memories panel). */
+  private static vault = [
+    ['identity', 'Lives in Seattle and works as a front-end engineer'],
+    ['preference', 'Loves jazz, especially live sets'],
+    ['preference', 'Prefers short, direct answers'],
+    ['routine', 'Runs a 4 km tempo session on weekday mornings'],
+    ['relationship', 'Has dinner with Sam most Fridays'],
+    ['intention', 'Wants to ship Actora v1 this month'],
+  ].map(([category, content], i) => ({
+    id: `mem-${i}`,
+    vault_id: 'v1',
+    user_id: 'mock-user',
+    content,
+    category,
+    confidence: 1,
+    source: 'conversation',
+    is_public: false,
+    created_at: iso(new Date(Date.now() - i * 86_400_000)),
+    updated_at: iso(new Date(Date.now() - i * 86_400_000)),
+  }))
   private timers = new Set<ReturnType<typeof setTimeout>>()
   private conversationId = uid()
   private transcript: Array<{ role: 'user' | 'assistant'; content: string }> = [
@@ -231,6 +251,31 @@ export class MockWebSocket implements WebSocketLike {
         MockWebSocket.db.tasks.push(task)
         this.reply({ type: 'task.created', task })
         return this.reply({ type: 'event', event: 'task', data: { type: 'task:created', task } })
+      }
+      case 'vault.list':
+        return this.reply({ type: 'vault.list', entries: MockWebSocket.vault })
+      case 'vault.remember': {
+        const now = iso(new Date())
+        const entry = {
+          id: uid(),
+          vault_id: 'v1',
+          user_id: 'mock-user',
+          content: String(msg.content ?? ''),
+          category: typeof msg.category === 'string' ? msg.category : 'context',
+          confidence: 1,
+          source: 'user',
+          is_public: false,
+          created_at: now,
+          updated_at: now,
+        }
+        MockWebSocket.vault.unshift(entry)
+        this.reply({ type: 'vault.remembered', content: entry.content })
+        return this.reply({ type: 'event', event: 'vault', data: { type: 'vault:created', entry } })
+      }
+      case 'vault.delete': {
+        MockWebSocket.vault = MockWebSocket.vault.filter((e) => e.id !== msg.id)
+        this.reply({ type: 'vault.deleted', id: msg.id })
+        return this.reply({ type: 'event', event: 'vault', data: { type: 'vault:deleted', id: msg.id } })
       }
       case 'push.subscribe':
         return this.reply({ type: 'push.subscribed', endpoint: msg.endpoint })

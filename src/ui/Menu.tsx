@@ -158,6 +158,7 @@ function Sheet({
       <Item onClick={() => ui.setTheme(THEME_NEXT[theme])} hint={THEME_LABEL[theme]}>
         Look
       </Item>
+      <Item onClick={go(() => ui.openVault())}>Memories</Item>
       {push === 'on' && (
         <>
           <Item onClick={() => void disablePush().then(close)} hint="On">

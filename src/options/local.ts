@@ -253,6 +253,12 @@ function finds(key: string, s: Snapshot): Option[] {
 
 export function localOptions(key: string, s: Snapshot): Option[] {
   if (key === 'home') return home(s)
+  if (key === 'vault')
+    return [
+      sayOption('What do you know?', 'What do you know about me so far?'),
+      sayOption('Remember something', 'I want you to remember something about me.'),
+      sayOption('Anything outdated?', 'Is anything you remember about me out of date?'),
+    ]
   if (key === 'chat') return chat(s)
   if (key === 'finds' || key.startsWith('find:')) return finds(key, s)
   if (key.startsWith('tile:')) return tile(key.slice(5), s)

@@ -1,13 +1,13 @@
 import { useAgent } from '../stores/agent'
 import { useOptionsStore } from '../stores/options'
-import { ui, useUi } from '../stores/ui'
+import { panelOpen, ui, useUi } from '../stores/ui'
 
 /** Left alone this long with something open, the app eases back to the home view. */
 export const IDLE_HOME_MS = 2 * 60_000
 
 const away = () => {
   const u = useUi.getState()
-  return u.focus !== null || u.selected !== null || u.reader || u.finds || u.chatOpen
+  return panelOpen(u) || u.chatOpen
 }
 
 /**

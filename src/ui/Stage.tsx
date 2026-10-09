@@ -10,7 +10,7 @@ import { initPush, setNotificationOpener } from '../push/push'
 import { agent, useAgent } from '../stores/agent'
 import { useEntities } from '../stores/entities'
 import { useMetrics, watchMetrics } from '../stores/metrics'
-import { contextKeyOf, ui, useUi } from '../stores/ui'
+import { contextKeyOf, ui, useUi, panelOpen } from '../stores/ui'
 import { Ambient } from '../weather/Ambient'
 import { ChatSheet } from './ChatSheet'
 import { Grid } from './Grid'
@@ -48,7 +48,7 @@ function openNotification(id: string): void {
 }
 
 export function Stage({ onSignOut }: { onSignOut?: () => void }) {
-  const focus = useUi((s) => s.focus !== null || s.selected !== null || s.reader || s.finds)
+  const focus = useUi(panelOpen)
   const chatOpen = useUi((s) => s.chatOpen)
   const fatal = useAgent((s) => s.connection === 'fatal')
   const key = useContextKey()

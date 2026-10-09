@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAgent } from '../stores/agent'
-import { ui, useUi } from '../stores/ui'
+import { ui, useUi, panelOpen } from '../stores/ui'
 import { useMetrics } from '../stores/metrics'
 import { Activity } from './Activity'
 import { firstSentence, plainText } from './markdownText'
@@ -27,7 +27,7 @@ export function WendyLine() {
   // With the reader open, the reader is her voice: the line steps back rather than echo it.
   // On phones every panel takes the full screen, so the line steps back for all of them.
   const stack = useMetrics((s) => s.stack)
-  const quiet = useUi((s) => s.reader || (stack && (s.focus !== null || s.selected !== null || s.finds)))
+  const quiet = useUi((s) => s.reader || (stack && panelOpen(s)))
   const a = useAgent(
     useShallow((s) => ({
       line: s.line,

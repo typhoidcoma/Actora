@@ -1,3 +1,4 @@
+import { useVault, vault, type VaultEntry } from '../stores/vault'
 import { config } from '../config'
 import { useAgent } from '../stores/agent'
 import { entities, useEntities } from '../stores/entities'
@@ -170,4 +171,32 @@ export async function markNotificationRead(id: string): Promise<void> {
   entities.upsertNotification(optimistic)
   const reply = await request(socket, { type: 'notification.read', id }, 'notification.marked')
   if (!reply) entities.upsertNotification(before)
+}
+
+// ── Memories (Aelora's vault) ──────────────────────────────────────────────
+
+/** Load everything Wendy remembers (refreshed each time the Memories panel opens). */
+export async function loadVault(): Promise<void> {
+  vault.loading()
+  const r = await ask<{ type: string; entries?: VaultEntry[] }>({ type: 'vault.list' }, 'vault.list')
+  if (r && Array.isArray(r.entries)) vault.set(r.entries)
+  else vault.failed()
+}
+
+/** Save a memory: a fact Wendy uses in conversation, mirrored to the vault (vault.remember). */
+export async function rememberFact(content: string, category?: string): Promise<boolean> {
+  const text = content.trim().slice(0, 500)
+  if (!text) return false
+  const r = await ask({ type: 'vault.remember', content: text, ...(category ? { category } : {}) }, 'vault.remembered')
+  if (r) void loadVault()
+  return r !== null
+}
+
+/** Forget a memory; optimistic, restored if the server says no. */
+export async function forgetFact(id: string): Promise<boolean> {
+  const before = useVault.getState().entries[id]
+  vault.remove(id)
+  const r = await ask({ type: 'vault.delete', id }, 'vault.deleted')
+  if (!r && before) vault.upsert(before)
+  return r !== null
 }

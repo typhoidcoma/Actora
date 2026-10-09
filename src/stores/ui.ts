@@ -26,6 +26,8 @@ export interface UiState {
   finds: boolean
   /** The find being looked at inside Discover (its options are on the rail). */
   find: string | null
+  /** Memories: what Wendy knows about the user (Aelora's vault). Opened from the menu. */
+  vault: boolean
   theme: ThemeMode
   /** Hidden text fallback (behind the mic chip). */
   keyboardOpen: boolean
@@ -45,6 +47,7 @@ export const useUi = create<UiState>(() => ({
   reader: false,
   finds: false,
   find: null,
+  vault: false,
   theme: 'auto',
   keyboardOpen: false,
 }))
@@ -52,7 +55,19 @@ export const useUi = create<UiState>(() => ({
 const same = (a: Selected | null, b: Selected) => a?.kind === b.kind && a.id === b.id
 
 /** Every panel closed; spread first, then open the one wanted. */
-const CLOSED = { focus: null, chatOpen: false, selected: null, reader: false, finds: false, find: null } as const
+const CLOSED = {
+  focus: null,
+  chatOpen: false,
+  selected: null,
+  reader: false,
+  finds: false,
+  find: null,
+  vault: false,
+} as const
+
+/** Is any panel open over the grid (the chat sheet aside)? */
+export const panelOpen = (s: Pick<UiState, 'focus' | 'selected' | 'reader' | 'finds' | 'vault'>) =>
+  s.focus !== null || s.selected !== null || s.reader || s.finds || s.vault
 
 export const ui = {
   focus: (id: TileId | null) => useUi.setState({ ...CLOSED, focus: id }),
@@ -74,6 +89,8 @@ export const ui = {
   closeReader: () => useUi.setState({ reader: false }),
   openFinds: () => useUi.setState({ ...CLOSED, finds: true }),
   closeFinds: () => useUi.setState({ finds: false, find: null }),
+  openVault: () => useUi.setState({ ...CLOSED, vault: true }),
+  closeVault: () => useUi.setState({ vault: false }),
   /** Toggle which find is selected in Discover. */
   selectFind: (id: string | null) => useUi.setState((s) => ({ find: id && s.find !== id ? id : null })),
   setTheme: (theme: ThemeMode) => useUi.setState({ theme }),
@@ -81,15 +98,17 @@ export const ui = {
 }
 
 /** Aelora canvas app ids ↔ our tiles (WEBSOCKET.md → "Canvas commands"). Legacy `tasks` folds into `goals`. */
-export const APP_TO_TILE: Record<string, TileId | 'chat'> = {
+export const APP_TO_TILE: Record<string, TileId | 'chat' | 'vault'> = {
   goals: 'goals',
   tasks: 'tasks',
   calendar: 'calendar',
   wendy: 'chat',
+  vault: 'vault',
 }
 
-export function openAppsFor(state: Pick<UiState, 'focus' | 'chatOpen'>): string[] {
+export function openAppsFor(state: Pick<UiState, 'focus' | 'chatOpen' | 'vault'>): string[] {
   if (state.chatOpen) return ['wendy']
+  if (state.vault) return ['vault']
   if (state.focus === 'calendar') return ['calendar']
   if (state.focus === 'goals' || state.focus === 'tasks') return ['goals']
   return []
@@ -99,10 +118,11 @@ export function openAppsFor(state: Pick<UiState, 'focus' | 'chatOpen'>): string[
 export type ContextKey = string
 
 export function contextKeyOf(
-  state: Pick<UiState, 'focus' | 'chatOpen' | 'selected' | 'reader' | 'finds' | 'find'>,
+  state: Pick<UiState, 'focus' | 'chatOpen' | 'selected' | 'reader' | 'finds' | 'find' | 'vault'>,
 ): ContextKey {
   // Reading Wendy's full answer is part of the conversation: same follow-ups as chat.
   if (state.chatOpen || state.reader) return 'chat'
+  if (state.vault) return 'vault'
   if (state.finds) return state.find ? `find:${state.find}` : 'finds'
   if (state.selected) return `item:${state.selected.kind}:${state.selected.id}`
   if (state.focus) return `tile:${state.focus}`

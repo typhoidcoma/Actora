@@ -11,6 +11,7 @@ import { PriorityCard } from './cards/PriorityCard'
 import { Reader } from './cards/Reader'
 import { FindsCard } from './cards/FindsCard'
 import { FindsPanel } from './cards/FindsPanel'
+import { VaultPanel } from './cards/VaultPanel'
 import { glide } from './motion'
 import { CALENDAR_ACCENT, CalendarDetail, CalendarFace } from './tiles/Calendar'
 import type { Corner } from './tiles/Face'
@@ -66,13 +67,14 @@ export function Grid() {
   const selected = useUi((s) => s.selected)
   const reader = useUi((s) => s.reader)
   const finds = useUi((s) => s.finds)
+  const memories = useUi((s) => s.vault)
   const chatOpen = useUi((s) => s.chatOpen)
   const slots = useSlots()
 
   const itemPanel = !focus && selected ? selected : null
   const openKey = finds ? 'wendy' : itemPanel ? `${itemPanel.kind}:${itemPanel.id}` : focus ? `list:${focus}` : null
   // The reader isn't tied to a card; it floats over the grid like any panel.
-  const panelOpen = openKey !== null || reader
+  const panelOpen = openKey !== null || reader || memories
 
   return (
     <motion.div
@@ -134,6 +136,7 @@ export function Grid() {
           {itemPanel && <ItemPanel key={`item-${itemPanel.kind}:${itemPanel.id}`} item={itemPanel} />}
           {reader && <Reader key="reader" />}
           {finds && <FindsPanel key="finds" />}
+          {memories && <VaultPanel key="vault" />}
         </AnimatePresence>
       </div>
     </motion.div>

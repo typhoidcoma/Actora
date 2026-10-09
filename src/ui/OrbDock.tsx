@@ -4,7 +4,7 @@ import { toggleVoice } from '../options/run'
 import { useAgent, orbSignals } from '../stores/agent'
 import { useMetrics } from '../stores/metrics'
 import { useOptionsStore } from '../stores/options'
-import { ui, useUi } from '../stores/ui'
+import { ui, useUi, panelOpen } from '../stores/ui'
 import { glide } from './motion'
 import { Orb } from './orb/Orb'
 
@@ -22,7 +22,7 @@ const PANEL_ORB = 56
  */
 export function OrbDock() {
   const m = useMetrics()
-  const focus = useUi((s) => s.focus !== null || s.selected !== null || s.reader || s.finds)
+  const focus = useUi(panelOpen)
   const chatOpen = useUi((s) => s.chatOpen)
   const [pressed, setPressed] = useState(false)
   const [hover, setHover] = useState(false)
@@ -263,7 +263,7 @@ function MicHint({ on }: { on: boolean }) {
  */
 export function OrbSocket() {
   const m = useMetrics()
-  const focus = useUi((s) => s.focus !== null || s.selected !== null || s.reader || s.finds)
+  const focus = useUi(panelOpen)
   const chatOpen = useUi((s) => s.chatOpen)
   if (chatOpen || focus) return null
   const d = m.orb + m.gap

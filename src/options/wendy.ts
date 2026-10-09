@@ -9,6 +9,7 @@ import { usePush } from '../stores/push'
 import { contextKeyOf, useUi } from '../stores/ui'
 import { useSky } from '../weather/sky'
 import { useFinds } from '../finds/finds'
+import { useVault } from '../stores/vault'
 import { localOptions, type Snapshot } from './local'
 import { sayOption, type Option } from './types'
 
@@ -153,6 +154,12 @@ export function screenSummary(key: string, s: Snapshot): string {
     lines.push(`Screen: the user tapped the ${kind} "${title ?? 'unknown'}" and is looking at its actions.`)
     const details = itemDetails(kind, id, s)
     if (details) lines.push(`Its details: ${details}.`)
+  } else if (key === 'vault') {
+    const mem = Object.values(useVault.getState().entries).slice(0, 12)
+    lines.push(
+      `Screen: the Memories panel, everything Wendy remembers about the user (${mem.length} shown): ${mem.map((m) => `"${m.content.slice(0, 80)}"`).join('; ') || 'nothing yet'}.`,
+      'Options should help curate it: correct or update something, forget something outdated, or add something new about themselves.',
+    )
   } else if (key === 'finds' || key.startsWith('find:')) {
     const fs = useFinds.getState()
     if (key === 'finds') {
