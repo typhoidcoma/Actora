@@ -8,7 +8,6 @@ import { CardShell } from './cards/CardShell'
 import { ItemPanel } from './cards/ItemPanel'
 import { Panel } from './cards/Panel'
 import { PriorityCard } from './cards/PriorityCard'
-import { Reader } from './cards/Reader'
 import { FindsCard } from './cards/FindsCard'
 import { PendingCard } from './cards/PendingCard'
 import { usePendingAction } from '../stores/pending'
@@ -67,7 +66,6 @@ export function Grid() {
   const m = useMetrics()
   const focus = useUi((s) => s.focus)
   const selected = useUi((s) => s.selected)
-  const reader = useUi((s) => s.reader)
   const finds = useUi((s) => s.finds)
   const memories = useUi((s) => s.vault)
   const chatOpen = useUi((s) => s.chatOpen)
@@ -76,8 +74,7 @@ export function Grid() {
 
   const itemPanel = !focus && selected ? selected : null
   const openKey = finds ? 'wendy' : itemPanel ? `${itemPanel.kind}:${itemPanel.id}` : focus ? `list:${focus}` : null
-  // The reader isn't tied to a card; it floats over the grid like any panel.
-  const panelOpen = openKey !== null || reader || memories
+  const panelOpen = openKey !== null || memories
 
   return (
     <motion.div
@@ -143,7 +140,6 @@ export function Grid() {
         <AnimatePresence>
           {focus && <ListPanel key={`list-${focus}`} id={focus} />}
           {itemPanel && <ItemPanel key={`item-${itemPanel.kind}:${itemPanel.id}`} item={itemPanel} />}
-          {reader && <Reader key="reader" />}
           {finds && <FindsPanel key="finds" />}
           {memories && <VaultPanel key="vault" />}
         </AnimatePresence>

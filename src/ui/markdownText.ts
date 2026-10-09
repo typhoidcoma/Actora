@@ -25,7 +25,7 @@ export function firstSentence(text: string, max = 160): string {
   return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s
 }
 
-/** A question big enough that the answer deserves the full reader. */
+/** A question big enough that the answer deserves the full chat. */
 export function isLargeQuestion(text: string): boolean {
   const t = text.trim()
   return t.length >= 60 || t.split(/\s+/).length >= 9

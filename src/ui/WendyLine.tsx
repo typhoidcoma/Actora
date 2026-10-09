@@ -27,7 +27,7 @@ export function WendyLine() {
   // With the reader open, the reader is her voice: the line steps back rather than echo it.
   // On phones every panel takes the full screen, so the line steps back for all of them.
   const stack = useMetrics((s) => s.stack)
-  const quiet = useUi((s) => s.reader || (stack && panelOpen(s)))
+  const quiet = useUi((s) => stack && panelOpen(s))
   const a = useAgent(
     useShallow((s) => ({
       line: s.line,
@@ -143,10 +143,10 @@ export function WendyLine() {
       style={{ left: m.line.x, top: m.line.y, width: m.line.w, height: m.line.h }}
       initial={false}
       animate={{ opacity: hidden ? 0 : 1, y: hidden ? -6 : 0, filter: hidden ? 'blur(4px)' : 'blur(0px)' }}
-      // A slow, soft fade when it settles away; quick when the reader takes over.
+      // A slow, soft fade when it settles away; quick when a panel takes over.
       transition={{ duration: faded && !quiet ? 1.4 : 0.35, ease: [0.16, 1, 0.3, 1] }}
       aria-live={quiet ? 'off' : 'polite'}
-      // inert, not aria-hidden: hiding it also drops focus (e.g. from "Read all", which opens the reader).
+      // inert, not aria-hidden: hiding it also drops focus (e.g. from "Read all", which opens the chat).
       inert={hidden}
     >
       <div className="relative max-h-full overflow-hidden">
@@ -184,7 +184,7 @@ export function WendyLine() {
             )}
             {content.more && (
               <button
-                onClick={ui.openReader}
+                onClick={ui.openChat}
                 className="pointer-events-auto ml-3 align-middle font-sans text-[14px] font-semibold text-accent underline decoration-accent/40 underline-offset-4"
               >
                 Read all

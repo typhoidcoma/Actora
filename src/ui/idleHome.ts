@@ -2,7 +2,7 @@ import { useAgent } from '../stores/agent'
 import { useOptionsStore } from '../stores/options'
 import { panelOpen, ui, useUi } from '../stores/ui'
 
-/** A conversation with Wendy (chat sheet or reader) left alone this long goes home. */
+/** A conversation with Wendy (the chat) left alone this long goes home. */
 const CHAT_IDLE_MS = 10_000
 /** Any other panel (lists, items, finds, the Vault) left alone this long goes home. */
 const PANEL_IDLE_MS = 2 * 60_000
@@ -15,7 +15,7 @@ const away = () => {
 }
 const inConversation = () => {
   const u = useUi.getState()
-  return u.chatOpen || u.reader
+  return u.chatOpen
 }
 
 /**

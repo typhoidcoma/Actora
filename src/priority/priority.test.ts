@@ -125,7 +125,7 @@ describe('ranking', () => {
 describe('Wendy actions', () => {
   beforeEach(() => {
     usePriorityStore.setState({ wendy: null, pushed: null })
-    useUi.setState({ focus: null, chatOpen: false, selected: null, reader: false, theme: 'auto', keyboardOpen: false })
+    useUi.setState({ focus: null, chatOpen: false, selected: null, theme: 'auto', keyboardOpen: false })
   })
 
   it('priorities.set stores a sanitized ranking', () => {
@@ -143,12 +143,12 @@ describe('Wendy actions', () => {
     ])
   })
 
-  it('card.open opens the item panel (no list); reader.open shows the answer', () => {
+  it('card.open opens the item panel (no list); reader.open (now the chat) shows the answer', () => {
     useEntities.setState({ events: { e1: event('e1', 30) } })
     runUiAction('card.open', { kind: 'event', id: 'e1' })
     expect(useUi.getState()).toMatchObject({ selected: { kind: 'event', id: 'e1' }, focus: null })
     runUiAction('reader.open', {})
-    expect(useUi.getState()).toMatchObject({ reader: true, selected: null })
+    expect(useUi.getState()).toMatchObject({ chatOpen: true, selected: null })
   })
 
   it('opens only items that exist; list.open can highlight one; home.show closes all', () => {

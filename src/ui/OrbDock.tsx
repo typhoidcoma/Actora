@@ -11,7 +11,7 @@ import { DotRipple } from './DotRipple'
 
 /** The visible blob is 60% of the canvas box; the rest is glow. */
 const BLOB = 0.6
-/** Orb size when it leads the reader header (Panel reserves room for it). */
+/** Orb size when it leads a panel header (Panel reserves room for it). */
 /** The orb's size when it leads a panel header (Panel reserves this space on the left). */
 const PANEL_ORB = 56
 
@@ -40,7 +40,7 @@ export function OrbDock() {
     cx = m.sheet.x + 22 + blob / 2
     cy = m.sheet.y + 18 + blob / 2
   } else if (focus) {
-    // Any open panel (reader, list, item, finds): she leads the header, in front of its title.
+    // Any open panel (list, item, finds, Vault): she leads the header, in front of its title.
     blob = PANEL_ORB
     cx = m.panel.x + 24 + blob / 2
     cy = m.panel.y + 20 + blob / 2

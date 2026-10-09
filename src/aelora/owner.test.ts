@@ -40,7 +40,7 @@ describe('ownerOf / eventVerdict', () => {
 
 describe('routeFrame respects the signed-in user', () => {
   beforeEach(() => {
-    useUi.setState({ focus: null, chatOpen: false, selected: null, reader: false, finds: false, vault: false })
+    useUi.setState({ focus: null, chatOpen: false, selected: null, finds: false, vault: false })
     useAgent.setState({ userId: 'me', isAdmin: true, turnId: null, mood: null as never })
   })
   afterEach(() => vi.useRealTimers())

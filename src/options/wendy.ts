@@ -184,8 +184,6 @@ function screenSummary(key: string, s: Snapshot): string {
     }
   }
   // What else is visible, so options can refer to it.
-  const ui = useUi.getState()
-  if (ui.reader) lines.push("The reader is open, showing Wendy's latest full answer.")
   const finds = useFinds.getState().items
   if (key === 'home' && finds.length)
     lines.push(

@@ -133,7 +133,6 @@ function screen() {
     focus: u.focus,
     selected: u.selected,
     chat: u.chatOpen,
-    reader: u.reader,
     vault: u.vault ? { open: true, query: v.query, category: v.category } : { open: false },
     // The user's Look setting, and what's actually showing now (auto follows the sun).
     theme: u.theme,
@@ -298,8 +297,9 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
     case 'card.close':
       if (useUi.getState().selected) ui.select(null)
       return
+    // The reader is the chat now (one place for her words); kept as aliases.
     case 'reader.open':
-      return ui.openReader()
+      return ui.openChat()
     case 'finds.open':
       return ui.openFinds()
     case 'finds.close':
@@ -313,7 +313,7 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
     case 'finds.refresh':
       return hunt()
     case 'reader.close':
-      return ui.closeReader()
+      return ui.closeChat()
     case 'chat.open':
       return ui.openChat()
     case 'chat.close':

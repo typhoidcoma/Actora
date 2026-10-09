@@ -23,8 +23,6 @@ interface UiState {
    * highlighted row in that list; without, it is open in its own item panel.
    */
   selected: Selected | null
-  /** Wendy's full answer, open in the reader panel. */
-  reader: boolean
   /** Box 4's fun finds expanded into their panel. */
   finds: boolean
   /** The find being looked at inside Discover (its options are on the rail). */
@@ -55,7 +53,6 @@ export const useUi = create<UiState>(() => ({
   focus: null,
   chatOpen: false,
   selected: null,
-  reader: false,
   finds: false,
   find: null,
   vault: false,
@@ -75,7 +72,6 @@ const CLOSED = {
   focus: null,
   chatOpen: false,
   selected: null,
-  reader: false,
   finds: false,
   find: null,
   vault: false,
@@ -85,8 +81,8 @@ const CLOSED = {
 } as const
 
 /** Is any panel open over the grid (the chat sheet aside)? */
-export const panelOpen = (s: Pick<UiState, 'focus' | 'selected' | 'reader' | 'finds' | 'vault'>) =>
-  s.focus !== null || s.selected !== null || s.reader || s.finds || s.vault
+export const panelOpen = (s: Pick<UiState, 'focus' | 'selected' | 'finds' | 'vault'>) =>
+  s.focus !== null || s.selected !== null || s.finds || s.vault
 
 export const ui = {
   focus: (id: TileId | null) => useUi.setState({ ...CLOSED, focus: id }),
@@ -112,8 +108,6 @@ export const ui = {
     if (same(s.selected, item)) return useUi.setState({ selected: null })
     useUi.setState({ ...CLOSED, selected: item, focus: s.focus ?? ITEM_TILE[item.kind] })
   },
-  openReader: () => useUi.setState({ ...CLOSED, reader: true }),
-  closeReader: () => useUi.setState({ reader: false }),
   openFinds: () => useUi.setState({ ...CLOSED, finds: true }),
   closeFinds: () => useUi.setState({ finds: false, find: null }),
   /** Each visit starts unfiltered (Wendy's vault.search filters after opening). */
@@ -151,10 +145,9 @@ export function openAppsFor(state: Pick<UiState, 'focus' | 'chatOpen' | 'vault'>
 type ContextKey = string
 
 export function contextKeyOf(
-  state: Pick<UiState, 'focus' | 'chatOpen' | 'selected' | 'reader' | 'finds' | 'find' | 'vault'>,
+  state: Pick<UiState, 'focus' | 'chatOpen' | 'selected' | 'finds' | 'find' | 'vault'>,
 ): ContextKey {
-  // Reading Wendy's full answer is part of the conversation: same follow-ups as chat.
-  if (state.chatOpen || state.reader) return 'chat'
+  if (state.chatOpen) return 'chat'
   if (state.vault) return 'vault'
   if (state.finds) return state.find ? `find:${state.find}` : 'finds'
   if (state.selected) return `item:${state.selected.kind}:${state.selected.id}`

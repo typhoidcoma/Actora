@@ -39,8 +39,13 @@ describe('following Wendy while she talks', () => {
     expect(useUi.getState().chatOpen).toBe(false)
   })
 
+  it('from home, a long or structured answer opens the chat (there is no separate reader)', () => {
+    talk('Here is the plan:\n- one\n- two\n- three')
+    expect(useUi.getState().chatOpen).toBe(true)
+  })
+
   it('from home, a short reply stays in her line', () => {
     talk('Done.')
-    expect(useUi.getState()).toMatchObject({ chatOpen: false, reader: false })
+    expect(useUi.getState()).toMatchObject({ chatOpen: false })
   })
 })

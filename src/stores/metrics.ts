@@ -34,7 +34,7 @@ interface Metrics {
   /** Option rail, docked to the bottom edge. `top` is where its band starts (the grid's bottom): pills centre in it. */
   rail: { x: number; y: number; w: number; h: number; padBottom: number; top: number }
   sheet: { x: number; y: number; w: number; h: number; radius: number }
-  /** Where open panels (reader, lists, items, finds) sit: the grid, or on phones nearly the whole screen. */
+  /** Where open panels (lists, items, finds, the Vault) sit: the grid, or on phones nearly the whole screen. */
   panel: { x: number; y: number; w: number; h: number }
 }
 
