@@ -101,7 +101,7 @@ export function PriorityCard({
       hidden={hidden}
       // Screen readers still hear the order, which the layout shows visually.
       label={`${rank === 1 ? 'Top priority' : `Priority ${rank}`}, ${kind.label}: ${item.title}`}
-      onOpen={() => ui.open({ kind: item.kind, id: item.id })}
+      onOpen={() => ui.open({ kind: item.kind, id: item.id, occurrence: item.occurrence })}
     >
       <div
         className={`flex h-full flex-col justify-between ${tight ? 'gap-1 p-[10px]' : 'gap-2 p-[max(12px,calc(var(--grid)*0.035))]'}`}

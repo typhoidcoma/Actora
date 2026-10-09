@@ -55,6 +55,8 @@ export interface CalendarOccurrence {
   color?: string | null
   rrule?: string | null
   is_recurring?: boolean
+  /** Other people are invited: changing it from here makes Google email them. */
+  has_guests?: boolean
   occurrence_start?: string | null
 }
 

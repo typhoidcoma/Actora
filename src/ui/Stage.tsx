@@ -18,6 +18,7 @@ import { MenuButton } from './Menu'
 import { KeyboardSheet } from './KeyboardSheet'
 import { MoodLight } from './MoodLight'
 import { OptionRail } from './OptionRail'
+import { Toaster } from './Toast'
 import { OrbDock, OrbSocket } from './OrbDock'
 import { startAutoReader } from './autoReader'
 import { useThemeSync } from './Theme'
@@ -128,6 +129,7 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
         )}
       </AnimatePresence>
       <KeyboardSheet />
+      <Toaster />
       <AnimatePresence>{fatal && <FatalCard key="fatal" />}</AnimatePresence>
       {/* Grain sits above the glass, as on a real render, rather than being blurred by it. */}
       <Grain />

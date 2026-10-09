@@ -6,15 +6,16 @@ import { clockTime, countdownParts, dayLabel, until } from '../format'
 import { morph } from '../motion'
 import { useAgenda, useNow, useSelected } from './data'
 import { Face, type Corner } from './Face'
-import { Empty, Section, SelectedWash } from './parts'
+import { Empty, Loading, Section, SelectedWash } from './parts'
 import { ROLE } from '../brand'
 
 export const CALENDAR_ACCENT = ROLE.kind.event
 
 export function CalendarFace({ corner }: { corner: Corner }) {
   const now = useNow(15_000)
-  const { upcoming, current } = useAgenda(now)
+  const { upcoming, current, hydrated } = useAgenda(now)
   const next = upcoming.find((e) => e !== current && Date.parse(e.start_time) > now)
+  if (!hydrated) return <Face corner={corner} accent={CALENDAR_ACCENT} label="Calendar" value="—" line="Loading…" />
 
   if (current) {
     return (
@@ -47,7 +48,8 @@ export function CalendarFace({ corner }: { corner: Corner }) {
 export function CalendarDetail() {
   const now = useNow(15_000)
   const { upcoming, hydrated } = useAgenda(now)
-  if (hydrated && !upcoming.length) return <Empty text="Your next two weeks are open." />
+  if (!hydrated) return <Loading />
+  if (!upcoming.length) return <Empty text="Your next two weeks are open." />
 
   const groups = new Map<string, CalendarOccurrence[]>()
   for (const e of upcoming) {
@@ -70,7 +72,8 @@ export function CalendarDetail() {
 function EventRow({ event: e, index, now }: { event: CalendarOccurrence; index: number; now: number }) {
   const start = Date.parse(e.start_time)
   const live = start <= now
-  const selected = useSelected('event', e.id)
+  const occurrence = e.occurrence_start ?? undefined
+  const selected = useSelected('event', e.id, occurrence)
   return (
     <motion.li
       initial={{ opacity: 0, x: -8 }}
@@ -80,7 +83,7 @@ function EventRow({ event: e, index, now }: { event: CalendarOccurrence; index: 
     >
       <SelectedWash on={selected} accent={CALENDAR_ACCENT} />
       <button
-        onClick={() => ui.select({ kind: 'event', id: e.id })}
+        onClick={() => ui.select({ kind: 'event', id: e.id, occurrence })}
         className="flex w-full items-stretch gap-3 py-3 text-left"
       >
         <span

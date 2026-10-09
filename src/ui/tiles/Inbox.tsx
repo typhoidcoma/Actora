@@ -6,15 +6,16 @@ import { ago } from '../format'
 import { morph, press } from '../motion'
 import { useInbox, useNow, useSelected } from './data'
 import { Face, type Corner } from './Face'
-import { Empty, Section, SelectedWash } from './parts'
+import { Empty, Loading, Section, SelectedWash } from './parts'
 import { ROLE } from '../brand'
 
 export const INBOX_ACCENT = ROLE.kind.notification
 
 export function InboxFace({ corner }: { corner: Corner }) {
   const now = useNow(30_000)
-  const { items, unread } = useInbox(now)
+  const { items, unread, hydrated } = useInbox(now)
   const latest = items.find((n) => !n.read_at) ?? items[0]
+  if (!hydrated) return <Face corner={corner} accent={INBOX_ACCENT} label="Inbox" value="—" line="Loading…" />
   return (
     <Face
       corner={corner}
@@ -46,7 +47,8 @@ export function InboxFace({ corner }: { corner: Corner }) {
 export function InboxDetail() {
   const now = useNow(30_000)
   const { items, unread, hydrated } = useInbox(now)
-  if (hydrated && !items.length) return <Empty text="All quiet." />
+  if (!hydrated) return <Loading />
+  if (!items.length) return <Empty text="All quiet." />
   return (
     <Section title={unread ? `${unread} unread` : 'All read'} count={items.length}>
       {items.map((n, i) => (

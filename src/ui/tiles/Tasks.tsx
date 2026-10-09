@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { completeTask } from '../../aelora/client'
+import { completeTask, reopenTask } from '../../aelora/client'
 import type { Task } from '../../aelora/protocol'
 import { ui } from '../../stores/ui'
 import { AnimatedNumber } from '../AnimatedNumber'
@@ -7,13 +7,14 @@ import { dueLabel } from '../format'
 import { morph, press } from '../motion'
 import { useTasks, useSelected } from './data'
 import { DashRun, Face, type Corner } from './Face'
-import { Empty, Section, SelectedWash } from './parts'
+import { Empty, Loading, Section, SelectedWash } from './parts'
 import { ROLE } from '../brand'
 
 export const TASKS_ACCENT = ROLE.kind.task
 
 export function TasksFace({ corner }: { corner: Corner }) {
-  const { open, todayTotal, todayDone } = useTasks()
+  const { open, todayTotal, todayDone, hydrated } = useTasks()
+  if (!hydrated) return <Face corner={corner} accent={TASKS_ACCENT} label="Tasks" value="—" line="Loading…" />
   return (
     <Face
       corner={corner}
@@ -29,7 +30,8 @@ export function TasksFace({ corner }: { corner: Corner }) {
 
 export function TasksDetail() {
   const { open, done, hydrated } = useTasks()
-  if (hydrated && !open.length && !done.length) return <Empty text="Nothing on your list." />
+  if (!hydrated) return <Loading />
+  if (!open.length && !done.length) return <Empty text="Nothing on your list." />
   return (
     <>
       <Section title="Open" count={open.length}>
@@ -66,9 +68,9 @@ function TaskRow({ task }: { task: Task }) {
       <SelectedWash on={selected} accent={TASKS_ACCENT} />
       <motion.button
         whileTap={press}
-        aria-label={isDone ? 'Completed' : `Complete ${task.title}`}
-        disabled={isDone}
-        onClick={() => void completeTask(task.id)}
+        aria-label={isDone ? `Reopen ${task.title}` : `Complete ${task.title}`}
+        // Works both ways: a finished task can be put back on the list.
+        onClick={() => void (isDone ? reopenTask(task.id) : completeTask(task.id))}
         className="grid h-11 w-11 shrink-0 place-items-center"
       >
         <span

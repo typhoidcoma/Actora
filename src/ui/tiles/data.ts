@@ -111,6 +111,11 @@ export function useInbox(now: number): { items: Notification[]; unread: number; 
 }
 
 /** Is this row the selected one (its options are on the rail)? */
-export function useSelected(kind: ItemKind, id: string): boolean {
-  return useUi((s) => s.selected?.kind === kind && s.selected.id === id)
+export function useSelected(kind: ItemKind, id: string, occurrence?: string): boolean {
+  return useUi(
+    (s) =>
+      s.selected?.kind === kind &&
+      s.selected.id === id &&
+      (occurrence === undefined || (s.selected.occurrence ?? undefined) === occurrence),
+  )
 }

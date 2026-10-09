@@ -5,6 +5,7 @@ import { agent, orbSignals, useAgent } from '../stores/agent'
 import { useEntities } from '../stores/entities'
 import { optionsStore } from '../stores/options'
 import { snoozePushOffer } from '../stores/push'
+import { toast } from '../stores/toast'
 import { panelOpen, ui, useUi } from '../stores/ui'
 import { isLargeQuestion } from '../ui/markdownText'
 import { listen, speechProblem } from '../voice/speech'
@@ -30,7 +31,7 @@ export function toggleVoice(): void {
       optionsStore.voice(false, '')
       // Say why nothing happened (blocked mic, no mic, offline, no voice in this browser…).
       const why = speechProblem(error)
-      if (why) agent.showMessage(why)
+      if (why) toast.error(why, { ms: 7000 })
       // No voice possible here: the keyboard is the way to talk instead.
       if (error === 'unsupported' || error === 'not-allowed' || error === 'service-not-allowed' || error === 'insecure')
         ui.keyboard(true)
@@ -65,8 +66,14 @@ async function markAllRead(): Promise<void> {
 async function saveFind(id: string): Promise<void> {
   const f = useFinds.getState().items.find((x) => x.id === id)
   if (!f) return
-  const r = await ask({ type: 'task.create', title: `Read: ${f.title}`.slice(0, 120) }, 'task.created')
-  agent.showMessage(r ? `Saved "${f.title}" to your tasks.` : "Couldn't save that one. Try again in a moment.")
+  // The link and why it's interesting go in the task's notes, so the saved task leads back to the find.
+  const notes = [f.blurb, f.url].filter(Boolean).join('\n\n')
+  const r = await ask(
+    { type: 'task.create', title: `Read: ${f.title}`.slice(0, 120), ...(notes ? { notes } : {}) },
+    'task.created',
+  )
+  if (r) toast.show(`Saved "${f.title}" to your tasks`)
+  else toast.error("Couldn't save that one. Try again in a moment.")
 }
 
 function runAct(act: LocalAct): void {

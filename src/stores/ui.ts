@@ -8,6 +8,8 @@ export type ItemKind = 'task' | 'goal' | 'event' | 'notification'
 export interface Selected {
   kind: ItemKind
   id: string
+  /** Which occurrence of a repeating event (its occurrence_start); the series shares one id. */
+  occurrence?: string
 }
 
 export type ThemeMode = 'auto' | 'day' | 'dusk'
@@ -32,6 +34,8 @@ interface UiState {
   theme: ThemeMode
   /** The open item panel should start by asking to delete it ("Delete…" from a list row). */
   deleting: boolean
+  /** The list an item panel was opened from ("Delete…" on a row), to return to after. */
+  back: TileId | null
   /** Hidden text fallback (behind the mic chip). */
   keyboardOpen: boolean
 }
@@ -53,10 +57,12 @@ export const useUi = create<UiState>(() => ({
   vault: false,
   theme: 'auto',
   deleting: false,
+  back: null,
   keyboardOpen: false,
 }))
 
-const same = (a: Selected | null, b: Selected) => a?.kind === b.kind && a.id === b.id
+const same = (a: Selected | null, b: Selected) =>
+  a?.kind === b.kind && a.id === b.id && (a.occurrence ?? null) === (b.occurrence ?? null)
 
 /** Every panel closed; spread first, then open the one wanted. */
 const CLOSED = {
@@ -68,6 +74,7 @@ const CLOSED = {
   find: null,
   vault: false,
   deleting: false,
+  back: null,
 } as const
 
 /** Is any panel open over the grid (the chat sheet aside)? */
@@ -82,7 +89,13 @@ export const ui = {
   /** Open an item in its own panel (from a card, or when Wendy points at it). */
   open: (item: Selected) => useUi.setState({ ...CLOSED, selected: item }),
   /** Open an item in its panel, already asking whether to delete it. */
-  askDelete: (item: Selected) => useUi.setState({ ...CLOSED, selected: item, deleting: true }),
+  askDelete: (item: Selected) => useUi.setState((s) => ({ ...CLOSED, selected: item, deleting: true, back: s.focus })),
+  /** Leave an item panel: back to the list it came from, if any, else home. */
+  leaveItem: () => {
+    const back = useUi.getState().back
+    if (back) ui.focus(back)
+    else useUi.setState({ selected: null, back: null })
+  },
   /** Show an item in its full list, highlighted ("See all"). */
   reveal: (item: Selected) => useUi.setState({ ...CLOSED, focus: ITEM_TILE[item.kind], selected: item }),
   /** Toggle a highlighted row inside the open list. */

@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 import type { ReactNode } from 'react'
+import { useAgent } from '../../stores/agent'
 
 export function Section({ title, count, children }: { title: string; count?: number; children: ReactNode }) {
   return (
@@ -10,6 +11,22 @@ export function Section({ title, count, children }: { title: string; count?: num
       </header>
       <ul>{children}</ul>
     </section>
+  )
+}
+
+/**
+ * Before a list has arrived: placeholder rows, never "All clear" (it isn't known
+ * yet). Offline, it says it can't load rather than shimmering forever.
+ */
+export function Loading() {
+  const offline = useAgent((s) => s.connection !== 'open' && s.connection !== 'connecting')
+  if (offline) return <Empty text="Can't load this right now. It'll fill in once Wendy's back." />
+  return (
+    <div className="space-y-3 py-4" aria-label="Loading">
+      {[0.92, 0.7, 0.82, 0.6].map((w, i) => (
+        <div key={i} className="shimmer h-11 rounded-[6px] bg-text/6" style={{ width: `${w * 100}%` }} />
+      ))}
+    </div>
   )
 }
 

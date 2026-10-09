@@ -5,13 +5,14 @@ import { AnimatedNumber } from '../AnimatedNumber'
 import { morph } from '../motion'
 import { useGoals, useSelected } from './data'
 import { Bar, Face, type Corner } from './Face'
-import { Empty, Section, SelectedWash } from './parts'
+import { Empty, Loading, Section, SelectedWash } from './parts'
 import { ROLE } from '../brand'
 
 export const GOALS_ACCENT = ROLE.kind.goal
 
 export function GoalsFace({ corner }: { corner: Corner }) {
-  const { active, overall } = useGoals()
+  const { active, overall, hydrated } = useGoals()
+  if (!hydrated) return <Face corner={corner} accent={GOALS_ACCENT} label="Goals" value="—" line="Loading…" />
   return (
     <Face
       corner={corner}
@@ -27,7 +28,8 @@ export function GoalsFace({ corner }: { corner: Corner }) {
 
 export function GoalsDetail() {
   const { active, hydrated } = useGoals()
-  if (hydrated && !active.length) return <Empty text="No goals yet." />
+  if (!hydrated) return <Loading />
+  if (!active.length) return <Empty text="No goals yet." />
   return (
     <Section title="Active" count={active.length}>
       {active.map((row, i) => (

@@ -10,6 +10,8 @@ import type { ClientMessage, Notification, ServerFrame, Task } from './protocol'
 import { request } from './request'
 import { routeFrame, sendClientState } from './router'
 import { useScheme } from '../stores/scheme'
+import { toast, withUndo } from '../stores/toast'
+import { dueLabel } from '../ui/format'
 import { AeloraSocket, type WebSocketLike } from './socket'
 
 let socket: AeloraSocket | null = null
@@ -151,24 +153,56 @@ export function ask<T extends ServerFrame = ServerFrame>(msg: ClientMessage, rep
   return socket ? request<T>(socket, msg, replyType) : Promise.resolve(null)
 }
 
-/** Move a task to another day (YYYY-MM-DD); optimistic with rollback. */
-export async function rescheduleTask(id: string, due: string): Promise<void> {
+const quote = (t: string) => `"${t.length > 40 ? `${t.slice(0, 38)}…` : t}"`
+
+/** Patch a task on the server; optimistic, put back (and said so) if it's refused. */
+async function patchTask(id: string, patch: Partial<Task>, failText: string): Promise<boolean> {
   const before = useEntities.getState().tasks[id]
-  if (!socket || !before || before.due_date === due) return
-  useEntities.setState((s) => ({ tasks: { ...s.tasks, [id]: { ...before, due_date: due } } }))
-  const reply = await request(socket, { type: 'task.update', id, patch: { due_date: due } }, 'task.updated')
-  if (!reply) useEntities.setState((s) => ({ tasks: { ...s.tasks, [id]: before } }))
+  if (!socket || !before) return false
+  useEntities.setState((s) => ({ tasks: { ...s.tasks, [id]: { ...before, ...patch } } }))
+  const reply = await request(socket, { type: 'task.update', id, patch }, 'task.updated')
+  if (!reply) {
+    useEntities.setState((s) => ({ tasks: { ...s.tasks, [id]: before } }))
+    toast.error(failText)
+  }
+  return !!reply
 }
 
-/** Optimistically completes a task; rolls back if the server doesn't confirm. */
+/** Move a task to another day (YYYY-MM-DD), with Undo. */
+export async function rescheduleTask(id: string, due: string, undoable = true): Promise<void> {
+  const before = useEntities.getState().tasks[id]
+  if (!before || before.due_date === due) return
+  const ok = await patchTask(id, { due_date: due }, `Couldn't move ${quote(before.title)}, so it's back.`)
+  if (ok && undoable) {
+    toast.show(`Moved ${quote(before.title)} to ${(dueLabel(due) ?? due).toLowerCase()}`, {
+      undo: () => void patchTask(id, { due_date: before.due_date }, `Couldn't move it back.`),
+    })
+  }
+}
+
+/** Optimistically completes a task, with Undo; puts it back (and says so) if the server refuses. */
 export async function completeTask(id: string): Promise<void> {
   const before = useEntities.getState().tasks[id]
   if (!socket || !before || before.status === 'done') return
   // Leave updated_at alone so the server's row always wins the upsert.
   const optimistic: Task = { ...before, status: 'done', completed_at: new Date().toISOString() }
   useEntities.setState((s) => ({ tasks: { ...s.tasks, [id]: optimistic } }))
+  toast.show(`Done: ${quote(before.title)}`, { undo: () => void reopenTask(id, before.status) })
   const reply = await request(socket, { type: 'task.complete', id }, 'task.completed')
-  if (!reply) useEntities.setState((s) => ({ tasks: { ...s.tasks, [id]: before } }))
+  if (!reply) {
+    useEntities.setState((s) => ({ tasks: { ...s.tasks, [id]: before } }))
+    toast.error(`Couldn't mark ${quote(before.title)} done, so it's back.`)
+  }
+}
+
+/** A finished task back on the list. */
+export function reopenTask(id: string, status: Task['status'] = 'todo'): Promise<boolean> {
+  const t = useEntities.getState().tasks[id]
+  return patchTask(
+    id,
+    { status: status === 'done' ? 'todo' : status, completed_at: null },
+    `Couldn't reopen ${quote(t?.title ?? 'that')}.`,
+  )
 }
 
 export async function markNotificationRead(id: string): Promise<void> {
@@ -177,20 +211,16 @@ export async function markNotificationRead(id: string): Promise<void> {
   const optimistic: Notification = { ...before, read_at: new Date().toISOString() }
   entities.upsertNotification(optimistic)
   const reply = await request(socket, { type: 'notification.read', id }, 'notification.marked')
-  if (!reply) entities.upsertNotification(before)
+  if (!reply) {
+    entities.upsertNotification(before)
+    toast.error(`Couldn't mark ${quote(before.title)} read.`)
+  }
 }
 
-/**
- * Delete a task, goal or calendar event (or one occurrence of a repeating
- * event). Optimistic: it disappears at once and comes back if the server says
- * no (a Google-linked calendar can refuse the write).
- */
-export async function deleteItem(
-  kind: 'task' | 'goal' | 'event',
-  id: string,
-  occurrenceStart?: string,
-): Promise<boolean> {
-  if (!socket) return false
+type Deletable = 'task' | 'goal' | 'event'
+
+/** Take an item off screen now; returns how to put it back. */
+function hideItem(kind: Deletable, id: string, occurrenceStart?: string): () => void {
   const before = useEntities.getState()
   if (kind === 'task') entities.removeTask(id)
   else if (kind === 'goal') entities.removeGoal(id)
@@ -201,21 +231,51 @@ export async function deleteItem(
       ),
     }))
   } else entities.removeEvent(id)
-
-  const reply =
-    kind === 'task'
-      ? await request(socket, { type: 'task.delete', id }, 'task.deleted')
-      : kind === 'goal'
-        ? await request(socket, { type: 'goal.delete', id }, 'goal.deleted')
-        : occurrenceStart
-          ? // Cancelling one occurrence answers with the updated series.
-            await request(socket, { type: 'calendar.delete', id, occurrenceStart }, 'calendar.updated')
-          : await request(socket, { type: 'calendar.delete', id }, 'calendar.deleted')
-  if (!reply) {
-    useEntities.setState({ tasks: before.tasks, goals: before.goals, events: before.events })
-    return false
+  return () => {
+    const now = useEntities.getState()
+    if (kind === 'task' && before.tasks[id]) useEntities.setState({ tasks: { ...now.tasks, [id]: before.tasks[id] } })
+    else if (kind === 'goal' && before.goals[id])
+      useEntities.setState({ goals: { ...now.goals, [id]: before.goals[id] } })
+    else if (kind === 'event') {
+      const back = Object.entries(before.events).filter(
+        ([, e]) => e.id === id && (!occurrenceStart || e.occurrence_start === occurrenceStart),
+      )
+      useEntities.setState({ events: { ...now.events, ...Object.fromEntries(back) } })
+    }
   }
-  return true
+}
+
+function sendDelete(kind: Deletable, id: string, occurrenceStart?: string) {
+  if (!socket) return Promise.resolve(null)
+  return kind === 'task'
+    ? request(socket, { type: 'task.delete', id }, 'task.deleted')
+    : kind === 'goal'
+      ? request(socket, { type: 'goal.delete', id }, 'goal.deleted')
+      : occurrenceStart
+        ? // Cancelling one occurrence answers with the updated series.
+          request(socket, { type: 'calendar.delete', id, occurrenceStart }, 'calendar.updated')
+        : request(socket, { type: 'calendar.delete', id }, 'calendar.deleted')
+}
+
+/**
+ * Delete a task, goal or calendar event (or one occurrence of a repeating
+ * event). It disappears at once; the server only hears about it once the Undo
+ * window closes, and it comes back (with a note) if the server refuses (a
+ * Google-linked calendar can).
+ */
+export function deleteItem(kind: Deletable, id: string, title: string, occurrenceStart?: string): void {
+  const restore = hideItem(kind, id, occurrenceStart)
+  withUndo(
+    `Deleted ${quote(title)}`,
+    () => {},
+    () =>
+      void sendDelete(kind, id, occurrenceStart).then((reply) => {
+        if (reply) return
+        restore()
+        toast.error(`Couldn't delete ${quote(title)}, so it's back.`)
+      }),
+    restore,
+  )
 }
 
 // ── The Vault (what Wendy remembers) ──────────────────────────────────────────────

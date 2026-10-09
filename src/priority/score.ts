@@ -18,6 +18,8 @@ export interface PriorityItem {
   score: number
   /** 0–1, drives the urgency colour. */
   urgency: number
+  /** A repeating event's occurrence (occurrence_start), so opening it shows this one. */
+  occurrence?: string
   /** One-tap quick action on the card. */
   primary?: { label: string; act: LocalAct }
 }
@@ -66,6 +68,7 @@ function scoreEvent(e: CalendarOccurrence, now: number): PriorityItem | null {
     return item({
       kind: 'event',
       id: e.id,
+      occurrence: e.occurrence_start ?? undefined,
       title: e.title,
       meta: `now · until ${clockTime(e.end_time)}${where}`,
       why: 'Happening now',
@@ -77,6 +80,7 @@ function scoreEvent(e: CalendarOccurrence, now: number): PriorityItem | null {
     return item({
       kind: 'event',
       id: e.id,
+      occurrence: e.occurrence_start ?? undefined,
       title: e.title,
       meta: `${untilText(start - now)}${where}`,
       why: mins <= 30 ? 'Starting soon' : 'Coming up',
@@ -87,6 +91,7 @@ function scoreEvent(e: CalendarOccurrence, now: number): PriorityItem | null {
     return item({
       kind: 'event',
       id: e.id,
+      occurrence: e.occurrence_start ?? undefined,
       title: e.title,
       meta: `${clockTime(e.start_time)}${where}`,
       why: 'Later today',

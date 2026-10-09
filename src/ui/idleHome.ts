@@ -6,6 +6,8 @@ import { panelOpen, ui, useUi } from '../stores/ui'
 const CHAT_IDLE_MS = 10_000
 /** Any other panel (lists, items, finds, the Vault) left alone this long goes home. */
 const PANEL_IDLE_MS = 2 * 60_000
+/** The longest a quiet conversation waits for reading time. */
+const READ_CAP_MS = 2 * 60_000
 
 const away = () => {
   const u = useUi.getState()
@@ -40,6 +42,14 @@ export function startIdleHome(chatMs = CHAT_IDLE_MS, panelMs = PANEL_IDLE_MS): (
     )
   }
 
+  // A conversation stays up at least as long as it takes to read her last answer
+  // (about 200 words a minute), so a long one isn't whisked away mid-read.
+  const readMs = () => {
+    const last = useAgent.getState().messages.findLast((m) => m.role === 'assistant')
+    const words = last ? last.text.split(/\s+/).filter(Boolean).length : 0
+    return Math.min(Math.max(chatMs, (words / 200) * 60_000), Math.max(chatMs, READ_CAP_MS))
+  }
+
   const arm = () => {
     clearTimeout(timer)
     if (!away()) return
@@ -48,7 +58,7 @@ export function startIdleHome(chatMs = CHAT_IDLE_MS, panelMs = PANEL_IDLE_MS): (
         if (busy()) return arm()
         if (away()) ui.closeAll()
       },
-      inConversation() ? chatMs : panelMs,
+      inConversation() ? readMs() : panelMs,
     )
   }
 

@@ -7,7 +7,10 @@ import type { FrameBus } from './socket'
 
 const bus = () => {
   const sent: Array<{ type: string }> = []
-  return { sent, bus: { send: (m: { type: string }) => (sent.push(m), true), subscribe: () => () => {} } as unknown as FrameBus }
+  return {
+    sent,
+    bus: { send: (m: { type: string }) => (sent.push(m), true), subscribe: () => () => {} } as unknown as FrameBus,
+  }
 }
 const command = (userId?: string) => ({
   type: 'event',

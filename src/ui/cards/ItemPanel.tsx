@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { deleteItem } from '../../aelora/client'
-import { agent, useAgent } from '../../stores/agent'
+import { useAgent } from '../../stores/agent'
 import { useTaskBrief } from '../../tasks/brief'
 import { useShallow } from 'zustand/react/shallow'
 import { useEntities } from '../../stores/entities'
@@ -15,7 +15,7 @@ export function ItemPanel({ item }: { item: Selected }) {
     useShallow((s) => ({ tasks: s.tasks, goals: s.goals, events: s.events, notifications: s.notifications })),
   )
   const kind = KIND[item.kind]
-  const close = () => ui.select(null)
+  const close = () => ui.leaveItem()
   // A task's "about": its notes, or (until it has some) a brief Wendy writes for it.
   const task = item.kind === 'task' ? (e.tasks[item.id] ?? null) : null
   const taskGoal = task?.goal_id ? (e.goals[task.goal_id]?.title ?? null) : null
@@ -32,7 +32,7 @@ export function ItemPanel({ item }: { item: Selected }) {
 
   let title = 'Not found'
   // Set when the item exists and can be deleted here (reminders can't be).
-  let removable: { kind: 'task' | 'goal' | 'event'; occurrence?: string } | null = null
+  let removable: { kind: 'task' | 'goal' | 'event'; occurrence?: string; guests?: boolean } | null = null
   let body: ReactNode = <p className="text-muted">This item is gone — it may have been finished or removed.</p>
 
   if (item.kind === 'task' && e.tasks[item.id]) {
@@ -55,10 +55,16 @@ export function ItemPanel({ item }: { item: Selected }) {
       </>
     )
   } else if (item.kind === 'event') {
-    const ev = Object.values(e.events).find((x) => x.id === item.id)
+    // The tapped occurrence of a repeating event, not just the first one with this id.
+    const all = Object.values(e.events).filter((x) => x.id === item.id)
+    const ev = (item.occurrence && all.find((x) => x.occurrence_start === item.occurrence)) || all[0]
     if (ev) {
       title = ev.title
-      removable = { kind: 'event', occurrence: ev.is_recurring ? (ev.occurrence_start ?? undefined) : undefined }
+      removable = {
+        kind: 'event',
+        occurrence: ev.is_recurring ? (ev.occurrence_start ?? undefined) : undefined,
+        guests: !!ev.has_guests,
+      }
       body = (
         <>
           <Facts
@@ -70,7 +76,8 @@ export function ItemPanel({ item }: { item: Selected }) {
                   : `${dayLabel(ev.start_time)} · ${clockTime(ev.start_time)}–${clockTime(ev.end_time)}`,
               ],
               ev.location ? ['Where', ev.location] : null,
-              ev.is_recurring ? ['Repeats', 'Yes'] : null,
+              ev.is_recurring ? ['Repeats', repeatLabel(ev.rrule)] : null,
+              ev.has_guests ? ['Guests', 'Others are invited'] : null,
             ]}
           />
           {ev.description && <p className="mt-4 text-[15px] leading-relaxed text-text">{ev.description}</p>}
@@ -141,11 +148,11 @@ export function ItemPanel({ item }: { item: Selected }) {
           {seeAll}
           {removable && (
             <DeleteButton
-              key={`${item.kind}:${item.id}`}
-              title={title}
+              key={`${item.kind}:${item.id}:${item.occurrence ?? ''}`}
               noun={kind.label.toLowerCase()}
               occurrence={removable.occurrence}
-              onDelete={(occurrence) => deleteItem(removable.kind, item.id, occurrence)}
+              guests={removable.guests}
+              onDelete={(occurrence) => deleteItem(removable.kind, item.id, title, occurrence)}
             />
           )}
         </div>
@@ -157,68 +164,67 @@ export function ItemPanel({ item }: { item: Selected }) {
 }
 
 /**
- * Two taps, so nothing goes by accident: the first asks, the second deletes. A
- * repeating event asks which: just this occurrence, or the whole series.
+ * Two taps, so nothing goes by accident: the first asks, the second deletes
+ * (with an Undo toast after). A repeating event asks which: this occurrence or
+ * the whole series. An event with guests says Google will email them, because
+ * deleting it from here cancels it for everyone.
  */
 function DeleteButton({
-  title,
   noun,
   occurrence,
+  guests,
   onDelete,
 }: {
-  title: string
   noun: string
   occurrence?: string
-  onDelete: (occurrence?: string) => Promise<boolean>
+  guests?: boolean
+  onDelete: (occurrence?: string) => void
 }) {
   const [tapped, setTapped] = useState(false)
   // "Delete…" from a list row or the rail opens the panel already asking.
   const deleting = useUi((s) => s.deleting)
   const asking = tapped || deleting
-  const setAsking = (v: boolean) => {
-    setTapped(v)
-    if (!v) useUi.setState({ deleting: false })
-  }
-  // Left unanswered, the question quietly goes away.
+  // Left unanswered, the question quietly goes away (long enough to read the guest warning).
   useEffect(() => {
     if (!asking) return
     const t = setTimeout(() => {
       setTapped(false)
       useUi.setState({ deleting: false })
-    }, 5000)
+    }, 8000)
     return () => clearTimeout(t)
   }, [asking])
 
-  const run = async (which?: string) => {
-    ui.select(null) // it's gone at once, and the panel closes with it
-    const ok = await onDelete(which)
-    agent.showMessage(ok ? `Deleted "${title}".` : `Couldn't delete "${title}", so it's back. Try again in a moment.`)
+  const run = (which?: string) => {
+    ui.leaveItem() // it's gone at once; back to where the user came from
+    onDelete(which)
   }
 
-  const btn = 'h-10 rounded-[8px] px-3.5 text-[14px] font-semibold transition-colors'
+  const btn = 'h-11 rounded-[8px] px-3.5 text-[14px] font-semibold transition-colors'
   if (!asking) {
     return (
-      <button onClick={() => setAsking(true)} className={`${btn} text-muted hover:text-urgent`}>
-        Delete
+      <button onClick={() => setTapped(true)} className={`${btn} text-muted hover:text-urgent`}>
+        {guests ? 'Cancel event' : 'Delete'}
       </button>
     )
   }
-  if (occurrence) {
-    return (
-      <div className="flex items-center gap-2">
-        <button onClick={() => void run(occurrence)} className={`${btn} glass-pill text-urgent`}>
-          Just this one
-        </button>
-        <button onClick={() => void run()} className={`${btn} glass-pill text-urgent`}>
-          Every one
-        </button>
-      </div>
-    )
-  }
   return (
-    <button onClick={() => void run()} className={`${btn} bg-urgent text-white`}>
-      Delete {noun}
-    </button>
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {guests && <span className="text-[13px] text-urgent">Google will email the guests.</span>}
+      {occurrence ? (
+        <>
+          <button onClick={() => run(occurrence)} className={`${btn} glass-pill text-urgent`}>
+            Just this one
+          </button>
+          <button onClick={() => run()} className={`${btn} glass-pill text-urgent`}>
+            Every one
+          </button>
+        </>
+      ) : (
+        <button onClick={() => run()} className={`${btn} bg-urgent text-white`}>
+          {guests ? 'Cancel for everyone' : `Delete ${noun}`}
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -250,6 +256,20 @@ function About({
       )}
     </section>
   )
+}
+
+/** "Weekly", "Every 2 weeks", "Daily"… from an RRULE; "Yes" when it's anything fancier. */
+function repeatLabel(rrule?: string | null): string {
+  const freq = /FREQ=(\w+)/.exec(rrule ?? '')?.[1]
+  const n = Number(/INTERVAL=(\d+)/.exec(rrule ?? '')?.[1] ?? 1)
+  const unit: Record<string, [string, string]> = {
+    DAILY: ['Daily', 'days'],
+    WEEKLY: ['Weekly', 'weeks'],
+    MONTHLY: ['Monthly', 'months'],
+    YEARLY: ['Yearly', 'years'],
+  }
+  if (!freq || !unit[freq]) return 'Yes'
+  return n > 1 ? `Every ${n} ${unit[freq][1]}` : unit[freq][0]
 }
 
 function Facts({ rows }: { rows: Array<[string, string] | null> }) {
