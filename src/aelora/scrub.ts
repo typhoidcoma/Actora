@@ -72,16 +72,42 @@ const isCall = (name: string, bracket: string, inner: string) => {
   return name.includes('_') || /[:=]/.test(inner)
 }
 
+// Answer links: "[keep it open](say:yes, keep this reader open)". Some chat
+// clients render these as tap-to-reply; here the answers belong on the pills
+// (options.set), so they come out of the text and become options instead.
+const SAY_LINK = /\[([^\]\n]{1,120})\]\(\s*say:([^)\n]*)\)/g
+// One still arriving at the end of a stream: "[keep it", "[keep it](sa"…
+const SAY_OPEN = /\[[^\]\n]*(?:\](?:\((?:\s*s(?:a(?:y(?::[^)\n]*)?)?)?)?)?)?$/
+
+/** The answers Wendy wrote as say: links, in order, deduped. */
+export function sayLinks(text: string): Array<{ label: string; say: string }> {
+  const out: Array<{ label: string; say: string }> = []
+  for (const m of text.matchAll(SAY_LINK)) {
+    const label = m[1].trim()
+    const say = m[2].trim() || label
+    if (label && !out.some((o) => o.label.toLowerCase() === label.toLowerCase())) out.push({ label, say })
+  }
+  return out
+}
+
 /** Reply text with leaked tool calls removed (and a half-arrived one held back while streaming). */
 export function scrubToolLeaks(text: string, streaming = false): string {
   if (!text) return text
-  let out = text.replace(CALL, (m, name: string, bracket: string, inner: string) =>
-    isCall(name, bracket, inner) ? ' ' : m,
-  )
+  let out = text
+    .replace(CALL, (m, name: string, bracket: string, inner: string) => (isCall(name, bracket, inner) ? ' ' : m))
+    .replace(SAY_LINK, '')
   if (streaming) {
     const open = OPEN.exec(out)
     if (open && (TOOLS.has(open[1]) || open[1].includes('_'))) out = out.slice(0, open.index)
+    // Hold back a link that might turn out to be an answer link.
+    const link = SAY_OPEN.exec(out)
+    if (link) out = out.slice(0, link.index)
   }
-  // Tidy the seam a removed call leaves behind.
-  return out.replace(/^[ \t]+/, '').replace(/[ \t]{2,}/g, ' ')
+  // Tidy the seams removed calls and links leave behind.
+  out = out
+    .replace(/^[ \t]+/, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+  return streaming ? out : out.trimEnd()
 }

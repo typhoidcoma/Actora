@@ -2,7 +2,10 @@ import { orbSignals, useAgent, type ChatBubble } from '../stores/agent'
 import type { MoodState, ServerFrame, TranscriptMessage } from './protocol'
 import type { FrameBus } from './socket'
 import { describeTool, toolDetail } from './activity'
-import { scrubToolLeaks } from './scrub'
+import { sayLinks, scrubToolLeaks } from './scrub'
+import { sayOption } from '../options/types'
+import { optionsStore } from '../stores/options'
+import { contextKeyOf, useUi } from '../stores/ui'
 import { isFindsThread } from '../finds/finds'
 import { rememberMain } from './mainThread'
 import type { Step } from '../stores/agent'
@@ -52,6 +55,16 @@ const GREETING_TIMEOUT_MS = 45_000
 let greetingTimer: ReturnType<typeof setTimeout> | undefined
 const isSystem = (f: ServerFrame) =>
   typeof f.conversationId !== 'string' && typeof f.channelId === 'string' && f.channelId.startsWith('system:')
+
+/** Answers Wendy wrote as say: links go on the pills, as if she'd called options.set. */
+function offerSayLinks(raw: string) {
+  const links = sayLinks(raw)
+  if (!links.length) return
+  optionsStore.push(
+    contextKeyOf(useUi.getState()),
+    links.slice(0, 5).map((l) => sayOption(l.label.slice(0, 28), l.say.slice(0, 160), 'pushed')),
+  )
+}
 
 const bubbleId = () => `b${Date.now().toString(36)}${(++seq).toString(36)}`
 const set = useAgent.setState
@@ -134,7 +147,9 @@ function handleSystemFrame(f: ServerFrame): boolean {
       return true
     case 'done': {
       clearTimeout(greetingTimer)
-      const text = scrubToolLeaks(String(f.text ?? rawGreeting))
+      const raw = String(f.text ?? rawGreeting)
+      const text = scrubToolLeaks(raw)
+      offerSayLinks(raw)
       set({
         greeting: { text, streaming: false },
         greetingPending: false,
@@ -197,7 +212,9 @@ export function handleChatFrame(f: ServerFrame): boolean {
     case 'done': {
       if (!mine) return true
       clearTimeout(turnTimer)
-      const bubble: ChatBubble = { id: bubbleId(), role: 'assistant', text: scrubToolLeaks(String(f.text ?? rawReply)) }
+      const raw = String(f.text ?? rawReply)
+      const bubble: ChatBubble = { id: bubbleId(), role: 'assistant', text: scrubToolLeaks(raw) }
+      offerSayLinks(raw)
       set({
         messages: [...s.messages, bubble],
         streaming: null,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { scrubToolLeaks } from './scrub'
+import { sayLinks, scrubToolLeaks } from './scrub'
 
 describe('scrubToolLeaks', () => {
   it('drops a tool call the model wrote into its reply', () => {
@@ -13,6 +13,19 @@ describe('scrubToolLeaks', () => {
   it('holds back a call still arriving, then shows the reply once it closes', () => {
     expect(scrubToolLeaks('perform_reaction{anchor:the per', true)).toBe('')
     expect(scrubToolLeaks('perform_reaction{anchor:x}perfect', true)).toBe('perfect')
+  })
+
+  it('lifts say: answer links out of the text', () => {
+    const reply =
+      'want to keep this open for the team sync?\n\n[keep it open for the meeting](say:yes, keep this reader open)\n[close it, i\'ll review it later](say:close the reader for now)'
+    expect(scrubToolLeaks(reply)).toBe('want to keep this open for the team sync?')
+    expect(sayLinks(reply)).toEqual([
+      { label: 'keep it open for the meeting', say: 'yes, keep this reader open' },
+      { label: "close it, i'll review it later", say: 'close the reader for now' },
+    ])
+    expect(scrubToolLeaks('open it?\n\n[keep it op', true)).toBe('open it?\n\n')
+    expect(scrubToolLeaks('open it?\n\n[keep it](sa', true)).toBe('open it?\n\n')
+    expect(scrubToolLeaks('see [the docs](https://x.dev) now')).toBe('see [the docs](https://x.dev) now')
   })
 
   it('leaves ordinary text alone', () => {
