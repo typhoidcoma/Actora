@@ -13,12 +13,7 @@ export function FindsPanel() {
   const { items, status, seen, note, headline } = useFinds()
   const unseen = unseenCount({ items, seen })
   const selected = useUi((s) => s.find)
-  const kicker =
-    status === 'hunting'
-      ? 'Wendy is hunting for more…'
-      : unseen
-        ? `${unseen} new today`
-        : 'All seen today'
+  const kicker = status === 'hunting' ? 'Wendy is hunting for more…' : unseen ? `${unseen} new today` : 'All seen today'
 
   return (
     <Panel

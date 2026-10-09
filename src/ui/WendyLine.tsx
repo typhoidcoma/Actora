@@ -12,6 +12,9 @@ import { firstSentence, plainText } from './markdownText'
  * reminders she's passing on. Text sits at the bottom of the box, so as a reply
  * grows, older lines drift up and fade out under the top mask.
  */
+/** How long her line lingers once nothing new is arriving. */
+const FADE_AFTER_MS = 10_000
+
 export function WendyLine() {
   const m = useMetrics()
   const stalled = useStalled()
@@ -66,6 +69,24 @@ export function WendyLine() {
   if (content.live && content.text !== streamed) setStreamed(content.text)
   const displayKey = content.live || content.text === streamed ? content.key : `${content.key}:${content.text}`
 
+  // Once her words have sat still for a while, the line fades off and leaves the
+  // grid clean; anything new brings it straight back. Things that need the user
+  // (a reminder, a dead connection) and live work (thinking, streaming) stay.
+  const holds = content.live || content.key === 'thinking' || !!stalled || content.kicker === 'Reminder'
+  const signature = `${content.key}|${content.text}`
+  const [settled, setSettled] = useState({ signature, faded: false })
+  if (settled.signature !== signature) setSettled({ signature, faded: false })
+  useEffect(() => {
+    if (holds || !content.text) return
+    const t = setTimeout(
+      () => setSettled((p) => (p.signature === signature ? { ...p, faded: true } : p)),
+      FADE_AFTER_MS,
+    )
+    return () => clearTimeout(t)
+  }, [signature, holds, content.text])
+  const faded = settled.faded && settled.signature === signature && !holds
+  const hidden = quiet || faded
+
   const size = Math.round(
     m.compact ? Math.min(26, Math.max(20, m.line.h * 0.11)) : Math.max(18, Math.min(26, m.grid * 0.04)),
   )
@@ -75,10 +96,11 @@ export function WendyLine() {
       className="pointer-events-none fixed z-10 flex flex-col justify-center"
       style={{ left: m.line.x, top: m.line.y, width: m.line.w, height: m.line.h }}
       initial={false}
-      animate={{ opacity: quiet ? 0 : 1, y: quiet ? -6 : 0, filter: quiet ? 'blur(4px)' : 'blur(0px)' }}
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      animate={{ opacity: hidden ? 0 : 1, y: hidden ? -6 : 0, filter: hidden ? 'blur(4px)' : 'blur(0px)' }}
+      // A slow, soft fade when it settles away; quick when the reader takes over.
+      transition={{ duration: faded && !quiet ? 1.4 : 0.35, ease: [0.16, 1, 0.3, 1] }}
       aria-live={quiet ? 'off' : 'polite'}
-      aria-hidden={quiet}
+      aria-hidden={hidden}
     >
       <div
         className="relative max-h-full overflow-hidden"
