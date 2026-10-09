@@ -32,23 +32,19 @@ export function PriorityCard({
   const right = corner === 1 || corner === 3
   const bottom = corner === 2 || corner === 3
   const heat = urgencyColor(item.urgency)
-  const rankLabel = rank === 1 && item.urgency >= 0.9 ? 'Now' : `#${rank}`
   // Urgency lives in the card, not on a sticker: the glow warms from the kind's
-  // colour toward red as it gets pressing, and the rank text takes a soft tint.
+  // colour toward red as it gets pressing, and the kind label takes a soft tint.
+  // No rank numbers: the order of the cards already says what comes first.
   const warmth = Math.round(Math.max(0, item.urgency - 0.4) * 110)
   const glow = `color-mix(in srgb, ${heat} ${warmth}%, ${kind.color})`
-  const rankTint = `color-mix(in srgb, ${heat} ${Math.max(35, warmth)}%, var(--t-text))`
+  const labelTint = `color-mix(in srgb, ${heat} ${Math.max(35, warmth)}%, var(--t-text))`
 
   const header = (
     <div className={`flex items-center justify-between gap-2 ${right ? 'flex-row-reverse' : ''}`}>
       <span
-        className="truncate font-semibold text-text"
-        style={{ fontSize: 'clamp(15px, calc(var(--grid) * 0.034), 20px)' }}
+        className="truncate font-bold"
+        style={{ fontSize: 'clamp(15px, calc(var(--grid) * 0.034), 20px)', color: labelTint }}
       >
-        <span className="num font-bold" style={{ color: rankTint }}>
-          {rankLabel}
-        </span>
-        <span className="inline-block w-2" />
         {kind.label}
       </span>
       {item.primary && (
@@ -117,7 +113,8 @@ export function PriorityCard({
       corner={corner}
       accent={glow}
       hidden={hidden}
-      label={`${rankLabel}: ${item.title}`}
+      // Screen readers still hear the order, which the layout shows visually.
+      label={`${rank === 1 ? 'Top priority' : `Priority ${rank}`}, ${kind.label}: ${item.title}`}
       onOpen={() => ui.open({ kind: item.kind, id: item.id })}
     >
       <div className="flex h-full flex-col justify-between gap-2 p-[max(12px,calc(var(--grid)*0.035))]">
