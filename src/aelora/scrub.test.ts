@@ -35,6 +35,24 @@ describe('scrubToolLeaks', () => {
     expect(scrubToolLeaks('Perform_reaction{anchor:x}Done.')).toBe('Done.')
   })
 
+  it('handles the real leak: a backticked call, then answer links as bullets', () => {
+    const raw =
+      "`perform_reaction`{anchor:write down two bullets,intensity:low,trigger:decision_making}let's shrink this down.\n\ngo get 'em!\n\n* [done with both, ready to head in](say:done, heading into the sync now)\n* [help me draft the two questions](say:help me draft the two questions)"
+    expect(scrubToolLeaks(raw)).toBe("let's shrink this down.\n\ngo get 'em!")
+    expect(sayLinks(raw).map((l) => l.say)).toEqual([
+      'done, heading into the sync now',
+      'help me draft the two questions',
+    ])
+    expect(scrubToolLeaks('**perform_reaction**{anchor:x}ok')).toBe('ok')
+    let acc = ''
+    for (const ch of raw.slice(0, 120)) {
+      acc += ch
+      expect(scrubToolLeaks(acc, true)).not.toMatch(/`|perform|[{}]/)
+    }
+    // Ordinary code and bold stay.
+    expect(scrubToolLeaks('Run `npm install` then **relax**.')).toBe('Run `npm install` then **relax**.')
+  })
+
   it('never flashes the start of a call while streaming', () => {
     const t = 'perform_reaction{anchor:my bad,intensity:high,trigger:question_confusion}my bad, i blanked'
     let acc = ''

@@ -94,18 +94,25 @@ export function sayLinks(text: string): Array<{ label: string; say: string }> {
 /** Reply text with leaked tool calls removed (and a half-arrived one held back while streaming). */
 export function scrubToolLeaks(text: string, streaming = false): string {
   if (!text) return text
-  // Markdown escapes (perform\_reaction\{…\}) render as the bare call, so match without them.
+  // 1. Strip the Markdown the model wraps calls in; all of these render as the bare
+  //    call: `perform_reaction`{…}, **perform_reaction**{…}, perform\_reaction\{…\}.
   let out = text
     .replace(/\\([_{}()])/g, '$1')
+    .replace(/(`+|\*{1,2})([a-z]+(?:_[a-z]+)*)\1(?=\s*[({])/gi, '$2')
+    // 2. Drop the calls themselves.
     .replace(CALL, (m, name: string, bracket: string, inner: string) => (isCall(name, bracket, inner) ? ' ' : m))
+    // 3. Answer links go to the pills (sayLinks); a list item that held one goes with it.
+    .replace(new RegExp(`^[ \\t]*(?:[-*+]|\\d+\\.)[ \\t]+${SAY_LINK.source}[ \\t]*$`, 'gm'), '')
     .replace(SAY_LINK, '')
   if (streaming) {
     const open = OPEN.exec(out)
     if (open && (TOOLS.has(open[1].toLowerCase()) || open[1].includes('_'))) out = out.slice(0, open.index)
-    // Hold back a last word that may be the start of a call ("perf", "perform_re"…):
+    // Hold back a last word that may be the start of a call ("perf", "`perform_re"…):
     // it shows a token later if it was just a word.
-    const tail = /[a-z_]+$/.exec(out)
-    if (tail && [...TOOLS].some((t) => t.startsWith(tail[0]))) out = out.slice(0, tail.index)
+    const tail = /(?:`+|\*+)?([a-z_]+)(?:`+|\*+)?$/.exec(out)
+    if (tail && [...TOOLS].some((t) => t.startsWith(tail[1]))) out = out.slice(0, tail.index)
+    // An opening ` or ** with nothing after it yet: wait to see what it wraps.
+    out = out.replace(/(?:`+|\*+)$/, '')
     // Hold back a link that might turn out to be an answer link.
     const link = SAY_OPEN.exec(out)
     if (link) out = out.slice(0, link.index)
