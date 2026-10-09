@@ -89,10 +89,13 @@ const norm = (s: string) =>
 const TRAILING = new Set(['enablePush', 'snoozePush', 'installHelp'])
 
 /**
- * Merge order: local *acts* first (instant, concrete actions like Done/Tomorrow
- * are anchors), then Wendy's pushed options, then Wendy-written, then local says,
- * with housekeeping chips always last. Case-insensitive dedupe on label and on
- * what is said; capped.
+ * Most relevant first. Wendy's options are written for this exact moment (an
+ * answer to what she just asked, the item on screen), so they lead: what she
+ * pushed with options.set, then her generated ones in the order she ranked them.
+ * Concrete local actions (Done, Got it, the top card) keep up to two places right
+ * after her best three, so they're never squeezed out. Generic local fallbacks
+ * fill what's left, and housekeeping chips are always last. Case-insensitive
+ * dedupe on label and on what is said; capped.
  */
 export function mergeOptions(
   local: Option[],
@@ -105,27 +108,27 @@ export function mergeOptions(
   const acts = local.filter((o) => !o.alt && ((o.act && !TRAILING.has(o.act.type)) || (o.pin && !o.act)))
   const says = local.filter((o) => !o.pin && (o.alt ? !(o.act && TRAILING.has(o.act.type)) : !o.act))
   const room = max - trailing.length
-  const pick = (pool: Option[], out: Option[], seen: Set<string>) => {
+  const seen = new Set<string>()
+  const out: Option[] = []
+  const pick = (pool: Option[], limit = room) => {
     for (const o of pool) {
-      if (out.length >= room) break
+      if (out.length >= Math.min(limit, room)) break
       const keys = [norm(o.label), o.say ? norm(o.say) : '']
       if (keys.some((k) => k && seen.has(k))) continue
       keys.forEach((k) => k && seen.add(k))
       out.push(o)
     }
   }
-  // Concrete actions (Done, Got it) and what Wendy pushed always count; suggestions
-  // that went stale sit out, unless that would leave the rail nearly empty.
-  const ordered = [...acts, ...pushed, ...wendy, ...says]
+  // Concrete actions and what Wendy pushed always count; suggestions that went
+  // stale sit out, unless that would leave the rail nearly empty.
   const keep = (o: Option) => !!o.act || o.source === 'pushed' || !stale(o)
-  const out: Option[] = []
-  const seen = new Set<string>()
-  pick(ordered.filter(keep), out, seen)
-  if (out.length < Math.min(3, room))
-    pick(
-      ordered.filter((o) => !keep(o)),
-      out,
-      seen,
-    )
+  const lead = [...pushed, ...wendy].filter(keep)
+  const anchors = acts.filter(keep)
+  const reserve = Math.min(anchors.length, 2)
+  pick(lead.slice(0, Math.max(pushed.length, 3)), room - reserve)
+  pick(anchors)
+  pick(lead)
+  pick(says.filter(keep))
+  if (out.length < Math.min(3, room)) pick([...pushed, ...wendy, ...acts, ...says].filter((o) => !keep(o)))
   return [...out, ...trailing]
 }

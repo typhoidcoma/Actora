@@ -217,6 +217,7 @@ Rules:
 - If Wendy's last message asks a question or offers choices, the options must be direct answers to it (include a yes and a no style answer for yes/no questions).
 - Otherwise suggest the most useful next things for what is on screen, using the user's real item titles.
 - On the home screen, the app already offers one button for the top priority card. Yours can act on the other cards by name (for example "Prep for Standup" or "Start the report"), but mix in what fits the moment: the time of day, what you know the user cares about, what they were just talking about.
+- Order them by how likely the user is to tap them, most likely first. If Wendy's last message asks something, the direct answers come first.
 - Make them distinct; never two options that do the same thing. Match a relaxed, adult, friendly tone.
 - Every option must be something Wendy can actually do (see the list above). Never suggest booking, buying, calling, texting, timers or anything outside it.
 - Ground options in what is really there: the user's actual items, what Wendy just said, and what you know about the user from memory. Never invent items, people or plans.

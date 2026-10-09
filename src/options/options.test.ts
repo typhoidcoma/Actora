@@ -101,22 +101,41 @@ describe('card-aware home options', () => {
       'Got it: Stretch',
       'Plan my day',
     ])
-    // Only the top card is pinned ahead of Wendy; the others compete with her ideas.
+    // Wendy's (written for this moment) lead; the top card and direct actions keep their places right after.
     const merged = mergeOptions(opts, [sayOption('Generic idea', 'x', 'wendy')], []).map((o) => o.label)
-    expect(merged.slice(0, 3)).toEqual(['Prep: Standup', 'Got it: Stretch', 'Generic idea'])
+    expect(merged.slice(0, 3)).toEqual(['Generic idea', 'Prep: Standup', 'Got it: Stretch'])
   })
 })
 
 describe('merge', () => {
-  it('keeps local acts first, then pushed, Wendy, local says; dedupes and caps', () => {
+  it("leads with Wendy's (pushed, then generated), keeps room for local acts, then local says; dedupes and caps", () => {
     const local = [sayOption('Plan my day'), actOption('Done', { type: 'complete', id: 'a' })]
     const wendy = [sayOption('plan my day!', 'Plan my day', 'wendy'), sayOption('Quick wins', 'x', 'wendy')]
     const pushed = [sayOption('From Wendy', 'y', 'pushed')]
     const out = mergeOptions(local, wendy, pushed, 3).map((o) => o.label)
-    expect(out).toEqual(['Done', 'From Wendy', 'plan my day!'])
+    expect(out).toEqual(['From Wendy', 'plan my day!', 'Done'])
     const offer = actOption('Let Wendy remind me', { type: 'enablePush' })
     const withOffer = mergeOptions([offer, ...local], wendy, [], 3).map((o) => o.label)
-    expect(withOffer).toEqual(['Done', 'plan my day!', 'Let Wendy remind me'])
+    expect(withOffer).toEqual(['plan my day!', 'Done', 'Let Wendy remind me'])
+  })
+
+  it('puts what answers her question first, even with five ideas and two actions in play', () => {
+    const local = [
+      actOption('Done', { type: 'complete', id: 'a' }),
+      actOption('Tomorrow', { type: 'reschedule', id: 'a', due: 'x' }),
+      sayOption('Plan my day'),
+    ]
+    const wendy = ['Yes, move it', 'Keep it today', 'Break it down', 'Why this?', 'Something else'].map((l) =>
+      sayOption(l, l, 'wendy'),
+    )
+    expect(mergeOptions(local, wendy, []).map((o) => o.label)).toEqual([
+      'Yes, move it',
+      'Keep it today',
+      'Break it down',
+      'Done',
+      'Tomorrow',
+      'Why this?',
+    ])
   })
 })
 
@@ -189,7 +208,7 @@ describe('freshness', () => {
     const local = [actOption('Done', { type: 'complete', id: 'a' }), sayOption('Plan my day')]
     const wendy = [sayOption('Old idea', 'x', 'wendy'), sayOption('Fresh idea', 'y', 'wendy')]
     const stale = (o: { label: string }) => o.label === 'Old idea' || o.label === 'Done'
-    expect(mergeOptions(local, wendy, [], 6, stale).map((o) => o.label)).toEqual(['Done', 'Fresh idea', 'Plan my day'])
+    expect(mergeOptions(local, wendy, [], 6, stale).map((o) => o.label)).toEqual(['Fresh idea', 'Done', 'Plan my day'])
     const allStale = () => true
     expect(mergeOptions([], wendy, [], 6, allStale).length).toBe(2)
   })
