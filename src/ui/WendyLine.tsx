@@ -120,7 +120,8 @@ export function WendyLine() {
       // A slow, soft fade when it settles away; quick when the reader takes over.
       transition={{ duration: faded && !quiet ? 1.4 : 0.35, ease: [0.16, 1, 0.3, 1] }}
       aria-live={quiet ? 'off' : 'polite'}
-      aria-hidden={hidden}
+      // inert, not aria-hidden: hiding it also drops focus (e.g. from "Read all", which opens the reader).
+      inert={hidden}
     >
       <div
         className="relative max-h-full overflow-hidden"
@@ -136,7 +137,8 @@ export function WendyLine() {
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, y: -8, filter: 'blur(4px)', transition: { duration: 0.2 } }}
             transition={{ type: 'spring', stiffness: 260, damping: 30, filter: { duration: 0.3, ease: 'easeOut' } }}
-            className="display px-1 text-center text-strong"
+            // Her words can be selected and copied like any chat message.
+            className="display selectable pointer-events-auto px-1 text-center text-strong"
             style={{ fontSize: size, lineHeight: 1.22 }}
           >
             {content.kicker && (
