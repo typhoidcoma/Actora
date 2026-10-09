@@ -73,7 +73,7 @@ export function measure(): Metrics {
   const grid = Math.min(gridW, gridH)
   // Small cells (phones) get a smaller orb so it never covers card text.
   const orb = Math.round(grid * (cellW < 260 ? 0.25 : 0.32))
-  const radius = Math.round(clamp(grid * 0.02, 10, 14))
+  const radius = Math.round(clamp(grid * 0.012, 6, 9))
   const gridX = Math.round((vw - gridW) / 2)
   // Spare height: phones give some to Wendy's line (their cards are small);
   // then the line + grid block is centred, so space splits evenly above and below.
@@ -102,7 +102,7 @@ export function measure(): Metrics {
     h: sheetH,
     x: Math.round((vw - sheetW) / 2),
     y: compact ? vh - sheetH : Math.round((vh - sheetH) / 2),
-    radius: 16,
+    radius: 10,
   }
 
   return {

@@ -63,7 +63,7 @@ export function MenuButton({ onSignOut }: { onSignOut?: () => void }) {
         onClick={() => setOpen((v) => !v)}
         aria-label={`Menu · ${status.text}`}
         aria-expanded={open}
-        className="glass-pill relative grid h-10 w-10 place-items-center rounded-[12px] text-muted"
+        className="glass-pill relative grid h-10 w-10 place-items-center rounded-[8px] text-muted"
       >
         {/* Quiet when all is well; the icon itself tints and pulses only when something's off. */}
         <motion.span
@@ -123,7 +123,7 @@ function Sheet({
       exit={{ opacity: 0, y: 8, scale: 0.97 }}
       transition={{ type: 'spring', stiffness: 500, damping: 34 }}
       className="glass glass-thick absolute right-0 bottom-[52px] z-50 w-72 origin-bottom-right p-2"
-      style={{ borderRadius: 16 }}
+      style={{ borderRadius: 10 }}
     >
       <div
         className="px-3 pt-2 pb-1 text-[14px] font-semibold"
@@ -146,7 +146,7 @@ function Sheet({
           <button
             key={l.id}
             onClick={go(() => ui.focus(l.id))}
-            className="flex h-11 items-center gap-2 rounded-[10px] px-3 text-[14px] font-medium text-strong transition-colors hover:bg-text/6 active:bg-text/10"
+            className="flex h-11 items-center gap-2 rounded-[6px] px-3 text-[14px] font-medium text-strong transition-colors hover:bg-text/6 active:bg-text/10"
           >
             <span className="h-[18px] w-[18px] text-muted">{l.icon}</span>
             {l.label}
@@ -187,7 +187,7 @@ function Item({ children, hint, onClick }: { children: ReactNode; hint?: string;
     <button
       onClick={onClick}
       disabled={!onClick}
-      className="flex h-11 w-full items-center justify-between gap-3 rounded-[10px] px-3 text-left text-[15px] text-strong transition-colors hover:bg-text/6 active:bg-text/10 disabled:opacity-60"
+      className="flex h-11 w-full items-center justify-between gap-3 rounded-[6px] px-3 text-left text-[15px] text-strong transition-colors hover:bg-text/6 active:bg-text/10 disabled:opacity-60"
     >
       <span>{children}</span>
       {hint && <span className="text-xs text-muted">{hint}</span>}

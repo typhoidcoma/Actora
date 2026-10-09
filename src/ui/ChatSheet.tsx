@@ -167,7 +167,7 @@ function Transcript() {
           <motion.button
             whileTap={press}
             onClick={loadEarlier}
-            className="glass-pill h-10 rounded-[12px] px-4 text-[14px] font-medium text-muted"
+            className="glass-pill h-10 rounded-[8px] px-4 text-[14px] font-medium text-muted"
           >
             Load earlier
           </motion.button>
@@ -212,7 +212,7 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
         initial={{ opacity: 0, y: 10, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={morph}
-        className="max-w-[80%] self-end rounded-[20px] rounded-br-md bg-accent/25 px-4 py-2.5 text-[15px] text-strong"
+        className="max-w-[80%] self-end rounded-[6px] rounded-br-[3px] bg-accent/25 px-4 py-2.5 text-[15px] text-strong"
       >
         {bubble.text}
       </motion.div>

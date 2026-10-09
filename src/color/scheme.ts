@@ -218,8 +218,8 @@ function surfaceFor(theme: Theme, n: Oklch): Surface {
       faint: ensureContrast(at(0.72, 0.02), bg, 2.2),
       line: rgba(text, 0.12),
       scrim: rgba(bg, 0.55),
-      glass: 'rgb(255 255 255 / 0.45)',
-      glassThick: 'rgb(255 255 255 / 0.8)',
+      glass: 'rgb(255 255 255 / 0.55)',
+      glassThick: 'rgb(255 255 255 / 0.85)',
       shade: rgba(text, 0.08),
       drop: rgba(text, 0.16),
     }

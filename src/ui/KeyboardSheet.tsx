@@ -48,7 +48,7 @@ function Sheet() {
           left: (m.vw - w) / 2,
           bottom: chatOpen ? 24 : m.rail.h + 8,
           width: w,
-          borderRadius: 16,
+          borderRadius: 10,
         }}
       >
         <input

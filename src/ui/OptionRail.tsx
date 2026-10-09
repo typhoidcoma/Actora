@@ -51,7 +51,7 @@ export function OptionRail({
               exit={{ opacity: 0, scale: 0.96 }}
               transition={morph}
               onClick={toggleVoice}
-              className="glass-pill flex h-12 w-full min-w-0 items-center gap-3 rounded-[12px] px-5 text-left text-[15px] text-strong"
+              className="glass-pill flex h-12 w-full min-w-0 items-center gap-3 rounded-[8px] px-5 text-left text-[15px] text-strong"
             >
               <motion.svg
                 viewBox="0 0 24 24"
@@ -81,7 +81,7 @@ export function OptionRail({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="glass-pill shimmer h-11 w-24 shrink-0 rounded-[12px]"
+              className="glass-pill shimmer h-11 w-24 shrink-0 rounded-[8px]"
               aria-hidden
             />
           )}
@@ -94,7 +94,7 @@ export function OptionRail({
             whileTap={jelly}
             onClick={ui.openChat}
             aria-label="Open the conversation"
-            className="glass-pill grid h-10 w-10 place-items-center rounded-[12px] text-muted"
+            className="glass-pill grid h-10 w-10 place-items-center rounded-[8px] text-muted"
           >
             <ChatIcon />
           </motion.button>
@@ -104,7 +104,7 @@ export function OptionRail({
           onClick={() => ui.keyboard(true)}
           disabled={offline}
           aria-label="Type instead"
-          className="glass-pill grid h-10 w-10 place-items-center rounded-[12px] text-muted disabled:opacity-40"
+          className="glass-pill grid h-10 w-10 place-items-center rounded-[8px] text-muted disabled:opacity-40"
         >
           <KeyboardIcon />
         </motion.button>
@@ -132,7 +132,7 @@ function Chip({ option, index, disabled }: { option: Option; index: number; disa
       {...sheen}
       disabled={disabled}
       onClick={() => runOption(option)}
-      className={`glass-pill flex h-11 max-w-full min-w-0 items-center gap-2 rounded-[12px] px-4 text-[15px] whitespace-nowrap transition-opacity disabled:opacity-40 ${
+      className={`glass-pill flex h-11 max-w-full min-w-0 items-center gap-2 rounded-[8px] px-4 text-[15px] whitespace-nowrap transition-opacity disabled:opacity-40 ${
         option.act ? 'font-medium text-strong' : 'text-text'
       }`}
     >

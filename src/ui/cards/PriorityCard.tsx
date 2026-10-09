@@ -59,7 +59,7 @@ export function PriorityCard({
             runOption(actOption(item.primary!.label, item.primary!.act))
           }}
           aria-label={`${item.primary.label}: ${item.title}`}
-          className="glass-pill grid h-9 min-w-9 shrink-0 place-items-center rounded-[10px] px-2.5 text-[12px] font-semibold text-strong"
+          className="glass-pill grid h-9 min-w-9 shrink-0 place-items-center rounded-[6px] px-2.5 text-[12px] font-semibold text-strong"
         >
           {item.primary.act.type === 'complete' ? <Check /> : item.primary.label}
         </motion.button>
@@ -92,7 +92,7 @@ export function PriorityCard({
   // Wendy (orb dot) when it is her reasoning rather than the local default.
   const why = !compact && (
     <div
-      className={`flex max-w-[74%] items-start gap-2.5 rounded-[10px] px-3 py-2 ${right ? 'ml-auto flex-row-reverse text-right' : ''}`}
+      className={`flex max-w-[74%] items-start gap-2.5 rounded-[6px] px-3 py-2 ${right ? 'ml-auto flex-row-reverse text-right' : ''}`}
       style={{
         background: `color-mix(in srgb, ${kind.color} 13%, transparent)`,
         boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${kind.color} 22%, transparent)`,

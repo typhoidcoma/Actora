@@ -39,7 +39,7 @@ export function FindsPanel() {
           <FindItem key={f.id} find={f} index={i} selected={selected === f.id} isNew={!seen.includes(f.id)} />
         ))}
         {status === 'hunting' &&
-          [0, 1].map((i) => <li key={`ghost-${i}`} className="shimmer aspect-[16/10] rounded-[10px] bg-text/6" />)}
+          [0, 1].map((i) => <li key={`ghost-${i}`} className="shimmer aspect-[16/10] rounded-[6px] bg-text/6" />)}
       </ul>
     </Panel>
   )
@@ -94,7 +94,7 @@ function FindItem({
             loading="lazy"
             referrerPolicy="no-referrer"
             onError={(e) => (e.currentTarget.style.display = 'none')}
-            className="mb-3 aspect-[16/10] w-full rounded-[10px] object-cover"
+            className="mb-3 aspect-[16/10] w-full rounded-[6px] object-cover"
           />
         )}
         <div className="mb-1 flex items-baseline gap-2 text-[13px] font-bold">
@@ -105,7 +105,7 @@ function FindItem({
         <div className="display text-[22px] leading-[1.05] font-bold tracking-[-0.03em] text-strong">{f.title}</div>
         {f.why && (
           <div
-            className="mt-2 rounded-[10px] px-3 py-2"
+            className="mt-2 rounded-[6px] px-3 py-2"
             style={{ background: `color-mix(in srgb, ${ROLE.finds} 12%, transparent)` }}
           >
             <div className="text-[12px] font-bold text-accent">Wendy says</div>

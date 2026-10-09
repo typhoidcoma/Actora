@@ -94,8 +94,8 @@
   --t-faint: #a2a3b1;
   --t-line: rgb(43 43 66 / 0.12);
   --t-scrim: rgb(243 243 254 / 0.55);
-  --t-glass: rgb(255 255 255 / 0.45);
-  --t-glass-thick: rgb(255 255 255 / 0.8);
+  --t-glass: rgb(255 255 255 / 0.55);
+  --t-glass-thick: rgb(255 255 255 / 0.85);
   --t-spec: rgb(255 255 255 / 0.85);
   --t-spec-soft: rgb(255 255 255 / 0.35);
   --t-shade: rgb(43 43 66 / 0.08);
@@ -317,17 +317,20 @@ button {
 
 @layer components {
   /*
-   * Liquid glass. Layers, back to front:
-   *   backdrop      blur + saturate whatever is behind (ambient, orb light spill)
-   *   tint          themed body, light enough for the backdrop to read through
-   *   sheen         radial highlight that follows the finger (--mx/--my, --press)
-   *   notch rim     specular ring on the cut-out around the orb
-   *   ::before      lensing edge: bright top-left, softer bottom-right echo
-   *   ::after       faint chromatic fringe at dusk, like light bending at the rim
+   * Glass, tuned to read as a precise surface rather than a soft bubble.
+   * Layers, back to front:
+   *   backdrop      blur + a light saturate of whatever is behind (ambient, mood light)
+   *   tint          themed body, solid enough that text sits on it crisply
+   *   top light     a short highlight under the top edge only
+   *   sheen         faint highlight that follows the finger (--mx/--my, --press)
+   *   notch rim     a thin specular ring on the cut-out around the orb
+   *   ::before      1px hairline edge, brighter along the top
+   *   shadow        a tight contact shadow plus one short, soft drop
    */
   .glass {
     --fill: var(--t-glass);
-    --blur: 24px;
+    --blur: 20px;
+    --hair: color-mix(in srgb, var(--t-strong) 11%, transparent);
     position: relative;
     isolation: isolate;
     border-radius: var(--radius);
@@ -335,24 +338,22 @@ button {
       radial-gradient(
         circle at var(--nx, -100%) var(--ny, -100%),
         transparent var(--notch),
-        var(--t-spec) calc(var(--notch) + 0.6px),
-        var(--t-spec-soft) calc(var(--notch) + 3px),
-        transparent calc(var(--notch) + 14px)
+        var(--t-spec) calc(var(--notch) + 0.5px),
+        var(--t-spec-soft) calc(var(--notch) + 2px),
+        transparent calc(var(--notch) + 8px)
       ),
       radial-gradient(
-        90% 70% at var(--mx) var(--my),
-        color-mix(in srgb, var(--t-spec) calc(12% + var(--press) * 20%), transparent),
+        80% 60% at var(--mx) var(--my),
+        color-mix(in srgb, var(--t-spec) calc(6% + var(--press) * 14%), transparent),
         transparent 70%
       ),
-      linear-gradient(160deg, var(--t-spec-soft), transparent 45%), var(--fill);
-    -webkit-backdrop-filter: blur(var(--blur)) saturate(1.6);
-    backdrop-filter: blur(var(--blur)) saturate(1.6);
+      linear-gradient(180deg, var(--t-spec-soft), transparent 24%), var(--fill);
+    -webkit-backdrop-filter: blur(var(--blur)) saturate(1.25);
+    backdrop-filter: blur(var(--blur)) saturate(1.25);
     box-shadow:
-      inset 0 1px 0.5px var(--t-spec),
-      inset 0 -1px 0.5px var(--t-spec-soft),
-      inset 0 14px 28px -16px var(--t-spec-soft),
-      inset 0 -22px 34px -22px var(--t-shade),
-      0 30px 60px -30px var(--t-drop);
+      inset 0 1px 0 var(--t-spec-soft),
+      0 1px 2px color-mix(in srgb, var(--t-drop) 70%, transparent),
+      0 12px 28px -16px var(--t-drop);
     transition:
       --mx 0.35s var(--ease-out-expo),
       --my 0.35s var(--ease-out-expo),
@@ -362,16 +363,9 @@ button {
     content: '';
     position: absolute;
     inset: 0;
-    padding: 1.25px;
+    padding: 1px;
     border-radius: inherit;
-    background: linear-gradient(
-      135deg,
-      var(--t-spec),
-      var(--t-spec-soft) 22%,
-      transparent 48%,
-      var(--t-spec-soft) 72%,
-      var(--t-spec)
-    );
+    background: linear-gradient(180deg, var(--t-spec) 0%, var(--hair) 18%, var(--hair) 100%);
     -webkit-mask:
       linear-gradient(#000 0 0) content-box,
       linear-gradient(#000 0 0);
@@ -379,36 +373,23 @@ button {
     mask-composite: exclude;
     pointer-events: none;
   }
-  .glass::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    opacity: var(--t-fringe);
-    box-shadow:
-      inset 1.5px 1.5px 1px -1px rgb(46 221 186 / 0.35),
-      inset -1.5px -1.5px 1px -1px rgb(227 66 95 / 0.28);
-    mix-blend-mode: screen;
-    pointer-events: none;
-  }
 
   /* Thicker glass for reading surfaces (chat, input sheet). */
   .glass-thick {
     --fill: var(--t-glass-thick);
-    --blur: 40px;
+    --blur: 36px;
   }
 
   /* Small controls: pills, chips, round buttons. */
   .glass-pill {
     position: relative;
-    background: linear-gradient(170deg, var(--t-spec-soft), transparent 60%), var(--t-glass);
-    -webkit-backdrop-filter: blur(16px) saturate(1.5);
-    backdrop-filter: blur(16px) saturate(1.5);
+    background: linear-gradient(180deg, var(--t-spec-soft), transparent 40%), var(--t-glass);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    backdrop-filter: blur(14px) saturate(1.2);
     box-shadow:
-      inset 0 1px 0.5px var(--t-spec),
-      inset 0 -1px 0.5px var(--t-spec-soft),
-      inset 0 0 0 0.5px var(--t-line),
-      0 8px 20px -12px var(--t-drop);
+      inset 0 1px 0 var(--t-spec-soft),
+      inset 0 0 0 1px color-mix(in srgb, var(--t-strong) 10%, transparent),
+      0 1px 2px color-mix(in srgb, var(--t-drop) 60%, transparent);
   }
 
   /* Inner-corner notch that cradles the orb, centred exactly on the grid centre. */

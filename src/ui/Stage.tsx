@@ -143,7 +143,7 @@ function FatalCard() {
         initial={{ y: 16, scale: 0.97 }}
         animate={{ y: 0, scale: 1 }}
         className="glass glass-thick max-w-sm p-7 text-center"
-        style={{ borderRadius: 28 }}
+        style={{ borderRadius: 12 }}
       >
         <div className="display mb-2 text-3xl text-strong">Session ended</div>
         <p className="mb-6 text-sm text-muted">The connection to Wendy was closed. Reload to start a new session.</p>

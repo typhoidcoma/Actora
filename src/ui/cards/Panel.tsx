@@ -48,7 +48,7 @@ export function Panel({
       onDragEnd={onDragEnd}
       {...sheen}
       className="glass glass-thick absolute inset-0 z-10 flex flex-col overflow-hidden"
-      style={{ borderRadius: radius + 2 }}
+      style={{ borderRadius: radius + 1 }}
     >
       <div
         aria-hidden

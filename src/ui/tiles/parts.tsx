@@ -32,7 +32,7 @@ export function SelectedWash({ on, accent }: { on: boolean; accent: string }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-          className="pointer-events-none absolute -inset-x-3 inset-y-0 -z-10 rounded-2xl"
+          className="pointer-events-none absolute -inset-x-3 inset-y-0 -z-10 rounded-[8px]"
           style={{ background: `color-mix(in srgb, ${accent} 16%, transparent)` }}
         />
       )}
