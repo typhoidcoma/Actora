@@ -77,8 +77,30 @@ export async function initPush(): Promise<void> {
 /** Called on every `hello`: iOS silently drops subscriptions, so re-register each connect. */
 export async function resubscribe(): Promise<void> {
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+  // The first hello can beat initPush's registration; look it up rather than skip.
+  registration ??= (await navigator.serviceWorker?.getRegistration('/')) ?? null
   const sub = await existingSubscription()
   if (sub) send(subscribeMessage(sub, navigator.userAgent))
+}
+
+/**
+ * A reminder arrived over the socket while the app is open but not in front
+ * (background tab, another window on top). The server skips Web Push whenever a
+ * socket is live, so without this nothing would reach the user at all: raise
+ * the OS notification ourselves. Clicks route through sw.js like a real push.
+ */
+export async function notifyInBackground(n: { id: string; title: string; body: string | null }): Promise<void> {
+  if (typeof document === 'undefined' || (document.visibilityState === 'visible' && document.hasFocus())) return
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+  registration ??= (await navigator.serviceWorker?.getRegistration('/')) ?? null
+  if (!registration) return
+  await registration.showNotification(n.title, {
+    body: n.body ?? '',
+    tag: `n:${n.id}`,
+    icon: '/icons/icon-192.png',
+    badge: '/icons/badge-72.png',
+    data: { url: '/', notificationId: n.id },
+  })
 }
 
 /** Must run from a tap: fetch the key first, then prompt, then subscribe and register. */

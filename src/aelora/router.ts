@@ -11,7 +11,7 @@ import {
 import { adoptGreetingUser } from './greeting'
 import { adoptMainUser, recallMain, rememberMain } from './mainThread'
 import { actOption, sayOption } from '../options/types'
-import { resubscribe } from '../push/push'
+import { notifyInBackground, resubscribe } from '../push/push'
 import { agent, useAgent, type Reaction } from '../stores/agent'
 import { entities, useEntities } from '../stores/entities'
 import { scoreItems } from '../priority/score'
@@ -347,7 +347,10 @@ function announce(n: Notification): void {
   const now = Date.now()
   const due = n.sent_at || !n.scheduled_for || Date.parse(n.scheduled_for) <= now
   const fresh = now - Date.parse(n.sent_at ?? n.created_at) < 10 * 60_000
-  if (!due || !fresh || n.read_at || useUi.getState().chatOpen) return
+  if (!due || !fresh || n.read_at) return
+  // Not looking at the app? Make it a real OS notification (the server sent no push).
+  void notifyInBackground(n)
+  if (useUi.getState().chatOpen) return
   agent.showNotice({ notificationId: n.id, title: n.title, body: n.body })
   agent.react('positive', 0.45, 1400)
 }
