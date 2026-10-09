@@ -3,6 +3,7 @@ import type { ServerFrame } from '../aelora/protocol'
 import type { FrameBus } from '../aelora/socket'
 import { useAgent } from '../stores/agent'
 import { useEntities } from '../stores/entities'
+import { scrubToolLeaks } from '../aelora/scrub'
 
 // Box 4: a few fun, personal finds from the web, once a day. Wendy does a
 // real web search in a dedicated "Fun finds" conversation so the user's main
@@ -372,7 +373,7 @@ export function handleFindsFrame(f: ServerFrame): boolean {
       useFinds.setState({ progress: buffer.slice(-80) })
       return true
     case 'done': {
-      const note = String(f.text ?? buffer).trim()
+      const note = scrubToolLeaks(String(f.text ?? buffer)).trim()
       useFinds.setState({ note })
       if (pending) {
         finish(pending, note)

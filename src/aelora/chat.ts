@@ -2,6 +2,7 @@ import { orbSignals, useAgent, type ChatBubble } from '../stores/agent'
 import type { MoodState, ServerFrame, TranscriptMessage } from './protocol'
 import type { FrameBus } from './socket'
 import { describeTool, toolDetail } from './activity'
+import { scrubToolLeaks } from './scrub'
 import { isFindsThread } from '../finds/finds'
 import { rememberMain } from './mainThread'
 import type { Step } from '../stores/agent'
@@ -37,6 +38,10 @@ function endStep(steps: Step[], name: string, failed: boolean): Step[] {
 // frames carry only channelId "system:<userId>" and no conversationId.
 
 const TURN_TIMEOUT_MS = 120_000 // the server has no turn timeout of its own
+// What the server actually streamed; the store holds it scrubbed of leaked tool
+// calls (a call can arrive split across tokens, so scrub the whole, not each).
+let rawReply = ''
+let rawGreeting = ''
 /** A message waiting for its new thread (sendChat with no main thread yet). */
 let pendingMessage: string | null = null
 let pendingBus: FrameBus | null = null
@@ -118,16 +123,18 @@ function handleSystemFrame(f: ServerFrame): boolean {
   if (!s.greetingPending) return true
   switch (f.type) {
     case 'chat.start':
+      rawGreeting = ''
       set({ greeting: { text: '', streaming: true } })
       return true
     case 'token':
-      set({ greeting: { text: s.greeting.text + String(f.delta ?? ''), streaming: true } })
+      rawGreeting += String(f.delta ?? '')
+      set({ greeting: { text: scrubToolLeaks(rawGreeting, true), streaming: true } })
       if (s.line === 'greeting' && !s.turnId) set({ phase: 'speaking' })
       orbSignals.bump(0.12)
       return true
     case 'done': {
       clearTimeout(greetingTimer)
-      const text = String(f.text ?? s.greeting.text)
+      const text = scrubToolLeaks(String(f.text ?? rawGreeting))
       set({
         greeting: { text, streaming: false },
         greetingPending: false,
@@ -164,12 +171,14 @@ export function handleChatFrame(f: ServerFrame): boolean {
 
     case 'chat.start':
       if (!cid || !s.awaitingTurn) return true // system_chat or another device's turn
+      rawReply = ''
       set({ turnId: cid, conversationId: cid, awaitingTurn: false, streaming: '' })
       return true
 
     case 'token':
       if (!mine) return true
-      set({ streaming: (s.streaming ?? '') + String(f.delta ?? ''), phase: 'speaking', toolName: null })
+      rawReply += String(f.delta ?? '')
+      set({ streaming: scrubToolLeaks(rawReply, true), phase: 'speaking', toolName: null })
       orbSignals.bump()
       return true
 
@@ -188,7 +197,7 @@ export function handleChatFrame(f: ServerFrame): boolean {
     case 'done': {
       if (!mine) return true
       clearTimeout(turnTimer)
-      const bubble: ChatBubble = { id: bubbleId(), role: 'assistant', text: String(f.text ?? '') }
+      const bubble: ChatBubble = { id: bubbleId(), role: 'assistant', text: scrubToolLeaks(String(f.text ?? rawReply)) }
       set({
         messages: [...s.messages, bubble],
         streaming: null,
@@ -225,6 +234,7 @@ export function handleChatFrame(f: ServerFrame): boolean {
         return true
       }
       if (f.event === 'mindmap' && data?.type === 'tool:working' && data.conversationId === s.turnId) {
+        rawReply = ''
         set({ streaming: '', phase: 'tool' })
         return true
       }
@@ -245,7 +255,12 @@ export function loadTranscript(
 ): void {
   const bubbles: ChatBubble[] = messages
     .filter((m) => m.role === 'user' || m.role === 'assistant')
-    .map((m) => ({ id: `m${m.seq}`, seq: m.seq, role: m.role as 'user' | 'assistant', text: m.content }))
+    .map((m) => ({
+      id: `m${m.seq}`,
+      seq: m.seq,
+      role: m.role as 'user' | 'assistant',
+      text: m.role === 'assistant' ? scrubToolLeaks(m.content) : m.content,
+    }))
   const history = { hasMore: !!page.hasMore, cursor: page.nextBeforeSeq ?? null }
   const s = get()
   const oldestHeld = s.messages.find((b) => b.seq !== undefined)?.seq
