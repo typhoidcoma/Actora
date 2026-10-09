@@ -63,6 +63,34 @@ export function describeTool(name: string): ToolWords {
 }
 
 /**
+ * A ui_action as a step, by what it did. Routine screen moves (setting the
+ * pills, closing panels, showing the reply) return null: the screen changing
+ * says it, and a trail of "Arranged your screen" looked like something broke.
+ */
+const UI_WORDS: Record<string, ToolWords> = {
+  'colors.set': { doing: 'Restyling the app', done: 'Restyled the app', icon: 'screen' },
+  'colors.reset': { doing: 'Restoring the colours', done: 'Restored the colours', icon: 'screen' },
+  'theme.set': { doing: 'Switching the theme', done: 'Switched the theme', icon: 'screen' },
+  'priorities.set': { doing: 'Re-ranking your cards', done: 'Re-ranked your cards', icon: 'screen' },
+  'finds.set': { doing: 'Laying out your finds', done: 'Laid out your finds', icon: 'image' },
+  'finds.refresh': { doing: 'Hunting for fun finds', done: 'Hunted for fun finds', icon: 'search' },
+}
+
+export function describeUiAction(action: string | null): ToolWords | null {
+  return (action && UI_WORDS[action]) || null
+}
+
+/** Which ui_action a ui_action tool call ran, from its argsSummary (JSON, maybe cut off). */
+export function uiActionName(argsSummary: unknown): string | null {
+  if (argsSummary && typeof argsSummary === 'object') {
+    const a = (argsSummary as { action?: unknown }).action
+    return typeof a === 'string' ? a : null
+  }
+  if (typeof argsSummary !== 'string') return null
+  return /"action"\s*:\s*"([a-z]+\.[a-z]+)"/.exec(argsSummary)?.[1] ?? null
+}
+
+/**
  * The interesting argument from a tool's argsSummary (a JSON string, often
  * truncated): the search query, the page's host, a title. Null if nothing
  * human-readable is in there.

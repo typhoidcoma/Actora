@@ -18,3 +18,15 @@ describe('ui_actions called as tools', () => {
     expect(actionArgs('{"seed":"#2ED')).toBeNull()
   })
 })
+
+describe('screen actions in the activity trail', () => {
+  it('names the worthwhile ones and hides routine ones', async () => {
+    const { describeUiAction, uiActionName } = await import('./activity')
+    expect(uiActionName('{"action":"colors.set","args":{"seed":"#123456"}}')).toBe('colors.set')
+    expect(uiActionName('{"action":"options.se')).toBeNull()
+    expect(describeUiAction('colors.set')?.done).toBe('Restyled the app')
+    expect(describeUiAction('options.set')).toBeNull()
+    expect(describeUiAction('card.open')).toBeNull()
+    expect(describeUiAction(null)).toBeNull()
+  })
+})

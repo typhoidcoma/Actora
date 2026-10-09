@@ -1,7 +1,7 @@
 import { orbSignals, useAgent, type ChatBubble } from '../stores/agent'
 import type { MoodState, ServerFrame, TranscriptMessage } from './protocol'
 import type { FrameBus } from './socket'
-import { describeTool, toolDetail } from './activity'
+import { describeTool, describeUiAction, toolDetail, uiActionName } from './activity'
 import { sayLinks, scrubToolLeaks } from './scrub'
 import { strayAction } from './actions'
 import { sayOption } from '../options/types'
@@ -25,6 +25,18 @@ function startStep(steps: Step[], name: string, detail: string | null): Step[] {
     return steps.map((x, i) => (i === open ? { ...x, detail } : x))
   }
   return [...steps, { id: `step-${++stepSeq}`, name, ...describeTool(name), detail, status: 'running' }]
+}
+
+/**
+ * A tool call as a step. Screen actions (ui_action, or one called by name like
+ * colors_set) show only when they're worth naming, in their own words.
+ */
+function startTool(steps: Step[], rawName: string, argsSummary: unknown): Step[] {
+  const stray = strayAction(rawName)
+  if (!stray && rawName !== 'ui_action') return startStep(steps, rawName, toolDetail(argsSummary))
+  const words = describeUiAction(stray ?? uiActionName(argsSummary))
+  if (!words || steps.some((x) => x.name === 'ui_action' && x.status === 'running')) return steps
+  return [...steps, { id: `step-${++stepSeq}`, name: 'ui_action', ...words, detail: null, status: 'running' }]
 }
 
 function endStep(steps: Step[], name: string, failed: boolean): Step[] {
@@ -205,7 +217,7 @@ export function handleChatFrame(f: ServerFrame): boolean {
       const stray = strayAction(f.name) !== null
       const name = stray ? 'ui_action' : String(f.name ?? '')
       if (f.phase === 'called') {
-        set({ phase: 'tool', toolName: name, steps: startStep(s.steps, name, toolDetail(f.argsSummary)) })
+        set({ phase: 'tool', toolName: name, steps: startTool(s.steps, String(f.name ?? ''), f.argsSummary) })
       } else {
         set({ phase: 'thinking', toolName: null, steps: endStep(s.steps, name, f.phase === 'failed' && !stray) })
         orbSignals.bump(0.45) // a small flare as each step lands
@@ -253,7 +265,10 @@ export function handleChatFrame(f: ServerFrame): boolean {
       if (f.event === 'mindmap' && data?.type === 'tool:called' && data.conversationId === s.turnId) {
         const d = data as { name?: string; argsSummary?: unknown }
         const detail = toolDetail(d.argsSummary)
-        if (detail && d.name) set({ steps: startStep(get().steps, d.name, detail) })
+        // (Screen actions get no detail line; their own words say it.)
+        if (detail && d.name && d.name !== 'ui_action' && !strayAction(d.name)) {
+          set({ steps: startStep(get().steps, d.name, detail) })
+        }
         return true
       }
       if (f.event === 'mindmap' && data?.type === 'tool:working' && data.conversationId === s.turnId) {
