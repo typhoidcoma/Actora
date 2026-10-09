@@ -534,4 +534,4 @@ const FIND_ITEMS = {
 
 /** Her Markdown reply in the finds thread (finds.set carries the cards). */
 const FINDS_REPLY =
-  'Four little gems today: octopuses with **workplace drama**, a shader you will want to fork, a new sunset route by the water, and a planet made of cotton candy. They are on your *For you* card.'
+  '## Weird nature and shader nerdery\n\nOctopuses with **workplace drama**, a shader you will want to fork, a new sunset route by the water, and a planet made of cotton candy.\n\nWant me to put the waterfront walk on your calendar for Saturday evening?'

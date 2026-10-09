@@ -115,7 +115,6 @@ export function OptionRail({
 }
 
 function Chip({ option, index, disabled }: { option: Option; index: number; disabled: boolean }) {
-  const fromWendy = option.source !== 'local'
   return (
     <motion.button
       layout
@@ -142,11 +141,6 @@ function Chip({ option, index, disabled }: { option: Option; index: number; disa
         option.act ? 'font-medium text-strong' : 'text-text'
       }`}
     >
-      {fromWendy && (
-        <span aria-hidden className="shrink-0 text-[11px] text-accent">
-          ✦
-        </span>
-      )}
       <span className="truncate">{option.label}</span>
     </motion.button>
   )

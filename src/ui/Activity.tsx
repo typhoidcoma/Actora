@@ -90,7 +90,7 @@ function Tick({ failed }: { failed: boolean }) {
 
 /** Line icons (24px grid), each with its own small loop of motion. */
 const PATHS: Record<StepIcon, string> = {
-  think: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z',
+  think: '',
   search: 'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM15.5 15.5L20 20',
   read: 'M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6',
   memory: 'M12 4a8 8 0 1 0 8 8M12 8v4l3 2M20 4v4h-4',
@@ -108,11 +108,12 @@ const PATHS: Record<StepIcon, string> = {
 
 function ActivityIcon({ icon, size }: { icon: StepIcon; size: number }) {
   const reduced = useReducedMotion()
+  if (icon === 'think') return <ThinkingArc size={size} reduced={!!reduced} />
   const loop = reduced
     ? {}
     : icon === 'search'
       ? { x: [0, 2, 0, -2, 0], y: [0, -2, -3, -2, 0] }
-      : icon === 'think' || icon === 'weather'
+      : icon === 'weather'
         ? { rotate: [0, 90, 180], scale: [1, 1.15, 1] }
         : icon === 'read'
           ? { y: [0, -2, 0] }
@@ -127,7 +128,7 @@ function ActivityIcon({ icon, size }: { icon: StepIcon; size: number }) {
       className="shrink-0 text-accent"
       aria-hidden
       animate={loop}
-      transition={{ duration: icon === 'think' ? 2.4 : 1.4, repeat: Infinity, ease: 'easeInOut' }}
+      transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
     >
       <path
         d={PATHS[icon]}
@@ -136,6 +137,36 @@ function ActivityIcon({ icon, size }: { icon: StepIcon; size: number }) {
         strokeWidth={1.8}
         strokeLinecap="round"
         strokeLinejoin="round"
+      />
+    </motion.svg>
+  )
+}
+
+/** Thinking: a thin arc sweeping round a faint ring, its length breathing as it goes. */
+function ThinkingArc({ size, reduced }: { size: number; reduced: boolean }) {
+  return (
+    <motion.svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      className="shrink-0 text-accent"
+      aria-hidden
+      animate={reduced ? undefined : { rotate: 360 }}
+      transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }}
+    >
+      <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeOpacity={0.18} strokeWidth={2} />
+      <motion.circle
+        cx="12"
+        cy="12"
+        r="8.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        pathLength={1}
+        strokeDasharray="1 1"
+        animate={reduced ? { strokeDashoffset: 0.72 } : { strokeDashoffset: [0.85, 0.55, 0.85] }}
+        transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
       />
     </motion.svg>
   )

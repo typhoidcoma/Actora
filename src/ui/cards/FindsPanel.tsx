@@ -10,18 +10,24 @@ import { LazyMarkdown } from '../LazyMarkdown'
 
 /** Box 4 expanded: today's fun finds as rich cards. Each counts as seen once it's actually looked at. */
 export function FindsPanel() {
-  const { items, status, seen, note } = useFinds()
+  const { items, status, seen, note, headline } = useFinds()
   const unseen = unseenCount({ items, seen })
   const selected = useUi((s) => s.find)
   const kicker =
     status === 'hunting'
       ? 'Wendy is hunting for more…'
       : unseen
-        ? `${unseen} new for you today`
-        : 'All caught up for today'
+        ? `${unseen} new today`
+        : 'All seen today'
 
   return (
-    <Panel layoutId="finds-card" accent={ROLE.finds} kicker={kicker} title="For you" onClose={ui.closeFinds}>
+    <Panel
+      layoutId="finds-card"
+      accent={ROLE.finds}
+      kicker={kicker}
+      title={headline || "Today's finds"}
+      onClose={ui.closeFinds}
+    >
       {/* Her own words about today's finds (the Markdown reply from the hunt). */}
       {note && status !== 'hunting' && (
         <motion.div

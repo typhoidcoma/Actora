@@ -6,7 +6,7 @@ screen:
 - **Wendy's line** across the top: her welcome, the first sentence of each reply, and reminders.
 - **The grid**: four 4:3 cards around an orb that is Wendy.
   - Three **priority cards**, ranked: the things to tackle next, from any domain.
-  - **Box 4** (bottom-right), **For you**: fun finds Wendy searched the web for, picked for you. Images crossfade behind a big count of fun things you have not seen yet. Her full answers open in a reader, either automatically for big questions or by tapping her line.
+  - **Box 4** (bottom-right): fun finds Wendy searched the web for, picked for you, under a headline she writes. Images crossfade behind a big count of fun things you have not seen yet. Her full answers open in a reader, either automatically for big questions or by tapping her line.
 - **The option rail** along the bottom: what you can say or do next.
 
 **Nothing requires typing.** Tap the orb to talk, tap an option, or tap a card for its actions. Wendy can drive every
@@ -18,7 +18,7 @@ installs to the home screen.
 1. **Local score** (`score.ts`). Each item gets an instant, deterministic score: a live or imminent event, an overdue
    task, a fresh unread reminder, a task due today, a goal falling behind. The top 3 can hold at most two of one kind.
 2. **Wendy re-ranks** (`rank.ts`). She reorders the top 8 through `POST /api/llm`, grounded in your profile, and
-   writes a short ✦ "why now" for each card. Debounced, cached by the candidate set, at most once every 2 minutes,
+   writes a short "why now" for each card. Debounced, cached by the candidate set, at most once every 2 minutes,
    429-aware.
 3. **`priorities.set`**. Wendy can set the order herself. It holds for 30 minutes.
 

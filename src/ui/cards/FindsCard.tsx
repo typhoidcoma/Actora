@@ -11,7 +11,7 @@ const SCRIM = 'linear-gradient(to top, rgb(30 24 34 / 0.9) 8%, rgb(30 24 34 / 0.
 const ROTATE_MS = 7000
 
 /**
- * Box 4, "For you": fun things Wendy found on the web for this user. Their
+ * Box 4: fun things Wendy found on the web for this user. Their
  * images crossfade behind a big count of finds not yet seen; tap to open them.
  */
 export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean }) {

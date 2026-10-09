@@ -154,7 +154,25 @@ export function screenSummary(key: string, s: Snapshot): string {
     const details = itemDetails(kind, id, s)
     if (details) lines.push(`Its details: ${details}.`)
   } else if (key === 'finds' || key.startsWith('find:')) {
-    lines.push('Screen: the "For you" fun finds panel.')
+    const fs = useFinds.getState()
+    if (key === 'finds') {
+      lines.push(
+        `Screen: Wendy's fun finds page${fs.headline ? `, headed "${fs.headline}"` : ''}. The finds: ${
+          fs.items.map((x) => `"${x.title}" (${x.tag}, ${x.source})`).join('; ') || 'none yet'
+        }.`,
+      )
+      if (fs.note) lines.push(`What Wendy said about them: ${fs.note.slice(0, 500)}`)
+      lines.push(
+        'Make the options act on these finds by name: put one on the calendar, set a reminder, save one as a task, dig deeper into one, or find more like one.',
+      )
+    } else {
+      const f = fs.items.find((x) => x.id === key.slice('find:'.length))
+      if (f)
+        lines.push(
+          `Screen: the user tapped the find "${f.title}" (${f.source}, ${f.url}): ${f.blurb}`,
+          'Options should act on this find: when to go or do it, put it on the calendar, a reminder, save it, dig deeper, or more like it.',
+        )
+    }
   }
   // What else is visible, so options can refer to it.
   const ui = useUi.getState()
@@ -162,7 +180,7 @@ export function screenSummary(key: string, s: Snapshot): string {
   const finds = useFinds.getState().items
   if (key === 'home' && finds.length)
     lines.push(
-      `Box 4 ("For you") has fun finds: ${finds
+      `Box 4 has Wendy's fun finds: ${finds
         .map((x) => `"${x.title}"`)
         .slice(0, 4)
         .join(', ')}.`,
@@ -354,8 +372,6 @@ export function startWendyOptions(): () => void {
     const a = useAgent.getState()
     if (a.connection !== 'open' || a.turnId || a.awaitingTurn) return
     const key = contextKeyOf(useUi.getState())
-    // Discover's options are concrete local actions; no need to ask Wendy.
-    if (key === 'finds' || key.startsWith('find:')) return
     const sig = signature(key)
     if (sig === lastSig) return
     lastSig = sig

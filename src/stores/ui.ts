@@ -22,7 +22,7 @@ export interface UiState {
   selected: Selected | null
   /** Wendy's full answer, open in the reader panel. */
   reader: boolean
-  /** "For you" fun finds (box 4) expanded into the Discover panel. */
+  /** Box 4's fun finds expanded into their panel. */
   finds: boolean
   /** The find being looked at inside Discover (its options are on the rail). */
   find: string | null

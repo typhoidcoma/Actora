@@ -126,3 +126,36 @@ describe('client_state', () => {
     for (const a of AVAILABLE_ACTIONS) expect(a.split('.').length, a).toBe(2)
   })
 })
+
+describe("Wendy's headline", () => {
+  it('takes her opening heading as the page title and keeps the rest as her note', async () => {
+    const { splitHeadline } = await import('./finds')
+    expect(splitHeadline('## Jazz week, **Tyler**\n\nEarshot is on all month.')).toEqual({
+      headline: 'Jazz week, Tyler',
+      body: 'Earshot is on all month.',
+    })
+    expect(splitHeadline('No heading here.')).toEqual({ headline: '', body: 'No heading here.' })
+  })
+
+  it('asks for a personal headline and one actionable offer, never a generic label', async () => {
+    const { FIND_DIRECTIVE } = await import('./finds')
+    expect(FIND_DIRECTIVE).toMatch(/personal headline/)
+    expect(FIND_DIRECTIVE).toMatch(/one concrete thing you can do for me/)
+    expect(FIND_DIRECTIVE).toMatch(/Never a generic label like "For you"/)
+  })
+
+  it('lands the headline as the title with the cards', async () => {
+    const { startFinds, hunt, handleFindsFrame, useFinds } = await import('./finds')
+    const { runUiAction } = await import('../aelora/router')
+    const stop = startFinds({ send: () => true } as never)
+    hunt()
+    runUiAction('finds.set', { items: [{ title: 'Earshot', url: 'https://earshot.org' }] })
+    handleFindsFrame({
+      type: 'done',
+      conversationId: 'th',
+      text: '## Jazz week, Tyler\n\nWant it on Saturday?',
+    } as never)
+    expect(useFinds.getState()).toMatchObject({ headline: 'Jazz week, Tyler', note: 'Want it on Saturday?' })
+    stop()
+  })
+})

@@ -4,7 +4,7 @@ import type { FrameBus } from '../aelora/socket'
 import { useAgent } from '../stores/agent'
 import { useEntities } from '../stores/entities'
 
-// "For you": a few fun, personal finds from the web, once a day. Wendy does a
+// Box 4: a few fun, personal finds from the web, once a day. Wendy does a
 // real web search in a dedicated "Fun finds" conversation so the user's main
 // thread stays clean. She replies in normal Markdown (kept as her note) and
 // calls the finds.set ui_action with the items, which become the cards.
@@ -30,8 +30,10 @@ interface FindsState {
   seen: string[]
   /** Streaming text of the current hunt (for the "hunting" shimmer). */
   progress: string
-  /** Wendy's Markdown reply from the hunt that produced these finds. */
+  /** Wendy's Markdown reply from the hunt that produced these finds (without its headline). */
   note: string
+  /** Her personal headline for the finds page (the first-line heading of her reply). */
+  headline: string
 }
 
 const STORE_KEY = 'actora.finds.v1'
@@ -48,22 +50,32 @@ const today = () => {
 // device never flashes the previous person's finds or reuses their thread.
 let owner: string | null = null
 
-type Saved = Pick<FindsState, 'items' | 'day' | 'seen'> & { note?: string; owner?: string | null }
+type Saved = Pick<FindsState, 'items' | 'day' | 'seen'> & { note?: string; headline?: string; owner?: string | null }
 
 function load(): Saved | null {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_KEY) ?? 'null') as Saved | null
     if (raw && Array.isArray(raw.items))
-      return { items: raw.items, day: raw.day, seen: raw.seen ?? [], note: raw.note ?? '', owner: raw.owner }
+      return {
+        items: raw.items,
+        day: raw.day,
+        seen: raw.seen ?? [],
+        note: raw.note ?? '',
+        headline: raw.headline ?? '',
+        owner: raw.owner,
+      }
   } catch {
     /* fall through */
   }
   return null
 }
 
-function save(s: Pick<FindsState, 'items' | 'day' | 'seen' | 'note'>) {
+function save(s: Pick<FindsState, 'items' | 'day' | 'seen' | 'note' | 'headline'>) {
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify({ items: s.items, day: s.day, seen: s.seen, note: s.note, owner }))
+    localStorage.setItem(
+      STORE_KEY,
+      JSON.stringify({ items: s.items, day: s.day, seen: s.seen, note: s.note, headline: s.headline, owner }),
+    )
   } catch {
     /* private mode */
   }
@@ -76,6 +88,7 @@ export const useFinds = create<FindsState>(() => ({
   status: 'idle',
   progress: '',
   note: '',
+  headline: '',
 }))
 
 /** Called on every hello: load this user's cache, or wipe another user's. */
@@ -90,10 +103,11 @@ export function adoptFindsUser(userId: string | null): void {
       day: saved.day,
       seen: saved.seen,
       note: saved.note ?? '',
+      headline: saved.headline ?? '',
       status: saved.items.length ? 'ready' : 'idle',
     })
   } else {
-    useFinds.setState({ items: [], day: null, seen: [], status: 'idle', progress: '', note: '' })
+    useFinds.setState({ items: [], day: null, seen: [], status: 'idle', progress: '', note: '', headline: '' })
     try {
       localStorage.removeItem(STORE_KEY)
     } catch {
@@ -194,7 +208,30 @@ export function parseFinds(text: string): Find[] {
   return out.slice(0, 6)
 }
 
-export const FIND_DIRECTIVE = `Find me today's fun stuff: 4 fun, light, genuinely interesting things from the web today that I'd personally enjoy, based on what you know about me (my interests, hobbies, where I live, what I'm working on). Mix it up: a good-news story, something nerdy or surprising, something local or seasonal, something visual. Use at most two web searches. Tell me about them in a short, fun reply, then put them on my For you card with finds.set: {items:[{title, blurb (1–2 sentences), why (why I'll like it, under 70 characters), url, image (the page's og:image), source, tag (Good news, Nerdy, Local, Visual or Weird)}]}.`
+/**
+ * Her reply opens with a heading that becomes the page title ("## Jazz week,
+ * Tyler"); the rest is her note. Without a heading, nothing is invented: the
+ * panel falls back to a neutral label.
+ */
+export function splitHeadline(text: string): { headline: string; body: string } {
+  const t = text.trim()
+  const m = /^#{1,3}\s+(.+?)\s*(?:\n|$)/.exec(t)
+  if (!m) return { headline: '', body: t }
+  return {
+    headline: m[1]
+      .replace(/[*_`#]/g, '')
+      .trim()
+      .slice(0, 60),
+    body: t.slice(m[0].length).trim(),
+  }
+}
+
+export const FIND_DIRECTIVE = `Find me today's fun stuff: 4 fun, light, genuinely interesting things from the web today that I'd personally enjoy, based on what you know about me (my interests, hobbies, where I live, what I'm working on). Mix it up: a good-news story, something nerdy or surprising, something local or seasonal, something visual. Use at most two web searches.
+Reply in Markdown, written to me:
+- First line: a short, personal headline for this page as a heading (## …), at most 6 words, about me and what ties today's finds together. Never a generic label like "For you" or "Fun finds".
+- Then a few fun sentences about them.
+- End with one concrete thing you can do for me about one of them (put it on my calendar, set a reminder, save it as a task, dig deeper), asked as a question I can answer with a tap.
+Then put them on the card with finds.set: {items:[{title, blurb (1–2 sentences), why (why I'll like it, under 70 characters), url, image (the page's og:image), source, tag (Good news, Nerdy, Local, Visual or Weird)}]}.`
 
 // ── The hunt: a chat turn in the dedicated thread ───────────────────────────
 
@@ -249,7 +286,14 @@ function finish(items: Find[] | null, note?: string) {
     useFinds.setState({ status: useFinds.getState().items.length ? 'ready' : 'error', progress: '' })
     return
   }
-  const next = { items, day: today(), seen: [] as string[], note: note ?? useFinds.getState().note }
+  const split = note === undefined ? null : splitHeadline(note)
+  const next = {
+    items,
+    day: today(),
+    seen: [] as string[],
+    note: split ? split.body : useFinds.getState().note,
+    headline: split ? split.headline : useFinds.getState().headline,
+  }
   useFinds.setState({ ...next, status: 'ready', progress: '' })
   save(next)
 }
