@@ -2,7 +2,7 @@ import { orbSignals, useAgent, type ChatBubble } from '../stores/agent'
 import type { MoodState, ServerFrame, TranscriptMessage } from './protocol'
 import type { FrameBus } from './socket'
 import { describeTool, describeUiAction, toolDetail, uiActionName } from './activity'
-import { sayLinks, scrubToolLeaks } from './scrub'
+import { sayLinks, scrubToolLeaks, textOptions } from './scrub'
 import { strayAction } from './actions'
 import { connectGoogle, isGoogleError } from '../google/google'
 import { toast } from '../stores/toast'
@@ -73,7 +73,8 @@ const isSystem = (f: ServerFrame) =>
 
 /** Answers Wendy wrote as say: links go on the pills, as if she'd called options.set. */
 function offerSayLinks(raw: string) {
-  const links = sayLinks(raw)
+  // Answer links, or an options.set she wrote out instead of calling.
+  const links = [...sayLinks(raw), ...textOptions(raw)]
   if (!links.length) return
   optionsStore.push(
     contextKeyOf(useUi.getState()),

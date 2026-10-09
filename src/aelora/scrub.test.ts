@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sayLinks, scrubToolLeaks } from './scrub'
+import { sayLinks, scrubToolLeaks, textOptions } from './scrub'
 
 describe('scrubToolLeaks', () => {
   it('drops a tool call the model wrote into its reply', () => {
@@ -51,6 +51,25 @@ describe('scrubToolLeaks', () => {
     }
     // Ordinary code and bold stay.
     expect(scrubToolLeaks('Run `npm install` then **relax**.')).toBe('Run `npm install` then **relax**.')
+  })
+
+  it('strips a screen action written out with nested args, and recovers its options', () => {
+    const raw =
+      "all set.\n\n[options.set]{options:[{label:looks perfect, take me back to today,say:looks perfect, take me back to today},{label:close everything and let me chill,say:clear the screen, let's relax}]}"
+    expect(scrubToolLeaks(raw)).toBe('all set.')
+    expect(textOptions(raw)).toEqual([
+      { label: 'looks perfect, take me back to today', say: 'looks perfect, take me back to today' },
+      { label: 'close everything and let me chill', say: "clear the screen, let's relax" },
+    ])
+    expect(scrubToolLeaks('Done. reader.open{} Enjoy.')).toBe('Done. Enjoy.')
+    // Streaming: nothing of it shows while it arrives.
+    let acc = ''
+    for (const ch of raw) {
+      acc += ch
+      expect(scrubToolLeaks(acc, true)).not.toMatch(/options|\[|\{/)
+    }
+    // Prose that merely mentions an action stays.
+    expect(scrubToolLeaks('I can open the reader.open for you')).toBe('I can open the reader.open for you')
   })
 
   it('never flashes the start of a call while streaming', () => {

@@ -3,6 +3,10 @@
 // server should catch that; until it does, never show it.
 
 /** Wendy's tools on Aelora (WEBSOCKET.md → tool catalog). */
+import { AVAILABLE_ACTIONS } from './actions'
+
+const KNOWN_ACTIONS = new Set<string>(AVAILABLE_ACTIONS)
+
 const TOOLS = new Set([
   'perform_reaction',
   'ui_action',
@@ -91,15 +95,73 @@ export function sayLinks(text: string): Array<{ label: string; say: string }> {
   return out
 }
 
+// A screen action written out as text, with any amount of nesting in its args:
+// "[options.set]{options:[{label:…},{…}]}", "options.set{…}", "`reader.open`{}".
+const ACTION_HEAD = /[[`*]*\b([a-z]+\.[a-z]+)\b[\]`*]*\s*(?=[({])/gi
+
+/** Where the bracket opened at `from` closes (matching nesting), or -1 if it hasn't arrived yet. */
+function closing(text: string, from: number): number {
+  const open = text[from]
+  const close = open === '{' ? '}' : ')'
+  let depth = 0
+  for (let i = from; i < text.length; i++) {
+    const c = text[i]
+    if (c === '{' || c === '(' || c === '[') depth++
+    else if (c === '}' || c === ')' || c === ']') {
+      depth--
+      if (depth === 0) return c === close ? i : -1
+    }
+  }
+  return -1
+}
+
+/** Screen actions written into the reply, found with their (balanced) argument text. */
+export function textActions(text: string): Array<{ action: string; start: number; end: number; args: string }> {
+  const out: Array<{ action: string; start: number; end: number; args: string }> = []
+  for (const m of text.matchAll(ACTION_HEAD)) {
+    const action = m[1].toLowerCase()
+    if (!KNOWN_ACTIONS.has(action)) continue
+    const open = m.index + m[0].length
+    const end = closing(text, open)
+    out.push({
+      action,
+      start: m.index,
+      end: end < 0 ? text.length : end + 1,
+      args: end < 0 ? '' : text.slice(open + 1, end),
+    })
+  }
+  return out
+}
+
+/**
+ * The answers of an options.set written out as text, read loosely (the model
+ * leaves keys and values unquoted): {label:…,say:…} pairs.
+ */
+export function textOptions(text: string): Array<{ label: string; say: string }> {
+  const out: Array<{ label: string; say: string }> = []
+  for (const a of textActions(text)) {
+    if (a.action !== 'options.set') continue
+    // Each {…} answer: its label runs up to ",say:" (labels may hold commas), its say to the "}".
+    for (const obj of a.args.match(/\{[^{}]*\}/g) ?? []) {
+      const m = /^\{\s*"?label"?\s*:\s*"?([^{}]*?)"?\s*(?:,\s*"?say"?\s*:\s*"?([^{}]*?)"?\s*)?\}$/.exec(obj)
+      const label = m?.[1]?.trim()
+      if (label) out.push({ label, say: (m?.[2] ?? label).trim() })
+    }
+  }
+  return out
+}
+
 /** Reply text with leaked tool calls removed (and a half-arrived one held back while streaming). */
 export function scrubToolLeaks(text: string, streaming = false): string {
   if (!text) return text
   // 1. Strip the Markdown the model wraps calls in; all of these render as the bare
   //    call: `perform_reaction`{…}, **perform_reaction**{…}, perform\_reaction\{…\}.
-  let out = text
-    .replace(/\\([_{}()])/g, '$1')
-    .replace(/(`+|\*{1,2})([a-z]+(?:_[a-z]+)*)\1(?=\s*[({])/gi, '$2')
-    // 2. Drop the calls themselves.
+  let out = text.replace(/\\([_{}()[\]])/g, '$1').replace(/(`+|\*{1,2})([a-z]+(?:_[a-z]+)*)\1(?=\s*[({])/gi, '$2')
+  // 2. Screen actions written out (options.set{…}, nested args and all). One still
+  //    arriving at the end of a stream is cut from where it starts.
+  for (const a of textActions(out).reverse()) out = `${out.slice(0, a.start)} ${out.slice(a.end)}`
+  // 3. Drop the tool calls themselves.
+  out = out
     .replace(CALL, (m, name: string, bracket: string, inner: string) => (isCall(name, bracket, inner) ? ' ' : m))
     // 3. Answer links go to the pills (sayLinks); a list item that held one goes with it.
     .replace(new RegExp(`^[ \\t]*(?:[-*+]|\\d+\\.)[ \\t]+${SAY_LINK.source}[ \\t]*$`, 'gm'), '')
@@ -111,6 +173,9 @@ export function scrubToolLeaks(text: string, streaming = false): string {
     // it shows a token later if it was just a word.
     const tail = /(?:`+|\*+)?([a-z_]+)(?:`+|\*+)?$/.exec(out)
     if (tail && [...TOOLS].some((t) => t.startsWith(tail[1]))) out = out.slice(0, tail.index)
+    // A screen action's name still arriving ("[options.se", "reader.").
+    const act = /\[?\b([a-z]+\.[a-z]*)\]?$/.exec(out)
+    if (act && [...KNOWN_ACTIONS].some((a) => a.startsWith(act[1]))) out = out.slice(0, act.index)
     // An opening ` or ** with nothing after it yet: wait to see what it wraps.
     out = out.replace(/(?:`+|\*+)$/, '')
     // Hold back a link that might turn out to be an answer link.
