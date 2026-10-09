@@ -91,9 +91,16 @@ export function Orb() {
     const program = new Program(ctx, { vertex, fragment, uniforms, transparent: true, depthTest: false })
     const mesh = new Mesh(ctx, { geometry: new Triangle(ctx), program })
 
+    // Layout size, not getBoundingClientRect: the orb is often mid-transform
+    // (entrance scale, docking), and the canvas must match the untransformed box.
     const resize = () => {
-      const { width, height } = el.getBoundingClientRect()
-      if (width > 0 && height > 0) renderer.setSize(width, height)
+      const width = el.clientWidth
+      const height = el.clientHeight
+      if (width > 0 && height > 0) {
+        renderer.setSize(width, height)
+        canvas.style.width = '100%'
+        canvas.style.height = '100%'
+      }
     }
     const ro = new ResizeObserver(resize)
     ro.observe(el)
