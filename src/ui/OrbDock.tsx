@@ -7,6 +7,7 @@ import { useOptionsStore } from '../stores/options'
 import { ui, useUi, panelOpen } from '../stores/ui'
 import { glide } from './motion'
 import { Orb } from './orb/Orb'
+import { DotRipple } from './DotRipple'
 
 /** The visible blob is 60% of the canvas box; the rest is glow. */
 const BLOB = 0.6
@@ -126,8 +127,7 @@ export function OrbDock() {
           />
         </span>
         <Orb />
-        <ThinkingRipples on={!listening && phase === 'thinking'} />
-        <ToolArc on={!listening && phase === 'tool'} />
+        <OrbRipple mode={listening ? null : phase === 'tool' ? 'tool' : phase === 'thinking' ? 'thinking' : null} />
         <ListeningRings on={listening} />
         <MicHint on={hover && !listening && phase !== 'offline'} />
       </motion.div>
@@ -165,60 +165,32 @@ const PULSE: Record<string, { amp: number; glow: number; period: number }> = {
   listening: { amp: 0.04, glow: 0.75, period: 1.2 },
 }
 
-/** Slow ripples rolling off the orb while she thinks. */
-function ThinkingRipples({ on }: { on: boolean }) {
-  return (
-    <AnimatePresence>
-      {on &&
-        [0, 1, 2].map((i) => (
-          <motion.span
-            key={i}
-            aria-hidden
-            className="absolute inset-[20%] rounded-full"
-            style={{ boxShadow: '0 0 0 1.5px var(--mood-2, var(--role-accent))' }}
-            initial={{ opacity: 0, scale: 1 }}
-            animate={{ opacity: [0, 0.55, 0], scale: [0.98, 1.22, 1.38] }}
-            exit={{ opacity: 0, transition: { duration: 0.3 } }}
-            transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.8, ease: 'easeOut' }}
-          />
-        ))}
-    </AnimatePresence>
-  )
-}
-
 /**
- * While a tool runs: a ring of tiny circles round the orb with a ripple running
- * through it (the same motif as the thinking line, ripple-dot in index.css).
+ * Ripples of tiny circles spreading out from the orb's edge: slow and soft
+ * while she thinks, quicker while she works a tool.
  */
-const RING_DOTS = 18
-function ToolArc({ on }: { on: boolean }) {
+function OrbRipple({ mode }: { mode: 'thinking' | 'tool' | null }) {
   return (
     <AnimatePresence>
-      {on && (
-        <motion.svg
+      {mode && (
+        <motion.span
+          key={mode}
           aria-hidden
-          viewBox="0 0 100 100"
-          className="absolute inset-[13%] overflow-visible"
-          style={{ color: 'var(--role-accent)' }}
+          className="absolute inset-[2%]"
+          style={{ color: mode === 'tool' ? 'var(--role-accent)' : 'var(--mood-2, var(--role-accent))' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.3 } }}
+          exit={{ opacity: 0, transition: { duration: 0.35 } }}
         >
-          {Array.from({ length: RING_DOTS }, (_, i) => {
-            const a = (i / RING_DOTS) * Math.PI * 2 - Math.PI / 2
-            return (
-              <circle
-                key={i}
-                className="ripple-dot"
-                cx={50 + Math.cos(a) * 49}
-                cy={50 + Math.sin(a) * 49}
-                r={1.9}
-                fill="currentColor"
-                style={{ animationDelay: `${(i * 1.2) / RING_DOTS}s` }}
-              />
-            )
-          })}
-        </motion.svg>
+          <DotRipple
+            rings={3}
+            dots={mode === 'tool' ? 30 : 24}
+            dotR={0.9}
+            from={0.62}
+            seconds={mode === 'tool' ? 1.4 : 2.6}
+            className="h-full w-full"
+          />
+        </motion.span>
       )}
     </AnimatePresence>
   )

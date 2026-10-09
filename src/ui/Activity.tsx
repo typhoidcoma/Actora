@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { thinkingWords, type StepIcon } from '../aelora/activity'
 import { useAgent } from '../stores/agent'
 import { useNow } from './tiles/data'
+import { DotRipple } from './DotRipple'
 
 /**
  * What Wendy is doing right now, narrated: the current step large with a
@@ -108,7 +109,18 @@ const PATHS: Record<StepIcon, string> = {
 
 function ActivityIcon({ icon, size }: { icon: StepIcon; size: number }) {
   const reduced = useReducedMotion()
-  if (icon === 'think') return <ThinkingRipple size={size} reduced={!!reduced} />
+  // Thinking: a ripple of tiny circles spreading out from a pulsing centre.
+  if (icon === 'think')
+    return (
+      <DotRipple
+        rings={3}
+        dots={9}
+        dotR={5}
+        center
+        className="shrink-0 text-accent"
+        style={{ width: size, height: size }}
+      />
+    )
   const loop = reduced
     ? {}
     : icon === 'search'
@@ -139,47 +151,5 @@ function ActivityIcon({ icon, size }: { icon: StepIcon; size: number }) {
         strokeLinejoin="round"
       />
     </motion.svg>
-  )
-}
-
-/**
- * Thinking: a ring of tiny circles with a ripple running round it (each one
- * swells and brightens in turn), and a faint outer echo. Plain CSS keyframes:
- * the AnimatePresence around the activity line disables mount animations for
- * Motion children, and CSS is cheaper for a loop anyway.
- */
-const DOTS = 8
-const RIPPLE_S = 1.2
-function ThinkingRipple({ size, reduced }: { size: number; reduced: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} className="shrink-0 overflow-visible text-accent" aria-hidden>
-      {Array.from({ length: DOTS }, (_, i) => {
-        const a = (i / DOTS) * Math.PI * 2 - Math.PI / 2
-        const delay = `${(i * RIPPLE_S) / DOTS}s`
-        return (
-          <g key={i}>
-            {!reduced && (
-              <circle
-                className="ripple-echo"
-                cx={12 + Math.cos(a) * 10.5}
-                cy={12 + Math.sin(a) * 10.5}
-                r={0.9}
-                fill="currentColor"
-                style={{ animationDelay: `${(i * RIPPLE_S) / DOTS + 0.15}s` }}
-              />
-            )}
-            <circle
-              className={reduced ? undefined : 'ripple-dot'}
-              cx={12 + Math.cos(a) * 7}
-              cy={12 + Math.sin(a) * 7}
-              r={2.1}
-              fill="currentColor"
-              opacity={reduced ? 0.7 : undefined}
-              style={{ animationDelay: delay }}
-            />
-          </g>
-        )
-      })}
-    </svg>
   )
 }
