@@ -1,4 +1,5 @@
 import { AnimatePresence, motion, useDragControls, type PanInfo } from 'motion/react'
+import { CopyButton } from './CopyButton'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { loadEarlier } from '../aelora/client'
 import { useAgent, type ChatBubble } from '../stores/agent'
@@ -7,7 +8,7 @@ import { ui, useUi } from '../stores/ui'
 import { toolLabel } from './format'
 import { Activity } from './Activity'
 import { LazyMarkdown as Markdown } from './LazyMarkdown'
-import { stableMarkdown } from './markdownText'
+import { copyableText, stableMarkdown } from './markdownText'
 import { glide, morph, press } from './motion'
 import { OptionRail } from './OptionRail'
 import { sheen } from './sheen'
@@ -189,7 +190,7 @@ function Transcript() {
             className="max-w-[88%] self-start"
           >
             {streaming ? (
-              <div className="text-text">
+              <div className="selectable text-text">
                 <Markdown text={stableMarkdown(streaming)} />
                 <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-[3px] animate-pulse bg-accent" />
               </div>
@@ -212,7 +213,7 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
         initial={{ opacity: 0, y: 10, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={morph}
-        className="max-w-[80%] self-end rounded-[6px] rounded-br-[3px] bg-accent/25 px-4 py-2.5 text-[15px] text-strong"
+        className="selectable max-w-[80%] self-end rounded-[6px] rounded-br-[3px] bg-accent/25 px-4 py-2.5 text-[15px] text-strong"
       >
         {bubble.text}
       </motion.div>
@@ -222,8 +223,15 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
     return <div className="self-start text-sm text-urgent">{bubble.text}</div>
   }
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-[88%] self-start text-text">
-      <Markdown text={bubble.text} />
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="group max-w-[88%] self-start text-text">
+      <div className="selectable">
+        <Markdown text={bubble.text} />
+      </div>
+      {/* Quiet until hovered on desktop; always there (faint) on touch. */}
+      <CopyButton
+        text={copyableText(bubble.text)}
+        className="-ml-2 mt-0.5 opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
+      />
     </motion.div>
   )
 }

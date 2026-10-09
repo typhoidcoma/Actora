@@ -212,7 +212,7 @@ function MemoryRow({ entry: e, terms }: { entry: VaultEntry; terms: string[] }) 
       transition={morph}
       className="flex items-start gap-3 border-b border-line py-3 last:border-0"
     >
-      <p className="min-w-0 flex-1 text-[16px] leading-snug text-strong">
+      <p className="selectable min-w-0 flex-1 text-[16px] leading-snug text-strong">
         <Highlighted text={e.content} terms={terms} />
       </p>
       <motion.button

@@ -46,3 +46,20 @@ export function isRichReply(md: string): boolean {
     /```/.test(md)
   )
 }
+
+/**
+ * Markdown as text worth pasting: paragraphs and list lines kept, links as
+ * "text (url)", emphasis and heading marks dropped, images left out.
+ */
+export function copyableText(md: string): string {
+  return md
+    .replace(/!\[[^\]]*]\([^)]*\)/g, '')
+    .replace(/\[([^\]]+)]\((https?:[^)\s]+)\)/g, '$1 ($2)')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/(\*\*|__|~~)(.+?)\1/g, '$2')
+    .replace(/(^|[^*\w])[*_](\S(?:.*?\S)?)[*_](?=[^*\w]|$)/g, '$1$2')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^[ \t]*[*+][ \t]+/gm, '- ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}

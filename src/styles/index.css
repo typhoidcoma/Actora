@@ -674,3 +674,15 @@ button {
     animation: none;
   }
 }
+
+/* Conversation text people may want to copy: selectable (and long-pressable on touch). */
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+  cursor: text;
+}
+.selectable a,
+.selectable button {
+  cursor: pointer;
+}

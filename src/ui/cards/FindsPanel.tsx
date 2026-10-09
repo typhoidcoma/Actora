@@ -29,7 +29,7 @@ export function FindsPanel() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={morph}
-          className="mb-6 border-l-2 pl-4 text-[16px] text-text"
+          className="selectable mb-6 border-l-2 pl-4 text-[16px] text-text"
           style={{ borderColor: 'var(--role-finds)' }}
         >
           <LazyMarkdown text={note} />

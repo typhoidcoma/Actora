@@ -2,8 +2,9 @@ import { useShallow } from 'zustand/react/shallow'
 import { useAgent } from '../../stores/agent'
 import { ui } from '../../stores/ui'
 import { Activity } from '../Activity'
+import { CopyButton } from '../CopyButton'
 import { LazyMarkdown } from '../LazyMarkdown'
-import { stableMarkdown } from '../markdownText'
+import { copyableText, stableMarkdown } from '../markdownText'
 import { Panel } from './Panel'
 import { ROLE } from '../brand'
 
@@ -38,14 +39,21 @@ export function Reader() {
   return (
     <Panel layoutId="reader" accent={ROLE.wendy} kicker={kicker} title={a.botName} onClose={ui.closeReader}>
       {a.asked && (
-        <p className="mb-4 border-l-2 border-line pl-3 text-[15px] text-muted">
+        <p className="selectable mb-4 border-l-2 border-line pl-3 text-[15px] text-muted">
           You asked <span className="text-text">“{a.asked}”</span>
         </p>
       )}
       {text ? (
-        <div className="text-[16px] text-text">
-          <LazyMarkdown text={text} />
-        </div>
+        <>
+          <div className="selectable text-[16px] text-text">
+            <LazyMarkdown text={text} />
+          </div>
+          {!a.busy && (
+            <div className="mt-4 flex justify-end border-t border-line pt-3">
+              <CopyButton text={copyableText(text)} label="Copy answer" />
+            </div>
+          )}
+        </>
       ) : a.busy ? (
         <div className="display grid min-h-[40%] place-items-center py-10 text-center text-[24px] text-strong">
           <Activity />
