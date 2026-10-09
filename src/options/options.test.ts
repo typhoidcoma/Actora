@@ -63,10 +63,29 @@ describe('local options', () => {
     expect(opts[0]).toMatchObject({ label: 'Got it', act: { type: 'markRead', id: 'n1' } })
   })
 
-  it('task item: Done and Tomorrow are acts with the right ids and date', () => {
+  it('task item: Done, Start, Tomorrow and Pick a day are direct acts', () => {
     const opts = localOptions('item:task:a', snap({ tasks: { a: task('a') } }))
+    const act = (type: string) => opts.find((o) => o.act?.type === type)?.act
     expect(opts[0].act).toEqual({ type: 'complete', id: 'a' })
-    expect(opts[1].act).toEqual({ type: 'reschedule', id: 'a', due: '2026-10-09' })
+    expect(act('startTask')).toEqual({ type: 'startTask', id: 'a' })
+    expect(act('reschedule')).toEqual({ type: 'reschedule', id: 'a', due: '2026-10-09' })
+    expect(act('pickDay')).toEqual({ type: 'pickDay', id: 'a' })
+    // Overdue: "Today" instead of "Tomorrow".
+    const late = localOptions('item:task:b', snap({ tasks: { b: task('b', { due_date: '2026-10-01' }) } }))
+    expect(late.find((o) => o.act?.type === 'reschedule')).toMatchObject({ label: 'Today' })
+    // Done: it can be reopened.
+    const done = localOptions('item:task:c', snap({ tasks: { c: task('c', { status: 'done' }) } }))
+    expect(done[0].act).toEqual({ type: 'reopen', id: 'c' })
+  })
+
+  it('snooze lands at sensible times', async () => {
+    const { snoozeTime } = await import('./run')
+    const at = new Date(2026, 9, 8, 14, 0)
+    expect(snoozeTime('hour', at).getHours()).toBe(15)
+    expect(snoozeTime('tonight', at).getHours()).toBe(19)
+    expect(snoozeTime('tonight', new Date(2026, 9, 8, 18, 50)).getHours()).toBe(20)
+    const t = snoozeTime('tomorrow', at)
+    expect([t.getDate(), t.getHours()]).toEqual([9, 9])
   })
 
   it('offers reminders only after Wendy has spoken and when not snoozed', () => {

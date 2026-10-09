@@ -1,4 +1,5 @@
 import type { CalendarOccurrence, Goal, Notification, Task } from '../aelora/protocol'
+import { delivered } from '../aelora/protocol'
 import type { AgentState } from '../stores/agent'
 import type { EntitiesState } from '../stores/entities'
 import type { Find } from '../finds/finds'
@@ -80,7 +81,7 @@ function openTasks(s: Snapshot): Task[] {
 }
 
 function unread(s: Snapshot): Notification[] {
-  return Object.values(s.entities.notifications).filter((n) => !n.read_at)
+  return Object.values(s.entities.notifications).filter((n) => !n.read_at && delivered(n))
 }
 
 function nextEvent(s: Snapshot): CalendarOccurrence | null {
@@ -190,10 +191,19 @@ function item(kind: string, id: string, s: Snapshot): Option[] {
     case 'task': {
       const t: Task | undefined = e.tasks[id]
       if (!t) return []
-      if (!isOpen(t)) return [sayOption('Nice. What next?', `I finished "${t.title}". What should I do next?`)]
+      if (!isOpen(t))
+        return [
+          actOption('Reopen', { type: 'reopen', id }),
+          sayOption('Nice. What next?', `I finished "${t.title}". What should I do next?`),
+        ]
+      const today = localDate(new Date(s.now))
       return [
         actOption('Done', { type: 'complete', id }),
-        actOption('Tomorrow', { type: 'reschedule', id, due: tomorrow(s.now) }),
+        ...(t.status !== 'in_progress' ? [actOption('Start', { type: 'startTask', id })] : []),
+        t.due_date && t.due_date < today
+          ? actOption('Today', { type: 'reschedule', id, due: today })
+          : actOption('Tomorrow', { type: 'reschedule', id, due: tomorrow(s.now) }),
+        actOption('Pick a day…', { type: 'pickDay', id }),
         sayOption('Break it down', `Break "${t.title}" into small steps.`),
         sayOption('Why this?', `Why is "${t.title}" on my list?`),
         actOption('Delete…', { type: 'askDelete', item: { kind: 'task', id } }),
@@ -203,6 +213,10 @@ function item(kind: string, id: string, s: Snapshot): Option[] {
       const g: Goal | undefined = e.goals[id]
       if (!g) return []
       return [
+        ...(g.status === 'active'
+          ? [actOption('Achieved ✓', { type: 'goalStatus', id, status: 'completed' as const })]
+          : [actOption('Back on', { type: 'goalStatus', id, status: 'active' as const })]),
+        ...(g.status === 'active' ? [actOption('Pause', { type: 'goalStatus', id, status: 'paused' as const })] : []),
         sayOption('Next step', `What's my next step for "${g.title}"?`),
         sayOption('Add a task for it', `Add a task for my goal "${g.title}".`),
         sayOption("How's it going?", `How am I doing on "${g.title}"?`),
@@ -224,7 +238,10 @@ function item(kind: string, id: string, s: Snapshot): Option[] {
       if (!n) return []
       return [
         ...(n.read_at ? [] : [actOption('Got it', { type: 'markRead', id })]),
-        sayOption('Remind me later', `Remind me about "${n.title}" later today.`),
+        // Snoozes are direct (no Wendy turn): back as a new reminder at that time.
+        actOption('In an hour', { type: 'snooze', id, when: 'hour' }),
+        actOption('Tonight', { type: 'snooze', id, when: 'tonight' }),
+        actOption('Tomorrow 9am', { type: 'snooze', id, when: 'tomorrow' }),
         sayOption('Tell me more', `Tell me more about "${n.title}".`),
       ]
     }

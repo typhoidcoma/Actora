@@ -13,6 +13,7 @@ import { adoptMainUser, recallMain, rememberMain } from './mainThread'
 import { CATEGORIES, useVault, vault, type VaultEntry } from '../stores/vault'
 import { pending, usePending, waiting } from '../stores/pending'
 import { refreshGoogle } from '../google/google'
+import { flushCaptures } from '../stores/captures'
 import { actOption, sayOption } from '../options/types'
 import { notifyInBackground, resubscribe } from '../push/push'
 import { agent, useAgent, type Reaction } from '../stores/agent'
@@ -168,12 +169,13 @@ function refreshCalendar(bus: FrameBus) {
 function bootstrap(bus: FrameBus): void {
   bus.send({ type: 'tz.set', timezone: Intl.DateTimeFormat().resolvedOptions().timeZone })
   sendClientState(bus)
-  void request(bus, { type: 'notification.list' }, 'notification.list')
+  void request(bus, { type: 'notification.list', deliveredOnly: false }, 'notification.list')
   void request(bus, { type: 'task.list' }, 'task.list')
   void request(bus, { type: 'goal.list' }, 'goal.list')
   void refreshCalendar(bus)
   void resubscribe()
   void refreshGoogle()
+  void flushCaptures(bus)
 }
 
 let calendarRefetch: ReturnType<typeof setTimeout> | undefined
@@ -430,7 +432,8 @@ function refetchOwn(bus: FrameBus, event: string): void {
     setTimeout(() => {
       if (event === 'task') void request(bus, { type: 'task.list' }, 'task.list')
       else if (event === 'goal') void request(bus, { type: 'goal.list' }, 'goal.list')
-      else if (event === 'notification') void request(bus, { type: 'notification.list' }, 'notification.list')
+      else if (event === 'notification')
+        void request(bus, { type: 'notification.list', deliveredOnly: false }, 'notification.list')
       else if (event === 'calendar') void refreshCalendar(bus)
       else if (event === 'vault' && useVault.getState().status === 'ready')
         void import('./client').then((m) => m.loadVault())

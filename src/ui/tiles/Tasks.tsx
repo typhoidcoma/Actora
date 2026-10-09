@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { completeTask, reopenTask } from '../../aelora/client'
 import type { Task } from '../../aelora/protocol'
 import { ui } from '../../stores/ui'
+import { useEntities } from '../../stores/entities'
 import { AnimatedNumber } from '../AnimatedNumber'
 import { dueLabel } from '../format'
 import { morph, press } from '../motion'
@@ -56,6 +57,8 @@ function TaskRow({ task }: { task: Task }) {
   const isDone = task.status === 'done'
   const due = dueLabel(task.due_date)
   const selected = useSelected('task', task.id)
+  const goal = useEntities((s) => (task.goal_id ? s.goals[task.goal_id]?.title : undefined))
+  const inProgress = task.status === 'in_progress'
   return (
     <motion.li
       layout
@@ -101,10 +104,20 @@ function TaskRow({ task }: { task: Task }) {
         onClick={() => ui.select({ kind: 'task', id: task.id })}
         className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left"
       >
-        <span
-          className={`min-w-0 flex-1 truncate text-[16px] text-strong ${isDone ? 'line-through decoration-faint' : ''}`}
-        >
-          {task.title}
+        <span className="min-w-0 flex-1">
+          <span
+            className={`block truncate text-[16px] text-strong ${isDone ? 'line-through decoration-faint' : ''}`}
+          >
+            {task.title}
+          </span>
+          {/* What it's part of, and whether it's under way. */}
+          {!isDone && (inProgress || goal) && (
+            <span className="block truncate text-xs text-muted">
+              {inProgress && <span className="font-semibold text-accent">In progress</span>}
+              {inProgress && goal && ' · '}
+              {goal}
+            </span>
+          )}
         </span>
         {due && !isDone && (
           <span className={`num shrink-0 text-xs ${due === 'Overdue' ? 'text-urgent' : 'text-muted'}`}>{due}</span>

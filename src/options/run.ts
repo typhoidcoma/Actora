@@ -1,4 +1,15 @@
-import { ask, chat, completeTask, markNotificationRead, rescheduleTask } from '../aelora/client'
+import {
+  ask,
+  chat,
+  completeTask,
+  markNotificationRead,
+  reopenTask,
+  rescheduleTask,
+  setGoalStatus,
+  snoozeNotification,
+  startTask,
+} from '../aelora/client'
+import { delivered } from '../aelora/protocol'
 import { hunt, useFinds } from '../finds/finds'
 import { enablePush, INSTALL_HELP } from '../push/push'
 import { agent, orbSignals, useAgent } from '../stores/agent'
@@ -58,7 +69,7 @@ export function say(text: string): boolean {
 }
 
 async function markAllRead(): Promise<void> {
-  const unread = Object.values(useEntities.getState().notifications).filter((n) => !n.read_at)
+  const unread = Object.values(useEntities.getState().notifications).filter((n) => !n.read_at && delivered(n))
   for (const n of unread) await markNotificationRead(n.id)
 }
 
@@ -74,6 +85,16 @@ async function saveFind(id: string): Promise<void> {
   )
   if (r) toast.show(`Saved "${f.title}" to your tasks`)
   else toast.error("Couldn't save that one. Try again in a moment.")
+}
+
+/** When a snoozed reminder comes back: in an hour, tonight at 7 (or in 2h if later), tomorrow at 9. */
+export function snoozeTime(when: 'hour' | 'tonight' | 'tomorrow', now = new Date()): Date {
+  if (when === 'hour') return new Date(now.getTime() + 60 * 60_000)
+  if (when === 'tonight') {
+    const seven = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 19)
+    return seven.getTime() - now.getTime() > 30 * 60_000 ? seven : new Date(now.getTime() + 2 * 60 * 60_000)
+  }
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 9)
 }
 
 function runAct(act: LocalAct): void {
@@ -127,6 +148,17 @@ function runAct(act: LocalAct): void {
       return
     case 'askDelete':
       return ui.askDelete(act.item)
+    case 'reopen':
+      return void reopenTask(act.id)
+    case 'startTask':
+      return void startTask(act.id)
+    case 'pickDay':
+      return ui.pickDay(act.id)
+    case 'goalStatus':
+      return void setGoalStatus(act.id, act.status)
+    case 'snooze':
+      ui.select(null)
+      return void snoozeNotification(act.id, snoozeTime(act.when))
     case 'retry': {
       // Send the last thing the user said again.
       const lastSaid = useAgent.getState().messages.findLast((m) => m.role === 'user')

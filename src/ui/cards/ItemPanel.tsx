@@ -127,11 +127,13 @@ export function ItemPanel({ item }: { item: Selected }) {
         {linked.length > 0 && (
           <ul className="mt-4">
             {linked.map((t) => (
-              <li
-                key={t.id}
-                className={`border-b border-line py-2.5 text-[15px] last:border-0 ${t.status === 'done' ? 'text-faint line-through' : 'text-strong'}`}
-              >
-                {t.title}
+              <li key={t.id} className="border-b border-line last:border-0">
+                <button
+                  onClick={() => ui.open({ kind: 'task', id: t.id })}
+                  className={`block w-full py-3 text-left text-[15px] ${t.status === 'done' ? 'text-muted line-through' : 'text-strong'}`}
+                >
+                  {t.title}
+                </button>
               </li>
             ))}
           </ul>
@@ -256,7 +258,9 @@ function About({
         {byWendy ? `${botName}'s take` : 'About'}
       </h3>
       {text ? (
-        <p className="selectable text-[16px] leading-relaxed text-strong">{text}</p>
+        <p className="selectable text-[16px] leading-relaxed whitespace-pre-line text-strong">
+          <Linked text={text} />
+        </p>
       ) : (
         <div className="space-y-2" aria-label={`${botName} is writing this up`}>
           <div className="shimmer h-3.5 w-full rounded bg-text/8" />
@@ -264,6 +268,30 @@ function About({
         </div>
       )}
     </section>
+  )
+}
+
+/** Text with its web links tappable (a saved find's notes carry its URL). */
+function Linked({ text }: { text: string }) {
+  const parts = text.split(/(https?:\/\/[^\s<>"')]+)/g)
+  return (
+    <>
+      {parts.map((part, i) =>
+        /^https?:\/\//.test(part) ? (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="break-all text-accent underline decoration-accent/40 underline-offset-4"
+          >
+            {part.replace(/^https?:\/\/(www\.)?/, '').slice(0, 48)}
+          </a>
+        ) : (
+          part
+        ),
+      )}
+    </>
   )
 }
 

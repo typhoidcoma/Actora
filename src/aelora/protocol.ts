@@ -116,6 +116,10 @@ interface EventFrame extends ServerFrame {
 
 export type ClientMessage = { type: string } & Record<string, unknown>
 
+/** A reminder that has actually arrived (not one scheduled for later). */
+export const delivered = (n: Pick<Notification, 'sent_at' | 'scheduled_for'>, now = Date.now()): boolean =>
+  !!n.sent_at || !n.scheduled_for || Date.parse(n.scheduled_for) <= now
+
 export function isEventFrame(f: ServerFrame): f is EventFrame {
   return f.type === 'event' && typeof f.event === 'string' && !!f.data && typeof f.data === 'object'
 }

@@ -27,15 +27,34 @@ export function GoalsFace({ corner }: { corner: Corner }) {
 }
 
 export function GoalsDetail() {
-  const { active, hydrated } = useGoals()
+  const { active, paused, completed, hydrated } = useGoals()
   if (!hydrated) return <Loading />
-  if (!active.length) return <Empty text="No goals yet." />
+  if (!active.length && !paused.length && !completed.length) return <Empty text="No goals yet." />
   return (
-    <Section title="Active" count={active.length}>
-      {active.map((row, i) => (
-        <GoalItem key={row.goal.id} row={row} index={i} />
-      ))}
-    </Section>
+    <>
+      {active.length > 0 && (
+        <Section title="Active" count={active.length}>
+          {active.map((row, i) => (
+            <GoalItem key={row.goal.id} row={row} index={i} />
+          ))}
+        </Section>
+      )}
+      {paused.length > 0 && (
+        <Section title="Paused" count={paused.length}>
+          {paused.map((row, i) => (
+            <GoalItem key={row.goal.id} row={row} index={i} />
+          ))}
+        </Section>
+      )}
+      {/* Wins stay visible: finishing a goal shouldn't make it vanish. */}
+      {completed.length > 0 && (
+        <Section title="Achieved" count={completed.length}>
+          {completed.map((row, i) => (
+            <GoalItem key={row.goal.id} row={row} index={i} />
+          ))}
+        </Section>
+      )}
+    </>
   )
 }
 

@@ -2,7 +2,8 @@ import { motion } from 'motion/react'
 import type { Notification } from '../../aelora/protocol'
 import { ui } from '../../stores/ui'
 import { AnimatedNumber } from '../AnimatedNumber'
-import { ago } from '../format'
+import { ago, clockTime } from '../format'
+import { say } from '../../options/run'
 import { morph, press } from '../motion'
 import { useInbox, useNow, useSelected } from './data'
 import { Face, type Corner } from './Face'
@@ -46,15 +47,50 @@ export function InboxFace({ corner }: { corner: Corner }) {
 
 export function InboxDetail() {
   const now = useNow(30_000)
-  const { items, unread, hydrated } = useInbox(now)
+  const { items, unread, upcoming, hydrated } = useInbox(now)
   if (!hydrated) return <Loading />
-  if (!items.length) return <Empty text="All quiet." />
+  if (!items.length && !upcoming.length) return <Empty text="All quiet." />
   return (
-    <Section title={unread ? `${unread} unread` : 'All read'} count={items.length}>
-      {items.map((n, i) => (
-        <NoteRow key={n.id} note={n} index={i} now={now} />
-      ))}
-    </Section>
+    <>
+      {/* Reminders already set for later: so "remind me in an hour" visibly exists. */}
+      {upcoming.length > 0 && (
+        <Section title="Upcoming" count={upcoming.length}>
+          {upcoming.map((n, i) => (
+            <UpcomingRow key={n.id} note={n} index={i} now={now} />
+          ))}
+        </Section>
+      )}
+      {items.length > 0 && (
+        <Section title={unread ? `${unread} unread` : 'All read'} count={items.length}>
+          {items.map((n, i) => (
+            <NoteRow key={n.id} note={n} index={i} now={now} />
+          ))}
+        </Section>
+      )}
+    </>
+  )
+}
+
+/** A reminder set for later: when it'll come, and a way to call it off (Wendy cancels it). */
+function UpcomingRow({ note: n, index, now }: { note: Notification; index: number; now: number }) {
+  const at = new Date(n.scheduled_for!)
+  const when = `${at.toDateString() === new Date(now).toDateString() ? '' : `${at.toLocaleDateString([], { weekday: 'short' })} `}${clockTime(n.scheduled_for!)}`
+  return (
+    <motion.li
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...morph, delay: Math.min(index, 10) * 0.025 }}
+      className="flex items-center gap-3 border-b border-line py-2.5 last:border-0"
+    >
+      <span className="num w-[4.5rem] shrink-0 text-sm text-muted">{when}</span>
+      <span className="min-w-0 flex-1 truncate text-[16px] text-strong">{n.title}</span>
+      <button
+        onClick={() => say(`Cancel my reminder "${n.title}".`)}
+        className="h-10 shrink-0 rounded-[6px] px-3 text-[13px] font-semibold text-muted hover:text-urgent"
+      >
+        Cancel
+      </button>
+    </motion.li>
   )
 }
 

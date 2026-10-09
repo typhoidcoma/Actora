@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
+import { delivered } from '../aelora/protocol'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { disablePush, enablePush, INSTALL_HELP, testPush } from '../push/push'
@@ -107,7 +108,7 @@ function Sheet({
         (e) => Date.parse(e.end_time) > now && Date.parse(e.start_time) - now < 86_400_000,
       ).length,
       goals: Object.values(s.goals).filter((g) => g.status === 'active').length,
-      inbox: Object.values(s.notifications).filter((n) => !n.read_at).length,
+      inbox: Object.values(s.notifications).filter((n) => !n.read_at && delivered(n)).length,
     })),
   )
   const lists: Array<{ id: TileId; label: string; icon: ReactNode }> = [

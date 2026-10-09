@@ -1,4 +1,5 @@
 import { LlmError, llm, type LlmRequest } from '../aelora/http'
+import { delivered } from '../aelora/protocol'
 import { config } from '../config'
 import { useAgent } from '../stores/agent'
 import { useEntities } from '../stores/entities'
@@ -78,7 +79,7 @@ function screenSummary(key: string, s: Snapshot): string {
   const events = Object.values(s.entities.events)
     .filter((e) => Date.parse(e.end_time) > s.now)
     .sort((a, b) => Date.parse(a.start_time) - Date.parse(b.start_time))
-  const unread = Object.values(s.entities.notifications).filter((n) => !n.read_at)
+  const unread = Object.values(s.entities.notifications).filter((n) => !n.read_at && delivered(n))
   const goals = Object.values(s.entities.goals).filter((g) => g.status === 'active')
   const taskLine = (n: number) =>
     `Open tasks: ${

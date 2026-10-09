@@ -226,6 +226,28 @@ export class MockWebSocket implements WebSocketLike {
         })
       case 'system_chat':
         return this.systemChat()
+      case 'goal.update': {
+        const g = db.goals.find((x) => x.id === msg.id)
+        if (!g) return this.reply({ type: 'error', code: 'not_found', message: 'not found' })
+        Object.assign(g, (msg.patch as Partial<Goal>) ?? {}, { updated_at: iso(new Date()) })
+        this.reply({ type: 'goal.updated', goal: { ...g } })
+        return this.reply({ type: 'event', event: 'goal', data: { type: 'goal:updated', goal: { ...g } } })
+      }
+      case 'notification.create': {
+        const now = iso(new Date())
+        const n = {
+          id: uid(),
+          origin_type: 'system',
+          title: String(msg.title ?? 'Reminder'),
+          body: typeof msg.body === 'string' ? msg.body : null,
+          scheduled_for: typeof msg.scheduledFor === 'string' ? msg.scheduledFor : null,
+          sent_at: typeof msg.scheduledFor === 'string' ? null : now,
+          read_at: null,
+          created_at: now,
+        } as Notification
+        db.notifications.push(n)
+        return this.reply({ type: 'notification.created', notification: { ...n } })
+      }
       case 'task.delete':
       case 'goal.delete': {
         const kind = msg.type === 'task.delete' ? 'task' : 'goal'

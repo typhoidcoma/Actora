@@ -22,6 +22,11 @@ export type LocalAct =
   | { type: 'saveFind'; id: string }
   | { type: 'askDelete'; item: Selected }
   | { type: 'retry' }
+  | { type: 'reopen'; id: string }
+  | { type: 'startTask'; id: string }
+  | { type: 'pickDay'; id: string }
+  | { type: 'goalStatus'; id: string; status: 'active' | 'paused' | 'completed' }
+  | { type: 'snooze'; id: string; when: 'hour' | 'tonight' | 'tomorrow' }
 
 /**
  * One tap target. `say` sends a chat turn to Wendy in the user's voice;

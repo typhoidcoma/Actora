@@ -1,4 +1,5 @@
 import { useAgent } from '../stores/agent'
+import { delivered } from './protocol'
 import { useEntities } from '../stores/entities'
 import { useSky } from '../weather/sky'
 import { greet } from './client'
@@ -59,7 +60,7 @@ function facts(now = Date.now()): Facts {
     openTasks: open.length,
     topTask: open[0]?.title ?? null,
     nextEvent: next ? { title: next.title, mins: Math.round((Date.parse(next.start_time) - now) / 60_000) } : null,
-    unread: Object.values(notifications).filter((n) => !n.read_at).length,
+    unread: Object.values(notifications).filter((n) => !n.read_at && delivered(n)).length,
   }
 }
 

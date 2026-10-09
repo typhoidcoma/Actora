@@ -57,7 +57,13 @@ export interface GoalRow {
   progress: number
 }
 
-export function useGoals(): { active: GoalRow[]; overall: number; hydrated: boolean } {
+export function useGoals(): {
+  active: GoalRow[]
+  paused: GoalRow[]
+  completed: GoalRow[]
+  overall: number
+  hydrated: boolean
+} {
   const goals = useEntities((s) => s.goals)
   const tasks = useEntities((s) => s.tasks)
   const hydrated = useEntities((s) => s.hydrated.goals)
@@ -71,15 +77,17 @@ export function useGoals(): { active: GoalRow[]; overall: number; hydrated: bool
       counts.set(t.goal_id, c)
     }
     const order = ['day', 'week', 'month', 'semester', 'year']
-    const active = Object.values(goals)
-      .filter((g) => g.status === 'active')
-      .map((goal) => {
-        const c = counts.get(goal.id) ?? { done: 0, total: 0 }
-        return { goal, ...c, progress: c.total ? c.done / c.total : 0 }
-      })
-      .sort((a, b) => order.indexOf(a.goal.timeframe ?? 'year') - order.indexOf(b.goal.timeframe ?? 'year'))
+    const rows = (status: Goal['status']) =>
+      Object.values(goals)
+        .filter((g) => g.status === status)
+        .map((goal) => {
+          const c = counts.get(goal.id) ?? { done: 0, total: 0 }
+          return { goal, ...c, progress: c.total ? c.done / c.total : 0 }
+        })
+        .sort((a, b) => order.indexOf(a.goal.timeframe ?? 'year') - order.indexOf(b.goal.timeframe ?? 'year'))
+    const active = rows('active')
     const overall = active.length ? active.reduce((s, r) => s + r.progress, 0) / active.length : 0
-    return { active, overall, hydrated }
+    return { active, paused: rows('paused'), completed: rows('completed'), overall, hydrated }
   }, [goals, tasks, hydrated])
 }
 
@@ -99,14 +107,23 @@ export function useAgenda(now: number): {
   }, [events, now, hydrated])
 }
 
-export function useInbox(now: number): { items: Notification[]; unread: number; hydrated: boolean } {
+export function useInbox(now: number): {
+  items: Notification[]
+  unread: number
+  /** Reminders set for later (not yet delivered), soonest first. */
+  upcoming: Notification[]
+  hydrated: boolean
+} {
   const notes = useEntities((s) => s.notifications)
   const hydrated = useEntities((s) => s.hydrated.notifications)
   return useMemo(() => {
     const items = Object.values(notes)
       .filter((n) => n.sent_at || !n.scheduled_for || Date.parse(n.scheduled_for) <= now)
       .sort((a, b) => (b.sent_at ?? b.created_at).localeCompare(a.sent_at ?? a.created_at))
-    return { items, unread: items.filter((n) => !n.read_at).length, hydrated }
+    const upcoming = Object.values(notes)
+      .filter((n) => !n.sent_at && n.scheduled_for && Date.parse(n.scheduled_for) > now)
+      .sort((a, b) => a.scheduled_for!.localeCompare(b.scheduled_for!))
+    return { items, unread: items.filter((n) => !n.read_at).length, upcoming, hydrated }
   }, [notes, hydrated, now])
 }
 

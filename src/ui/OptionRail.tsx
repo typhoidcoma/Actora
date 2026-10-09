@@ -54,7 +54,7 @@ export function OptionRail({
       <motion.button
         whileTap={jelly}
         onClick={() => ui.keyboard(true)}
-        disabled={offline}
+        // Works offline too: what's typed is kept as a task (KeyboardSheet).
         aria-label="Type instead"
         className="glass-pill grid h-10 w-10 place-items-center rounded-[8px] text-muted disabled:opacity-40"
       >
@@ -163,7 +163,6 @@ export function OptionRail({
             <motion.button
               whileTap={jelly}
               onClick={() => ui.keyboard(true)}
-              disabled={offline}
               aria-label="Type instead"
               className="glass-pill grid h-[44px] w-11 place-items-center rounded-[8px] text-muted disabled:opacity-40"
             >

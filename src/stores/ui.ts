@@ -36,6 +36,8 @@ interface UiState {
   deleting: boolean
   /** The list an item panel was opened from ("Delete…" on a row), to return to after. */
   back: TileId | null
+  /** The task whose day is being picked ("Pick a day…"). */
+  picking: string | null
   /** Hidden text fallback (behind the mic chip). */
   keyboardOpen: boolean
 }
@@ -58,6 +60,7 @@ export const useUi = create<UiState>(() => ({
   theme: 'auto',
   deleting: false,
   back: null,
+  picking: null,
   keyboardOpen: false,
 }))
 
@@ -75,6 +78,7 @@ const CLOSED = {
   vault: false,
   deleting: false,
   back: null,
+  picking: null,
 } as const
 
 /** Is any panel open over the grid (the chat sheet aside)? */
@@ -119,6 +123,7 @@ export const ui = {
   selectFind: (id: string | null) => useUi.setState((s) => ({ find: id && s.find !== id ? id : null })),
   setTheme: (theme: ThemeMode) => useUi.setState({ theme }),
   keyboard: (open: boolean) => useUi.setState({ keyboardOpen: open }),
+  pickDay: (taskId: string | null) => useUi.setState({ picking: taskId }),
 }
 
 /** Aelora canvas app ids ↔ our tiles (WEBSOCKET.md → "Canvas commands"). Legacy `tasks` folds into `goals`. */

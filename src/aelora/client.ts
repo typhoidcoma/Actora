@@ -6,11 +6,12 @@ import { useUi } from '../stores/ui'
 import { abortTurnOnDisconnect, sendChat, sendGreeting } from './chat'
 import { startFinds } from '../finds/finds'
 import { setTokenSource } from './http'
-import type { ClientMessage, Notification, ServerFrame, Task } from './protocol'
+import type { ClientMessage, Goal, Notification, ServerFrame, Task } from './protocol'
 import { request } from './request'
 import { routeFrame, sendClientState } from './router'
 import { useScheme } from '../stores/scheme'
 import { toast, withUndo } from '../stores/toast'
+import { capture } from '../stores/captures'
 import { dueLabel } from '../ui/format'
 import { AeloraSocket, type WebSocketLike } from './socket'
 
@@ -174,7 +175,7 @@ export async function rescheduleTask(id: string, due: string, undoable = true): 
   if (!before || before.due_date === due) return
   const ok = await patchTask(id, { due_date: due }, `Couldn't move ${quote(before.title)}, so it's back.`)
   if (ok && undoable) {
-    toast.show(`Moved ${quote(before.title)} to ${(dueLabel(due) ?? due).toLowerCase()}`, {
+    toast.show(`Moved ${quote(before.title)} to ${dayWords(due)}`, {
       undo: () => void patchTask(id, { due_date: before.due_date }, `Couldn't move it back.`),
     })
   }
@@ -278,6 +279,81 @@ export function deleteItem(kind: Deletable, id: string, title: string, occurrenc
   )
 }
 
+/** Achieved / paused / active again; optimistic, with Undo. */
+export async function setGoalStatus(id: string, status: Goal['status']): Promise<void> {
+  const before = useEntities.getState().goals[id]
+  if (!socket || !before || before.status === status) return
+  const write = async (to: Goal['status'], quiet = false) => {
+    entities.upsertGoal({ ...before, status: to })
+    const reply = await request(socket!, { type: 'goal.update', id, patch: { status: to } }, 'goal.updated')
+    if (!reply) {
+      entities.upsertGoal(before)
+      if (!quiet) toast.error(`Couldn't update ${quote(before.title)}, so it's back.`)
+    }
+    return !!reply
+  }
+  const words = { completed: 'Achieved', paused: 'Paused', active: 'Back on' }[status]
+  if (await write(status)) {
+    toast.show(`${words}: ${quote(before.title)}`, { undo: () => void write(before.status, true) })
+  }
+}
+
+/** Mark a task as being worked on now. */
+export function startTask(id: string): Promise<boolean> {
+  const t = useEntities.getState().tasks[id]
+  return patchTask(id, { status: 'in_progress' }, `Couldn't start ${quote(t?.title ?? 'that')}.`)
+}
+
+/**
+ * Snooze a reminder: it's marked read now and comes back as a new one at
+ * `when` (Aelora has no snooze of its own, and reminders can't be edited).
+ */
+export async function snoozeNotification(id: string, when: Date): Promise<void> {
+  const n = useEntities.getState().notifications[id]
+  if (!socket || !n) return
+  const reply = await request(
+    socket,
+    {
+      type: 'notification.create',
+      title: n.title,
+      ...(n.body ? { body: n.body } : {}),
+      scheduledFor: when.toISOString(),
+    },
+    'notification.created',
+  )
+  if (!reply) return void toast.error(`Couldn't snooze ${quote(n.title)}.`)
+  const created = (reply as { notification?: Notification }).notification
+  if (created) entities.upsertNotification(created)
+  await markNotificationRead(id)
+  toast.show(`Reminder set for ${whenLabel(when)}`)
+}
+
+const whenLabel = (d: Date) => {
+  const today = new Date()
+  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  if (d.toDateString() === today.toDateString()) return time
+  if (d.toDateString() === tomorrow.toDateString()) return `tomorrow, ${time}`
+  return `${d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}, ${time}`
+}
+
+/** Quick capture: a thought straight onto the task list (queued if offline). */
+export function captureTask(title: string): Promise<void> {
+  return capture(socket, useAgent.getState().connection === 'open', title)
+}
+
+/** A task straight onto the list, no conversation (quick capture). */
+export async function createTask(title: string): Promise<boolean> {
+  if (!socket || !title.trim()) return false
+  const reply = await request<{ type: string; task?: Task }>(
+    socket,
+    { type: 'task.create', title: title.trim().slice(0, 200) },
+    'task.created',
+  )
+  if (reply?.task) entities.upsertTask(reply.task)
+  return !!reply
+}
+
 // ── The Vault (what Wendy remembers) ──────────────────────────────────────────────
 
 /** Load everything Wendy remembers (refreshed each time the Vault opens). */
@@ -304,4 +380,10 @@ export async function forgetFact(id: string): Promise<boolean> {
   const r = await ask({ type: 'vault.delete', id }, 'vault.deleted')
   if (!r && before) vault.upsert(before)
   return r !== null
+}
+
+/** "today", "tomorrow", or the date as written ("Mon, Oct 12"). */
+function dayWords(due: string): string {
+  const label = dueLabel(due) ?? due
+  return /^(today|tomorrow|yesterday)$/i.test(label) ? label.toLowerCase() : label
 }
