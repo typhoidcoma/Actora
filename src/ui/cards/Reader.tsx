@@ -36,7 +36,7 @@ export function Reader() {
   const kicker = a.busy ? (a.streaming ? 'Writing…' : null) : 'Latest answer'
 
   return (
-    <Panel lead layoutId="reader" accent={ROLE.wendy} kicker={kicker} title={a.botName} onClose={ui.closeReader}>
+    <Panel layoutId="reader" accent={ROLE.wendy} kicker={kicker} title={a.botName} onClose={ui.closeReader}>
       {a.asked && (
         <p className="mb-4 border-l-2 border-line pl-3 text-[15px] text-muted">
           You asked <span className="text-text">“{a.asked}”</span>
