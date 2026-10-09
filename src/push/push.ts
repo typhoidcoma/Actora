@@ -1,5 +1,5 @@
 import { agent } from '../stores/agent'
-import { usePush } from '../stores/push'
+import { usePush, type PushStatus } from '../stores/push'
 import { ask, send } from '../aelora/client'
 import { getPublicConfig } from '../aelora/http'
 import { config } from '../config'
@@ -103,9 +103,22 @@ export async function notifyInBackground(n: { id: string; title: string; body: s
   })
 }
 
-/** Must run from a tap: fetch the key first, then prompt, then subscribe and register. */
+const sameKey = (a: ArrayBuffer | null | undefined, b: Uint8Array) =>
+  !!a && a.byteLength === b.byteLength && new Uint8Array(a).every((v, i) => v === b[i])
+
+/**
+ * Must run from a tap: prompt, subscribe and register with Aelora. Every way
+ * this can fail says why (it used to fail silently and leave the switch Off).
+ */
 export async function enablePush(): Promise<boolean> {
-  if (!registration) return false
+  const fail = (why: string, status: PushStatus = 'off') => {
+    console.warn(`[push] ${why}`)
+    usePush.setState({ status })
+    agent.showMessage(why)
+    return false
+  }
+  if (!('serviceWorker' in navigator) || !('PushManager' in window))
+    return fail("This browser can't do push reminders.")
   if (config.mock) {
     // The mock has no push service; exercise the permission path only.
     const perm = await Notification.requestPermission()
@@ -113,22 +126,36 @@ export async function enablePush(): Promise<boolean> {
     if (perm === 'granted') agent.showMessage('Reminders are on.')
     return perm === 'granted'
   }
-  if (!publicKey) return false
+  // Ask first, while we're still inside the tap (Safari drops the gesture after awaits).
   const perm = await Notification.requestPermission()
-  if (perm !== 'granted') {
-    usePush.setState({ status: perm === 'denied' ? 'denied' : 'off' })
-    return false
+  if (perm === 'denied')
+    return fail('Notifications are blocked for this site. Allow them in browser settings.', 'denied')
+  if (perm !== 'granted') return fail("Reminders stay off: notifications weren't allowed.")
+  try {
+    if (!publicKey) publicKey = (await getPublicConfig()).push?.publicKey ?? null
+  } catch {
+    /* handled below */
   }
-  let sub = await registration.pushManager.getSubscription()
-  sub ??= await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(publicKey),
-  })
-  const reply = await ask(subscribeMessage(sub, navigator.userAgent), 'push.subscribed')
-  const ok = reply !== null
-  usePush.setState({ status: ok ? 'on' : 'off' })
-  agent.showMessage(ok ? 'Reminders are on.' : "Couldn't turn on reminders. Try again later.")
-  return ok
+  if (!publicKey) return fail('Push is switched off on the server right now.')
+  try {
+    // Subscribing needs an *active* worker; a fresh registration may still be installing.
+    registration = await navigator.serviceWorker.ready
+    const key = urlBase64ToUint8Array(publicKey)
+    let sub = await registration.pushManager.getSubscription()
+    // A subscription made with another server key can never receive our pushes.
+    if (sub && !sameKey(sub.options.applicationServerKey, key)) {
+      await sub.unsubscribe()
+      sub = null
+    }
+    sub ??= await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key })
+    const reply = await ask(subscribeMessage(sub, navigator.userAgent), 'push.subscribed')
+    if (!reply) return fail("Couldn't register this device with Wendy. Try again in a moment.")
+  } catch (e) {
+    return fail(`Couldn't turn on reminders: ${e instanceof Error ? e.message : String(e)}`)
+  }
+  usePush.setState({ status: 'on' })
+  agent.showMessage('Reminders are on.')
+  return true
 }
 
 export async function disablePush(): Promise<void> {
