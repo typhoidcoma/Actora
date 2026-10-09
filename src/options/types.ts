@@ -1,4 +1,5 @@
 import type { Selected, TileId } from '../stores/ui'
+import { shortLabel } from './label'
 
 /** Something a chip does directly, without a chat turn. */
 export type LocalAct =
@@ -37,16 +38,15 @@ export interface Option {
   alt?: boolean
 }
 
-export const sayOption = (label: string, say = label, source: Option['source'] = 'local'): Option => ({
-  id: `${source}:say:${label.toLowerCase()}`,
-  label,
-  say,
-  source,
-})
+/** A tap that says something. The label is shortened for the pill; `say` keeps every word. */
+export const sayOption = (label: string, say = label, source: Option['source'] = 'local'): Option => {
+  const short = shortLabel(label)
+  return { id: `${source}:say:${short.toLowerCase()}`, label: short, say, source }
+}
 
 export const actOption = (label: string, act: LocalAct): Option => ({
-  id: `local:act:${act.type}:${label.toLowerCase()}`,
-  label,
+  id: `local:act:${act.type}:${shortLabel(label).toLowerCase()}`,
+  label: shortLabel(label),
   act,
   source: 'local',
 })

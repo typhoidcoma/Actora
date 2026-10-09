@@ -75,7 +75,7 @@ function offerSayLinks(raw: string) {
   if (!links.length) return
   optionsStore.push(
     contextKeyOf(useUi.getState()),
-    links.slice(0, 5).map((l) => sayOption(l.label.slice(0, 28), l.say.slice(0, 160), 'pushed')),
+    links.slice(0, 5).map((l) => sayOption(l.label, l.say.slice(0, 160), 'pushed')),
   )
 }
 

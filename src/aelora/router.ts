@@ -325,7 +325,7 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
         .slice(0, 5)
         .map((o) =>
           sayOption(
-            String(o.label).trim().slice(0, 28),
+            String(o.label),
             (typeof o.say === 'string' && o.say.trim() ? o.say.trim() : String(o.label)).slice(0, 160),
             'pushed',
           ),

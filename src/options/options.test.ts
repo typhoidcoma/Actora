@@ -147,14 +147,15 @@ describe('parseWendyOptions', () => {
     expect(parseWendyOptions('```json\n{"options":[{"label":"Ok","say":"Ok"}]}\n```')).toHaveLength(1)
   })
 
-  it('rejects junk, over-long labels and duplicates; caps at five', () => {
+  it('rejects junk and duplicates, shortens over-long labels (keeping the full say); caps at five', () => {
     expect(parseWendyOptions('not json')).toEqual([])
     expect(parseWendyOptions('{"options":"nope"}')).toEqual([])
-    const long = 'x'.repeat(40)
+    const long = 'Help me draft the two questions for Steve and Kham'
     const many = Array.from({ length: 8 }, (_, i) => ({ label: `L${i}` }))
-    expect(
-      parseWendyOptions(JSON.stringify({ options: [{ label: long }, { label: 'A' }, { label: 'a' }] })),
-    ).toHaveLength(1)
+    const parsed = parseWendyOptions(JSON.stringify({ options: [{ label: long }, { label: 'A' }, { label: 'a' }] }))
+    expect(parsed).toHaveLength(2)
+    expect(parsed[0].label.length).toBeLessThanOrEqual(24)
+    expect(parsed[0].say).toBe(long)
     expect(parseWendyOptions(JSON.stringify({ options: many }))).toHaveLength(5)
   })
 })

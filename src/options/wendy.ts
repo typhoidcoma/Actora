@@ -16,7 +16,7 @@ import { sayOption, type Option } from './types'
 // Wendy-written tap replies, generated with Aelora's stateless POST /api/llm
 // (memory-grounded via `context`). They refine the instant local options.
 
-const MAX_LABEL = 28
+const MAX_LABEL = 20
 const MAX_SAY = 160
 const DEBOUNCE_MS = 350
 const CACHE_MS = 3 * 60_000
@@ -44,7 +44,8 @@ export function parseWendyOptions(text: string): Option[] {
       .trim()
       .replace(/[.。]+$/, '')
     const say = String((raw as { say?: unknown }).say ?? label).trim()
-    if (!label || label.length > MAX_LABEL || !say || say.length > MAX_SAY) continue
+    // Too long is shortened (sayOption), not dropped; the full words still go as say.
+    if (!label || !say || say.length > MAX_SAY) continue
     const k = label.toLowerCase()
     if (seen.has(k)) continue
     seen.add(k)
@@ -220,7 +221,7 @@ const SYSTEM = `You write the tap-to-reply buttons for Wendy, a warm personal as
 The user never types: these buttons are the only way they talk to Wendy, so they must cover what the user would most likely want to say next.
 Rules:
 - Return JSON only: {"options":[{"label":"...","say":"..."}]}
-- 3 to 5 options. "label": 1-4 words, at most ${MAX_LABEL} characters, sentence case, no emoji, no trailing period. "say": exactly what the user says to Wendy when they tap it, first person, natural, at most 120 characters.
+- 3 to 5 options. "label": 1-3 words, at most ${MAX_LABEL} characters (a button, not a sentence: "Draft them", "Move to 4pm"), sentence case, no emoji, no trailing period. "say": exactly what the user says to Wendy when they tap it, first person, natural, at most 120 characters.
 - If Wendy's last message asks a question or offers choices, the options must be direct answers to it (include a yes and a no style answer for yes/no questions).
 - Otherwise suggest the most useful next things for what is on screen, using the user's real item titles.
 - On the home screen, the app already offers one button for the top priority card. Yours can act on the other cards by name (for example "Prep for Standup" or "Start the report"), but mix in what fits the moment: the time of day, what you know the user cares about, what they were just talking about.
