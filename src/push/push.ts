@@ -147,15 +147,55 @@ export async function enablePush(): Promise<boolean> {
       await sub.unsubscribe()
       sub = null
     }
-    sub ??= await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key })
+    sub ??= await subscribeHard(key)
     const reply = await ask(subscribeMessage(sub, navigator.userAgent), 'push.subscribed')
     if (!reply) return fail("Couldn't register this device with Wendy. Try again in a moment.")
   } catch (e) {
-    return fail(`Couldn't turn on reminders: ${e instanceof Error ? e.message : String(e)}`)
+    console.warn('[push] subscribe failed', e)
+    return fail(await explain(e))
   }
   usePush.setState({ status: 'on' })
   agent.showMessage('Reminders are on.')
   return true
+}
+
+/**
+ * pushManager.subscribe, retried: "Registration failed - push service error" is the
+ * browser failing to reach its push service (FCM, WNS…). It's often transient or a
+ * stale worker registration, so try again, then again on a freshly registered worker.
+ */
+async function subscribeHard(key: Uint8Array<ArrayBuffer>): Promise<PushSubscription> {
+  const attempt = () => registration!.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key })
+  try {
+    return await attempt()
+  } catch (e) {
+    if (!isPushServiceError(e)) throw e
+  }
+  await new Promise((r) => setTimeout(r, 1200))
+  try {
+    return await attempt()
+  } catch (e) {
+    if (!isPushServiceError(e)) throw e
+  }
+  // Last go: a clean worker registration (drops any half-made subscription state).
+  await registration!.unregister()
+  await navigator.serviceWorker.register('/sw.js')
+  registration = await navigator.serviceWorker.ready
+  return attempt()
+}
+
+const isPushServiceError = (e: unknown) =>
+  e instanceof DOMException && (e.name === 'AbortError' || /push service/i.test(e.message))
+
+/** What to tell the user when subscribing failed, in words they can act on. */
+async function explain(e: unknown): Promise<string> {
+  if (!isPushServiceError(e)) return `Couldn't turn on reminders: ${e instanceof Error ? e.message : String(e)}`
+  const brave = await (navigator as { brave?: { isBrave?: () => Promise<boolean> } }).brave
+    ?.isBrave?.()
+    .catch(() => false)
+  if (brave)
+    return 'Brave blocks push by default. Turn on "Use Google services for push messaging" in brave://settings/privacy, then try again.'
+  return "Your browser couldn't reach its push service. A VPN, firewall or blocker can cause this; try again, or another browser."
 }
 
 export async function disablePush(): Promise<void> {
