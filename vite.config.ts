@@ -2,37 +2,12 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
-import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
+// No PWA plugin: public/manifest.webmanifest and public/sw.js ship as-is
+// (Aelora docs/PUSH.md — the service worker is a push transport, not a cache).
 export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
-      manifest: {
-        name: 'Actora',
-        short_name: 'Actora',
-        description: 'Touch console for Wendy.',
-        display: 'standalone',
-        orientation: 'any',
-        background_color: '#07080b',
-        theme_color: '#07080b',
-        start_url: '/',
-        icons: [
-          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-        ],
-      },
-      workbox: {
-        navigateFallback: '/index.html',
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-      },
-    }),
-  ],
+  plugins: [react(), tailwindcss()],
   server: { host: true },
   test: {
     environment: 'node',

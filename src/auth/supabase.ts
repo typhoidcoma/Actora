@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { getPublicConfig } from '../aelora/http'
 import { config } from '../config'
 
 let client: Promise<SupabaseClient> | null = null
@@ -13,9 +14,7 @@ export function getSupabase(): Promise<SupabaseClient> {
     let url = config.supabaseUrl
     let key = config.supabaseAnonKey
     if (!url || !key) {
-      const res = await fetch(`${config.baseUrl}/api/public-config`)
-      if (!res.ok) throw new Error(`public-config failed (${res.status})`)
-      const body = (await res.json()) as { supabase?: { url?: string; anonKey?: string } | null }
+      const body = await getPublicConfig()
       url = body.supabase?.url ?? null
       key = body.supabase?.anonKey ?? null
     }

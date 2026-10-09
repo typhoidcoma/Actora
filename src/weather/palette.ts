@@ -1,39 +1,45 @@
+import { BRAND, EXT } from '../ui/brand'
 import type { Sky, SkyKind } from './sky'
 
-/** Ambient colours per sky. Deep and saturated: they sit behind dark glass. */
-const SKIES: Record<SkyKind, { day: string[]; night: string[] }> = {
+/**
+ * Ambient colours per sky, built from the brand palette (src/ui/brand.ts):
+ * indigo, amber, rose, crimson and turquoise, with their tints for range.
+ * `day` sits on the pale background; `dusk` glows on deep indigo.
+ * Wendy can replace these with her own (guarded) set via `colors.set`.
+ */
+const SKIES: Record<SkyKind, { day: string[]; dusk: string[] }> = {
   clear: {
-    day: ['#2F7FEF', '#FFB547', '#8FC4F0', '#CDE04A'],
-    night: ['#1B2A8A', '#7B5EA7', '#3E8FB8', '#2F4FCF'],
+    day: [BRAND.amber, EXT.butter, EXT.mint, EXT.blush],
+    dusk: [BRAND.indigo, BRAND.rose, BRAND.amber, BRAND.turquoise],
   },
   partly: {
-    day: ['#4E8FD8', '#9AA7BD', '#E8B66A', '#2F4FCF'],
-    night: ['#26357A', '#5B6077', '#6F5AA0', '#1B2A8A'],
+    day: [EXT.mint, EXT.lavender, EXT.butter, EXT.mist],
+    dusk: [EXT.indigoDeep, EXT.lavender, EXT.tealDeep, BRAND.amber],
   },
   cloudy: {
-    day: ['#5A6884', '#8792A8', '#3E4A6A', '#6F7A92'],
-    night: ['#2E3550', '#4A5068', '#262B44', '#3B3F5C'],
+    day: [EXT.mist, EXT.lavender, '#C9C8DC', EXT.mint],
+    dusk: [BRAND.indigo, EXT.ink, '#33325C', EXT.mist],
   },
   fog: {
-    day: ['#8A94A6', '#B3BAC6', '#6A7484', '#9AA2B0'],
-    night: ['#4A5262', '#636B7A', '#363C4A', '#525A6A'],
+    day: ['#DCDBE6', '#EAE9F0', EXT.mist, '#C9C8DC'],
+    dusk: ['#4B4A75', '#38375F', EXT.mist, BRAND.indigo],
   },
   rain: {
-    day: ['#1F6F8A', '#345C9C', '#2A4670', '#4B8FB0'],
-    night: ['#14485E', '#22407A', '#1A2B4E', '#2E5F80'],
+    day: [EXT.tealDeep, BRAND.indigo, EXT.mint, EXT.mist],
+    dusk: [EXT.ink, EXT.tealDeep, BRAND.indigo, EXT.lavender],
   },
   storm: {
-    day: ['#5B2A86', '#3C2BD1', '#2A1F5E', '#7B5EA7'],
-    night: ['#3F1C66', '#2A1FA0', '#160F38', '#5B3F8A'],
+    day: [BRAND.indigo, BRAND.crimson, EXT.lavender, EXT.ink],
+    dusk: [EXT.ink, BRAND.indigo, BRAND.crimson, '#2A2950'],
   },
   snow: {
-    day: ['#A9C8E8', '#DCE6F2', '#6E8FB8', '#C3D4EA'],
-    night: ['#5D7699', '#8EA2BF', '#3E5578', '#71869F'],
+    day: [EXT.ice, '#E4E6F6', EXT.mint, '#EAE9F0'],
+    dusk: ['#C0C3E6', EXT.mist, EXT.ice, BRAND.turquoise],
   },
 }
 
-const WARM = '#FF8A3D'
-const COLD = '#7FD4F5'
+const WARM = BRAND.amber
+const COLD = EXT.mint
 
 export interface Blob {
   color: string
@@ -49,7 +55,7 @@ const hexA = (hex: string, a: number) => {
   return `rgb(${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255} / ${a})`
 }
 
-/** Temperature tint: hot days pick up amber, cold ones ice, in the sky's units. */
+/** Temperature tint: hot days pick up amber, freezing ones mint, in the sky's units. */
 function tempAccent(sky: Sky): string | null {
   if (sky.temp === null) return null
   const c = sky.unit === 'F' ? ((sky.temp - 32) * 5) / 9 : sky.temp
@@ -58,8 +64,8 @@ function tempAccent(sky: Sky): string | null {
   return null
 }
 
-export function skyColors(sky: Sky): string[] {
-  const base = [...SKIES[sky.kind][sky.isDay ? 'day' : 'night']]
+export function skyColors(sky: Sky, day: boolean): string[] {
+  const base = [...SKIES[sky.kind][day ? 'day' : 'dusk']]
   const accent = tempAccent(sky)
   if (accent) base[3] = accent
   return base
@@ -68,7 +74,7 @@ export function skyColors(sky: Sky): string[] {
 /**
  * A fresh random arrangement: positions, sizes, drift timing and which colour
  * lands where. Colours are assigned by index, so they can be re-tinted when the
- * weather changes without re-shuffling the layout.
+ * weather or theme changes without re-shuffling the layout.
  */
 export function randomLayout(count = 4, random = Math.random): Array<Omit<Blob, 'color'> & { slot: number }> {
   const slots = Array.from({ length: count }, (_, i) => i).sort(() => random() - 0.5)
@@ -87,8 +93,8 @@ export function randomLayout(count = 4, random = Math.random): Array<Omit<Blob, 
   })
 }
 
-export function blobColor(sky: Sky, slot: number): string {
-  const colors = skyColors(sky)
-  const alpha = sky.kind === 'fog' || sky.kind === 'snow' ? 0.32 : sky.isDay ? 0.68 : 0.58
-  return hexA(colors[slot % colors.length], slot === 3 ? alpha * 0.7 : alpha)
+export function blobColor(sky: Sky, slot: number, day: boolean, override?: string[] | null): string {
+  const colors = override ?? skyColors(sky, day)
+  const alpha = sky.kind === 'fog' || sky.kind === 'snow' ? 0.45 : day ? 0.6 : 0.55
+  return hexA(colors[slot % colors.length], slot === 3 ? alpha * 0.75 : alpha)
 }

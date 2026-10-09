@@ -108,6 +108,11 @@ const REPLIES: Array<[RegExp, string, string?]> = [
   ],
   [/goal/i, '*Ship Actora v1* is moving — one of three tasks done. The 5K goal needs a run today.', 'list_goals'],
   [/add.*task|remind/i, 'Done — added it to your tasks for today.', 'create_task'],
+  [
+    /search|find|look up|best|shoe|run(ning)? (route|spot)|weekend/i,
+    'Here are three good options I found:\n\n![Trail at golden hour](https://picsum.photos/seed/actora-trail/640/400)\n\n1. **[Discovery Park Loop](https://www.seattle.gov/parks)**: 2.8 mi of mostly soft trail, great at sunset.\n2. **[Green Lake](https://www.seattle.gov/parks)**: flat, 2.8 mi paved, busy on weekends.\n3. **[Burke-Gilman](https://www.seattle.gov/parks)**: long and steady if you want an easy tempo.\n\n| Route | Distance | Surface |\n|---|---|---|\n| Discovery Park | 2.8 mi | Trail |\n| Green Lake | 2.8 mi | Paved |\n\nWant me to put one on your calendar for tomorrow morning?',
+    'web_search',
+  ],
 ]
 
 export class MockWebSocket implements WebSocketLike {
@@ -186,7 +191,53 @@ export class MockWebSocket implements WebSocketLike {
         })
       }
       case 'chat':
-        return this.chat(String(msg.message ?? ''))
+        return this.chat(
+          String(msg.message ?? ''),
+          typeof msg.conversationId === 'string' ? msg.conversationId : undefined,
+        )
+      case 'conversation.new':
+        return this.reply({ type: 'conversation.created', conversationId: uid(), title: null })
+      case 'conversation.rename':
+        return this.reply({
+          type: 'conversation.updated',
+          conversationId: msg.conversationId,
+          title: msg.title,
+          tags: null,
+        })
+      case 'system_chat':
+        return this.systemChat()
+      case 'task.update': {
+        const t = db.tasks.find((x) => x.id === msg.id)
+        if (!t) return this.reply({ type: 'error', code: 'not_found', message: 'not found' })
+        Object.assign(t, (msg.patch as Partial<Task>) ?? {}, { updated_at: iso(new Date()) })
+        this.reply({ type: 'task.updated', task: { ...t } })
+        return this.reply({ type: 'event', event: 'task', data: { type: 'task:updated', task: { ...t } } })
+      }
+      case 'task.create': {
+        const now = iso(new Date())
+        const task: Task = {
+          id: uid(),
+          title: String(msg.title ?? 'New task'),
+          status: 'todo',
+          goal_id: null,
+          vault_id: null,
+          due_date: typeof msg.dueDate === 'string' ? msg.dueDate : null,
+          estimated_minutes: null,
+          committed_at: null,
+          completed_at: null,
+          created_at: now,
+          updated_at: now,
+        }
+        MockWebSocket.db.tasks.push(task)
+        this.reply({ type: 'task.created', task })
+        return this.reply({ type: 'event', event: 'task', data: { type: 'task:created', task } })
+      }
+      case 'push.subscribe':
+        return this.reply({ type: 'push.subscribed', endpoint: msg.endpoint })
+      case 'push.unsubscribe':
+        return this.reply({ type: 'push.unsubscribed', endpoint: msg.endpoint })
+      case 'push.test':
+        return this.reply({ type: 'push.tested', devices: 0, sent: 0, failed: 0, pruned: 0 })
     }
   }
 
@@ -198,14 +249,16 @@ export class MockWebSocket implements WebSocketLike {
     this.onclose?.({ code } as CloseEvent)
   }
 
-  private chat(message: string): void {
-    const cid = this.conversationId
-    const [, text, tool] = REPLIES.find(([re]) => re.test(message)) ?? [
-      /./,
-      `Got it. I'm here whenever you want to go deeper on "${message.slice(0, 40)}".`,
-      undefined,
-    ]
-    this.transcript.push({ role: 'user', content: message })
+  private chat(message: string, thread?: string): void {
+    const cid = thread ?? this.conversationId
+    const [, text, tool] = /today's fun stuff/i.test(message)
+      ? [/./, FINDS_REPLY, 'web_search']
+      : (REPLIES.find(([re]) => re.test(message)) ?? [
+          /./,
+          `Got it. I'm here whenever you want to go deeper on "${message.slice(0, 40)}".`,
+          undefined,
+        ])
+    if (cid === this.conversationId) this.transcript.push({ role: 'user', content: message })
     let t = 250
     this.later(t, () => this.emit({ type: 'chat.start', conversationId: cid, channelId: cid }))
     this.later(t + 50, () =>
@@ -264,11 +317,26 @@ export class MockWebSocket implements WebSocketLike {
     })
     t += words.length * 38 + 120
     this.later(t, () => {
-      this.transcript.push({ role: 'assistant', content: text })
+      if (cid === this.conversationId) this.transcript.push({ role: 'assistant', content: text })
       const mood = { emotion: 'joy', intensity: 'mid', updatedAt: iso(new Date()) }
       this.emit({ type: 'done', conversationId: cid, channelId: cid, text, mood })
       this.event('emotion', { joy: 0.6, trust: 0.6, anticipation: 0.3, source: 'llm', conversationId: cid })
     })
+  }
+
+  /** Welcome line over system_chat: frames carry only channelId, never conversationId. */
+  private systemChat(): void {
+    const channelId = 'system:mock-user'
+    const db = MockWebSocket.db
+    const open = db.tasks.filter((t) => t.status !== 'done')
+    const next = [...db.events].sort((a, b) => Date.parse(a.start_time) - Date.parse(b.start_time))[0]
+    const text = next
+      ? `Hey you. ${next.title} is coming up soon — after that, "${open[0]?.title ?? 'a breather'}" is the one I'd protect today.`
+      : 'Hey you. Quiet day so far — want to pick one thing to make it count?'
+    this.later(200, () => this.emit({ type: 'chat.start', channelId }))
+    const words = text.split(/(?<=\s)/)
+    words.forEach((w, i) => this.later(320 + i * 45, () => this.emit({ type: 'token', channelId, delta: w })))
+    this.later(400 + words.length * 45, () => this.emit({ type: 'done', channelId, text }))
   }
 
   private scheduleInboxDrip(): void {
@@ -296,7 +364,7 @@ export class MockWebSocket implements WebSocketLike {
       this.event('notification', { type: 'notification:created', notification })
       this.later(45_000, tick)
     }
-    this.later(20_000, tick)
+    this.later(14_000, tick)
   }
 
   private event(event: string, data: Record<string, unknown>): void {
@@ -320,3 +388,124 @@ export class MockWebSocket implements WebSocketLike {
     this.timers.add(t)
   }
 }
+
+/**
+ * Stand-in for POST /api/llm option generation: context-aware canned options,
+ * answering Wendy's last question when there is one.
+ */
+export async function mockLlm(req: { prompt: string }, signal?: AbortSignal): Promise<string> {
+  await new Promise<void>((resolve, reject) => {
+    const t = setTimeout(resolve, 450)
+    signal?.addEventListener('abort', () => {
+      clearTimeout(t)
+      reject(new DOMException('aborted', 'AbortError'))
+    })
+  })
+  const p = req.prompt
+  if (p.includes('RANK THESE CANDIDATES')) {
+    const found = [...p.matchAll(/key: (\S+) \| (\w+) \| "([^"]*)"/g)].slice(0, 3)
+    const whys: Record<string, string> = {
+      event: 'Give yourself five minutes to land in it',
+      task: 'Small, and it clears your head for the rest',
+      notification: 'Quick one — I flagged it earlier',
+      goal: 'One step today keeps the streak alive',
+    }
+    return JSON.stringify({ top: found.map(([, key, kind]) => ({ key, why: whys[kind] ?? 'Worth doing now' })) })
+  }
+  const last = /Wendy's last message[^\n]*\n([\s\S]*?)(?:\n\n|\nButtons|\nWrite)/.exec(p)?.[1] ?? ''
+  const opt = (label: string, say = label) => ({ label, say })
+  let options
+  if (/\?\s*$/.test(last.trim())) {
+    options = [
+      opt('Yes, do it', 'Yes, please do that.'),
+      opt('Not right now', 'Not right now, thanks.'),
+      opt('Something lighter', 'Can we do something lighter instead?'),
+    ]
+  } else if (p.includes('Screen: the tasks panel')) {
+    options = [
+      opt('Quick wins', 'Which of these can I knock out in 10 minutes?'),
+      opt('Batch errands', 'Can you batch my errands together?'),
+    ]
+  } else if (p.includes('Screen: the calendar panel')) {
+    options = [
+      opt('Protect my evening', 'Keep my evening free tonight.'),
+      opt('Prep for next', 'Help me prep for my next event.'),
+    ]
+  } else if (p.includes('Screen: the user tapped')) {
+    options = [
+      opt('Do it with me', 'Walk me through this one step by step.'),
+      opt('Is it urgent?', 'How urgent is this really?'),
+    ]
+  } else if (p.includes('reminder')) {
+    options = [opt('On it', 'On it, thanks for the nudge.'), opt('Push to tonight', 'Remind me again tonight.')]
+  } else if (/#1 \w+ "/.test(p)) {
+    // Home: act on the cards by name, like the real prompt asks.
+    const cards = [...p.matchAll(/#\d (\w+) "([^"]+)"/g)].slice(0, 2)
+    const verb: Record<string, string> = {
+      event: 'Ready for',
+      task: 'Knock out',
+      notification: 'Sort out',
+      goal: 'Push on',
+    }
+    options = cards.map(([, kind, title]) =>
+      opt(
+        `${verb[kind] ?? 'Do'} ${title.split(' ').slice(0, 2).join(' ')}`.slice(0, 28),
+        `Help me with "${title}" now.`,
+      ),
+    )
+  } else {
+    options = [
+      opt('Ease me in', 'Ease me into the day with something small.'),
+      opt('One big win', "What's the one big win for today?"),
+    ]
+  }
+  return JSON.stringify({ options })
+}
+
+/** What a web-search "fun finds" turn returns (images via picsum for offline testing). */
+const FINDS_REPLY = [
+  'Here you go — ```json',
+  JSON.stringify({
+    finds: [
+      {
+        title: 'Octopuses caught "punching" fish on group hunts',
+        blurb:
+          'Researchers filmed octopuses swatting fish that slacked off during cooperative hunts. Workplace drama, but underwater.',
+        why: 'Peak weird-nature energy for your coffee break',
+        url: 'https://en.wikipedia.org/wiki/Octopus',
+        image: 'https://picsum.photos/seed/actora-octo/800/500',
+        source: 'Wikipedia',
+        tag: 'Weird',
+      },
+      {
+        title: 'A shader that paints with fluid physics in 40 lines',
+        blurb: 'A tiny WebGL demo going viral for turning mouse drags into ink in water.',
+        why: "You've been deep in orb shaders — this one's a gem",
+        url: 'https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API',
+        image: 'https://picsum.photos/seed/actora-shader/800/500',
+        source: 'MDN',
+        tag: 'Nerdy',
+      },
+      {
+        title: 'Seattle’s waterfront park finally opens its sky bridge',
+        blurb:
+          'The new Overlook Walk links Pike Place to the water with sunset views and a surprising amount of seating.',
+        why: 'A great new route for your evening runs',
+        url: 'https://www.seattle.gov/parks',
+        image: 'https://picsum.photos/seed/actora-park/800/500',
+        source: 'Seattle Parks',
+        tag: 'Local',
+      },
+      {
+        title: 'Astronomers spot a “cotton candy” planet',
+        blurb: 'A planet so puffy it has the density of spun sugar is orbiting a nearby star.',
+        why: 'Small wonder to end the day on',
+        url: 'https://science.nasa.gov/exoplanets/',
+        image: 'https://picsum.photos/seed/actora-planet/800/500',
+        source: 'NASA',
+        tag: 'Good news',
+      },
+    ],
+  }),
+  '```',
+].join('\n')

@@ -1,109 +1,163 @@
 # Actora
 
-A touch-first web client for the [Aelora](https://github.com/luminora-app/Aelora) agent backend. One screen: a 2×2 grid of
-live tiles (**Tasks · Goals · Calendar · Inbox**) around a WebGL orb that is Wendy. Tap a tile and it morphs into its
-detail view. Tap the orb and it opens a chat panel. It's designed for iPad first and scales down to phones. It installs to the home screen as a PWA.
+A touch-first web client for the [Aelora](https://github.com/luminora-app/Aelora) agent backend. The app shows one
+screen:
+
+- **Wendy's line** across the top: her welcome, the first sentence of each reply, and reminders.
+- **The grid**: four 4:3 cards around an orb that is Wendy.
+  - Three **priority cards**, ranked: the things to tackle next, from any domain.
+  - **Box 4** (bottom-right), **For you**: fun finds Wendy searched the web for, picked for you. Images crossfade behind a big count of fun things you have not seen yet. Her full answers open in a reader, either automatically for big questions or by tapping her line.
+- **The option rail** along the bottom: what you can say or do next.
+
+**Nothing requires typing.** Tap the orb to talk, tap an option, or tap a card for its actions. Wendy can drive every
+part of the UI; `docs/wendy-ui.md` is her playbook. Actora is designed for iPad first, scales down to phones, and
+installs to the home screen.
+
+## Priority cards (`src/priority/`)
+
+1. **Local score** (`score.ts`). Each item gets an instant, deterministic score: a live or imminent event, an overdue
+   task, a fresh unread reminder, a task due today, a goal falling behind. The top 3 can hold at most two of one kind.
+2. **Wendy re-ranks** (`rank.ts`). She reorders the top 8 through `POST /api/llm`, grounded in your profile, and
+   writes a short ✦ "why now" for each card. Debounced, cached by the candidate set, at most once every 2 minutes,
+   429-aware.
+3. **`priorities.set`**. Wendy can set the order herself. It holds for 30 minutes.
+
+When an item is finished or read, its card drops out at once and the others glide up. If there are fewer than three
+things to tackle, domain summaries fill the gaps. Tapping a card morphs it into its item panel. The full lists open
+from the header buttons, from "See all", or when Wendy opens them.
 
 ## Stack
 
-|           |                                                                                                     |
-| --------- | --------------------------------------------------------------------------------------------------- |
-| Framework | React 19 + TypeScript, Vite                                                                         |
-| Motion    | [Motion](https://motion.dev) (`motion/react`): shared-layout morphs, springs, gestures              |
-| Styling   | Tailwind CSS v4 with tokens from the Luminora house palette                                         |
-| State     | Zustand stores fed by the WebSocket (data is pushed, not fetched)                                   |
-| Orb       | [OGL](https://github.com/oframe/ogl) fragment shader, with a CSS fallback when WebGL is unavailable |
-| Auth      | Supabase Google OAuth (the same project Aelora verifies JWTs against)                               |
-| Tooling   | Vitest, oxlint, Prettier, vite-plugin-pwa                                                           |
+|           |                                                                                         |
+| --------- | --------------------------------------------------------------------------------------- |
+| Framework | React 19 + TypeScript, Vite                                                             |
+| Motion    | [Motion](https://motion.dev) (`motion/react`): shared-layout morphs, springs, gestures  |
+| Styling   | Tailwind CSS v4 over themed CSS tokens (daylight / dusk)                                |
+| Type      | [Satoshi](https://www.fontshare.com/fonts/satoshi), self-hosted (ITF Free Font License) |
+| State     | Zustand stores fed by the WebSocket (data is pushed, not fetched)                       |
+| Orb       | [OGL](https://github.com/oframe/ogl) fragment shader, with a CSS fallback               |
+| Auth      | Supabase Google OAuth (the same project Aelora verifies JWTs against)                   |
+| Tooling   | Vitest, oxlint, Prettier                                                                |
 
 ## Run it
 
 ```bash
 npm install
-npm run dev          # mock mode by default: no backend or login needed
+npm run dev          # mock mode unless VITE_AELORA_BASE_URL is set
 ```
 
-With no `VITE_AELORA_BASE_URL` set, the app runs against an **in-browser mock** of Aelora (`src/aelora/mock.ts`). The mock
-speaks the real protocol: streaming chat, tool progress, emotion events, broadcast echoes and a notification drip.
+With no `VITE_AELORA_BASE_URL`, or with `VITE_AELORA_MOCK=1`, the app runs against an **in-browser mock** of Aelora
+(`src/aelora/mock.ts`). The mock supports streaming chat, the `system_chat` welcome, tool progress, emotion, broadcast
+echoes, a reminder drip and canned option generation. To use a real backend, put `VITE_AELORA_BASE_URL` in `.env` or
+`.env.local`. The dev server binds to your LAN, so an iPad on the same Wi-Fi can open `http://<your-ip>:5173`.
 
-To connect to a real backend, copy `.env.example` to `.env.local`:
-
-```bash
-VITE_AELORA_BASE_URL=https://your-aelora-host
-VITE_AELORA_MOCK=0
-```
-
-`npm run dev` binds to your LAN (`server.host: true`), so you can open `http://<your-ip>:5173` on an iPad on the same
-network.
-
-| Script                    |                                                                 |
-| ------------------------- | --------------------------------------------------------------- |
-| `npm run dev`             | Dev server with HMR                                             |
-| `npm run build`           | Typecheck + production build (`dist/`, includes service worker) |
-| `npm test`                | Unit tests (protocol, sync, chat state machine)                 |
-| `npm run lint` / `format` | oxlint / Prettier                                               |
-| `npm run icons`           | Regenerate PWA icons                                            |
+| Script                    |                                                         |
+| ------------------------- | ------------------------------------------------------- |
+| `npm run dev`             | Dev server with HMR                                     |
+| `npm run build`           | Typecheck + production build                            |
+| `npm test`                | Unit tests (protocol, sync, chat, options, push, voice) |
+| `npm run lint` / `format` | oxlint / Prettier                                       |
+| `npm run icons`           | Regenerate app icons and the notification badge         |
 
 ## Backend setup checklist
 
-Two one-time settings on the backend side:
+1. **CORS.** Add every origin you serve from to Aelora's `AELORA_CORS_ORIGINS`, using exact strings. The variable
+   replaces the defaults rather than adding to them. `/api/llm`, which generates the options, needs this too.
+2. **Google sign-in.** In Supabase, enable **Auth → Providers → Google**, and add your origins to **Auth → URL
+   Configuration → Redirect URLs**.
+3. **Push** (optional). Aelora must serve a VAPID key in `GET /api/public-config` (`push.publicKey`). When the key is
+   `null`, the reminder offer never appears.
+4. **Hosting.** Serve `/sw.js` from the site root with `Cache-Control: no-cache`.
 
-1. **CORS.** Add every origin you serve from to Aelora's `AELORA_CORS_ORIGINS`, for example `http://localhost:5173` and
-   your production URL. Use exact strings with no trailing slash. The variable _replaces_ the defaults rather than adding
-   to them, and a production deploy has no localhost defaults.
-2. **Google sign-in.** In Supabase, go to **Auth → Providers → Google**. Enable it with a Google Cloud OAuth client. Then
-   under **Auth → URL Configuration**, add `http://localhost:5173` and your production URL to the Redirect URLs.
+## How it works
 
-Supabase's URL and anon key are read from Aelora's `GET /api/public-config`. Set `VITE_SUPABASE_URL` /
-`VITE_SUPABASE_ANON_KEY` only to override them.
+### Never typing: options everywhere (`src/options/`)
 
-## How it's built
+Every place in the app has a context key: `home`, `tile:<id>`, `item:<kind>:<id>` or `chat`. The rail always shows
+options for that context, merged in this order:
 
-```
-src/
-  aelora/        protocol layer: no React
-    socket.ts      connection, close-code policy, backoff + jitter, app-level ping
-    request.ts     request/reply by `type` (Aelora has no request ids): per-type queue + timeouts
-    router.ts      every server frame → stores; post-`hello` bootstrap; agent_command handling
-    chat.ts        chat turn state machine (streaming, tool retraction, system_chat isolation)
-    client.ts      start/stop + user actions (optimistic complete / mark-read with rollback)
-    mock.ts        in-browser Aelora
-  stores/        zustand: entities (by id), agent (orb + chat), ui (focus), metrics (geometry)
-  ui/            Stage, Grid + tiles, OrbDock + shader, ChatSheet, Header
-  auth/          Supabase client + Google sign-in screen
-```
+1. **Local options** (`local.ts`): instant and deterministic, built from your data. They include **direct actions**
+   that need no chat turn, such as _Done_, _Tomorrow_, _Got it_ and _Mark all read_.
+2. **Wendy-written options** (`wendy.ts`): generated through Aelora's `POST /api/llm`. The request carries a summary of
+   the screen with real item titles, the recent turns, and her last message, plus `context: {profile, memoryQuery}`.
+   If her last message asks something, the options are answers to it. These refresh on every context change and every
+   finished reply, and they are debounced, cached for 3 minutes, and back off on 429.
+3. **Options pushed by Wendy** through the `options.set` ui_action. These win until you move to another context.
 
-Protocol rules from Aelora's `FRONTEND.md` that the code depends on:
+Tapping a _say_ option sends a chat turn, and Wendy answers in the line above the grid. The orb is the microphone: tap
+it to talk, and its pulse follows the words as they come in. Hold it to open the full conversation. A chat button and a
+tucked-away keyboard sit at the end of the rail.
 
-- **The JWT is pinned at connect time.** The socket reconnects on Supabase `TOKEN_REFRESHED`. Close `4001` is fatal,
-  `1008` triggers one session refresh, and `1013` backs off slowly.
-- **Replies are matched by `type`.** Requests with the same reply type never overlap, and every request times out.
-- **Broadcasts echo to the sender.** All writes upsert by id, and a stale `updated_at` never overwrites a newer row.
-- **Streamed tokens can be retracted** (`mindmap` → `tool:working`), so the bubble clears. `done.text` is
-  authoritative.
-- **`client_state`** advertises `ui.availableActions` (`tile.focus`, `tile.close`, `chat.open`, `chat.close`) and the
-  orb's reaction states. That lets Wendy open a tile or the chat herself, and lets `avatar.react` beats play on the orb.
+### Wendy drives the UI (`src/aelora/router.ts`)
 
-### Liquid glass and weather
+`client_state` advertises these ui_actions:
 
-- Surfaces use real backdrop blur and saturation over a tinted body, with a specular edge, a faint chromatic fringe and
-  a sheen that follows the finger (`src/ui/sheen.ts`, registered `@property` values so it glides). Tiles squish
-  and rebound on press. The orb's mood colour glows through the glass from behind the grid (`MoodLight`).
-- The background is random on every load and coloured by the **local weather**
-  (`src/weather/`). That means one browser location prompt and Open-Meteo's free forecast API: coordinates rounded to
-  about 1 km, refreshed every 20 minutes, cached in `localStorage`. Each of seven skies has a day and a night palette,
-  hot and cold temperatures tint it, and storms flash. If location is denied, it falls back to a clear day or night sky
-  based on the local time.
+- `tile.focus` and `tile.close`
+- `chat.open` and `chat.close`
+- `item.focus {kind,id}`
+- `options.set {options}`
+- `reply.show` and `reply.hide`
+- `theme.set {mode}`
+- `voice.listen`
+- `push.offer`
 
-### Motion and performance
+Alongside them it sends a `ui.screen` snapshot of what is on screen. That snapshot is ready for a persona that reads it.
 
-- Geometry is computed once in `stores/metrics.ts` and mirrored to CSS variables. Every animation is a transform
-  between known boxes, so nothing animates `width`, `height` or `top`.
-- The orb is a single persistent element that glides between the grid centre, the focused tile's header and the chat
-  header. Its WebGL context is created once. Its uniforms are eased every frame from the agent state: idle, thinking,
-  speaking (per-token energy), tool (orbit ring), offline (desaturated), plus mood colours and reaction beats. It pauses
-  when the tab is hidden and caps DPR at 2.
-- Backdrop blur is limited to the few glass surfaces, and the ambient field behind them is pre-blurred and animated
-  only with transforms.
-- Supabase and the Markdown renderer are code-split. The initial JS is about 146 KB gzipped.
-- `prefers-reduced-motion` is respected throughout.
+### Wendy's line (`src/ui/WendyLine.tsx`, `src/aelora/greeting.ts`)
+
+- **Welcome.** The welcome comes over `system_chat`, Aelora's path for app events (no history, mood or fact side
+  effects). It is cached and regenerated only after 30 minutes away or when the part of the day changes.
+- **Replies.** Off the chat screen, her replies stream into the line, and older lines fade up and out.
+- **Reminders.** A reminder that arrives while the app is open appears in the line with answer chips, and stays there
+  until you acknowledge it.
+
+### Push reminders (`src/push/`, `public/sw.js`)
+
+The setup follows Aelora's `docs/PUSH.md`:
+
+- The service worker is a plain push transport, with no Workbox and no caching.
+- Opting in is a single quiet chip, _Let Wendy remind me_, which only appears after Wendy has spoken.
+  - On iOS in a Safari tab, the chip explains how to add the app to the Home Screen instead.
+- The subscription is re-sent on every reconnect.
+- Tapping a notification on the lock screen opens Inbox with that reminder selected and marks it read.
+- The header menu holds the on/off toggle and **Send a test reminder** (`push.test`).
+
+### Look
+
+- **Palette.** Designer palette (`src/ui/brand.ts`): indigo `#3F3E6F`, amber `#FFBE0B`, rose `#E3425F`, crimson
+  `#DE2B52` and turquoise `#2EDDBA`, plus tints for emotion and weather range.
+  - All UI colour comes from the **scheme engine** (`src/color/`): OKLCH colour science that turns the brand (or
+    Wendy's `colors.set` request) into CSS variables for both themes. `--role-*` are fills and glows (≥3:1 on the
+    background); `--ink-*` are their readable text forms (≥4.5:1).
+  - Guardrails: gamut mapping by chroma, lightness/chroma bands, near-neutral surfaces, `urgent` always warm and
+    `calm` never, minimum ΔE between kinds and heat levels. Wendy's palette lasts 8 h by default; `colors.reset`
+    restores the brand.
+  - Priority heat runs crimson, then amber, then turquoise. Daylight is a pale indigo-white; dusk is deep indigo.
+- **Shape.** Cards are exactly 4:3 with 12px corners.
+- **Themes.**
+  - **Daylight** is Hog Bristle and runs while the sun is up at your location (Open-Meteo sunrise/sunset).
+  - **Dusk** is Midnight Affair and runs after sunset.
+  - Changes cross-fade through registered CSS custom properties. You can override the theme in the menu, and Wendy can
+    with `theme.set`.
+- **Liquid glass.** Backdrop blur and saturation, a specular edge, a finger-tracking sheen, a rim around the notch, and
+  a jelly press. The orb's mood colour spills through from behind the grid.
+- **Weather background.** The field is laid out randomly on each load and coloured by the local weather: seven skies,
+  each with a day and a dusk palette, tinted by temperature.
+- **The orb** never sits still: it breathes, floats, churns slowly, drifts through its mood colours, and throws in an
+  occasional spontaneous glance. In daylight it casts a soft tinted shadow instead of glowing.
+
+### Protocol rules the code depends on (Aelora `FRONTEND.md`)
+
+- The JWT is pinned at connect time, so the app reconnects on `TOKEN_REFRESHED`. Close `4001` is fatal and `1008`
+  triggers a reauth.
+- Replies are matched by `type`. Same-type requests are queued, and every request has a timeout.
+- Broadcasts echo back to the sender, so the app upserts by id and lets the newest `updated_at` win.
+- Streamed tokens can be retracted (`tool:working`), and `done.text` is authoritative.
+
+### Performance
+
+- Geometry lives in `stores/metrics.ts`, which stacks the header, Wendy's line, the grid and the rail. All motion is
+  transforms between known boxes.
+- One persistent WebGL orb. It pauses when the page is hidden and caps DPR at 2.
+- Supabase and the Markdown renderer are code-split. The initial JS is about 159 KB gzipped.
+- The app respects `prefers-reduced-motion`.

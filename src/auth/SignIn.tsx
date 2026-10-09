@@ -4,12 +4,14 @@ import { useAgent } from '../stores/agent'
 import { press } from '../ui/motion'
 import { Orb } from '../ui/orb/Orb'
 import { Backdrop } from '../ui/Stage'
+import { useThemeSync } from '../ui/Theme'
 import { signInWithGoogle } from './supabase'
 
 export function SignIn({ error: initialError }: { error?: string | null }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(initialError ?? null)
 
+  useThemeSync()
   // Wake the orb up on the sign-in screen.
   useEffect(() => useAgent.setState({ phase: busy ? 'thinking' : 'idle' }), [busy])
 
@@ -43,8 +45,10 @@ export function SignIn({ error: initialError }: { error?: string | null }) {
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 24 }}
         >
-          <div className="num text-sm font-medium tracking-[0.4em] text-white">ACTORA</div>
-          <p className="max-w-xs text-sm text-muted">Your day, at a touch. Sign in to wake Wendy.</p>
+          <h1 className="display text-6xl leading-none text-strong">Actora</h1>
+          <p className="max-w-xs text-[15px] text-muted">
+            Your day, at a touch. Sign in and Wendy takes it from there.
+          </p>
         </motion.div>
 
         <motion.button
@@ -54,13 +58,13 @@ export function SignIn({ error: initialError }: { error?: string | null }) {
           initial={{ y: 12, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.25, type: 'spring', stiffness: 200, damping: 24 }}
-          className="flex h-14 w-full max-w-xs items-center justify-center gap-3 rounded-full bg-cream font-medium text-ink shadow-[0_10px_40px_-10px_rgb(205_224_74/0.45)] disabled:opacity-60"
+          className="glass-pill flex h-14 w-full max-w-xs items-center justify-center gap-3 rounded-full font-medium text-strong disabled:opacity-60"
         >
           <GoogleMark />
           {busy ? 'Opening Google…' : 'Continue with Google'}
         </motion.button>
 
-        {error && <p className="max-w-xs text-center text-sm text-coral">{error}</p>}
+        {error && <p className="max-w-xs text-center text-sm text-urgent">{error}</p>}
       </main>
     </MotionConfig>
   )

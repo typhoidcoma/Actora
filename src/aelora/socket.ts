@@ -124,6 +124,7 @@ export class AeloraSocket implements FrameBus {
     }
     if (!this.wanted || this.ws) return
     if (!token) {
+      console.warn('[aelora] no session token')
       this.fail('signed-out')
       return
     }
@@ -166,6 +167,7 @@ export class AeloraSocket implements FrameBus {
 
   private handleClose(ws: WebSocketLike, code: number): void {
     if (ws !== this.ws) return
+    console.warn(`[aelora] socket closed (code ${code || 'timeout'}), attempt ${this.attempt}`)
     this.ws = null
     clearTimeout(this.connectTimer)
     clearInterval(this.pingTimer)
@@ -218,6 +220,7 @@ export class AeloraSocket implements FrameBus {
   }
 
   private fail(reason: string): void {
+    console.warn(`[aelora] giving up: ${reason}`)
     this.wanted = false
     this.fatalReason = reason
     this.teardown()
