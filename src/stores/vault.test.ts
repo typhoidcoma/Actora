@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { grouped, useVault, vault, type VaultEntry } from './vault'
+import { categoryCounts, filterEntries, grouped, useVault, vault, type VaultEntry } from './vault'
 
 const e = (id: string, category: string | null, at: string): VaultEntry => ({
   id,
@@ -44,5 +44,33 @@ describe('memories', () => {
     expect(contextKeyOf(useUi.getState())).toBe('vault')
     runUiAction('vault.close', {})
     expect(useUi.getState().vault).toBe(false)
+  })
+})
+
+describe('vault search and categories', () => {
+  const all = {
+    a: { ...e('a', 'preference', '2026-10-01'), content: 'Loves live jazz in Seattle' },
+    b: { ...e('b', 'routine', '2026-10-02'), content: 'Runs before work' },
+    c: { ...e('c', 'preference', '2026-10-03'), content: 'Hates small talk' },
+    d: { ...e('d', 'contextual', '2026-10-04'), content: 'Moved to Seattle in 2024' },
+  }
+
+  it('matches every word, anywhere, case-insensitively', () => {
+    expect(Object.keys(filterEntries(all, 'seattle', null)).sort()).toEqual(['a', 'd'])
+    expect(Object.keys(filterEntries(all, 'JAZZ seattle', null))).toEqual(['a'])
+    expect(Object.keys(filterEntries(all, 'jazz runs', null))).toEqual([])
+  })
+
+  it('narrows to a category, together with search', () => {
+    expect(Object.keys(filterEntries(all, '', 'preference')).sort()).toEqual(['a', 'c'])
+    expect(Object.keys(filterEntries(all, 'seattle', 'context'))).toEqual(['d'])
+  })
+
+  it('counts each category in display order (legacy kinds count as Context)', () => {
+    expect(categoryCounts(all)).toEqual([
+      { id: 'preference', label: 'Likes and dislikes', n: 2 },
+      { id: 'routine', label: 'Routines', n: 1 },
+      { id: 'context', label: 'Context', n: 1 },
+    ])
   })
 })

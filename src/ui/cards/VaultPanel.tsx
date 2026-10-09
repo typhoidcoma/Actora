@@ -3,7 +3,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { forgetFact, loadVault, rememberFact } from '../../aelora/client'
 import { useAgent } from '../../stores/agent'
 import { ui } from '../../stores/ui'
-import { CATEGORIES, grouped, useVault, type VaultEntry } from '../../stores/vault'
+import {
+  CATEGORIES,
+  categoryCounts,
+  filterEntries,
+  grouped,
+  searchTerms,
+  useVault,
+  type VaultEntry,
+} from '../../stores/vault'
 import { ROLE } from '../brand'
 import { morph, press } from '../motion'
 import { Panel } from './Panel'
@@ -20,22 +28,106 @@ const label = (id: string) => CATEGORIES.find((c) => c.id === id)?.label ?? 'Con
 export function VaultPanel() {
   const { entries, status } = useVault()
   const botName = useAgent((s) => s.botName)
-  const groups = useMemo(() => grouped(entries), [entries])
+  const [query, setQuery] = useState('')
+  const [category, setCategory] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
+  const shown = useMemo(() => filterEntries(entries, query, category), [entries, query, category])
+  const groups = useMemo(() => grouped(shown), [shown])
+  const cats = useMemo(() => categoryCounts(entries), [entries])
+  const terms = useMemo(() => searchTerms(query), [query])
   const count = Object.keys(entries).length
+  const matches = Object.keys(shown).length
+  const filtering = !!query.trim() || category !== null
 
   // Fresh every time it opens: she may have learned things since.
   useEffect(() => void loadVault(), [])
+  // A category that just emptied (its last memory forgotten) drops back to All.
+  if (category && !cats.some((c) => c.id === category)) setCategory(null)
 
   const kicker =
     status === 'loading' && !count
       ? 'Looking through her memory…'
-      : count
-        ? `${count} thing${count === 1 ? '' : 's'} ${botName} remembers`
-        : 'Nothing remembered yet'
+      : filtering
+        ? `${matches} of ${count}`
+        : count
+          ? `${count} thing${count === 1 ? '' : 's'} ${botName} remembers`
+          : 'Nothing remembered yet'
 
   return (
     <Panel layoutId="vault" accent={ROLE.wendy} kicker={kicker} title="Vault" onClose={ui.closeVault}>
-      <AddMemory />
+      {/* Search first; adding sits behind + so the list leads. */}
+      <div className="flex items-center gap-2">
+        <label className="glass-pill flex h-11 min-w-0 flex-1 items-center gap-2 rounded-[8px] px-3">
+          <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-muted" aria-hidden>
+            <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" strokeWidth={1.5} />
+            <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+          </svg>
+          <input
+            value={query}
+            onChange={(ev) => setQuery(ev.target.value)}
+            placeholder={`Search what ${botName} knows`}
+            aria-label="Search the Vault"
+            className="h-full min-w-0 flex-1 bg-transparent text-[16px] text-strong outline-none placeholder:text-faint"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              aria-label="Clear search"
+              className="grid h-7 w-7 place-items-center text-muted"
+            >
+              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden>
+                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
+        </label>
+        <motion.button
+          whileTap={press}
+          onClick={() => setAdding((v) => !v)}
+          aria-expanded={adding}
+          aria-label={adding ? 'Close adding' : 'Add a memory'}
+          className={`glass-pill grid h-11 w-11 shrink-0 place-items-center rounded-[8px] ${adding ? 'text-accent' : 'text-muted'}`}
+        >
+          <motion.svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden animate={{ rotate: adding ? 45 : 0 }}>
+            <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" />
+          </motion.svg>
+        </motion.button>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {adding && (
+          <motion.div
+            key="add"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden pt-3"
+          >
+            <AddMemory defaultCategory={category} onSaved={() => setAdding(false)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Categories: jump to one kind of memory (with search, they narrow together). */}
+      {cats.length > 1 && (
+        <div className="scroll-x -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
+          {[{ id: null as string | null, label: 'All', n: count }, ...cats].map((c) => {
+            const on = category === c.id
+            return (
+              <button
+                key={c.id ?? 'all'}
+                onClick={() => setCategory(on && c.id ? null : c.id)}
+                aria-pressed={on}
+                className={`glass-pill flex h-9 shrink-0 items-center gap-1.5 rounded-[6px] px-3 text-[13px] ${on ? 'font-semibold text-accent' : 'text-muted'}`}
+              >
+                {c.label}
+                <span className="num opacity-60">{c.n}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {status === 'error' && !count && (
         <p className="mt-6 text-[15px] text-muted">Couldn't load her memories just now. Close and open this again.</p>
       )}
@@ -48,17 +140,29 @@ export function VaultPanel() {
       )}
       {status === 'ready' && !count && (
         <p className="mt-6 text-[15px] text-muted">
-          Nothing yet. Tell {botName} about yourself in conversation, or add something above.
+          Nothing yet. Tell {botName} about yourself in conversation, or tap + to add something.
         </p>
       )}
-      <div className="mt-2">
+      {count > 0 && filtering && !matches && (
+        <p className="mt-6 text-[15px] text-muted">
+          {query.trim() ? (
+            <>
+              Nothing matches “{query.trim()}”{category ? ' here' : ''}.
+            </>
+          ) : (
+            'Nothing here yet.'
+          )}
+        </p>
+      )}
+      <div className="mt-1">
         {groups.map((g) => (
-          <section key={g.id} className="mt-6">
-            <h3 className="label mb-2 text-muted">{g.label}</h3>
+          <section key={g.id} className="mt-5">
+            {/* One category picked: its chip already says which. */}
+            {!category && <h3 className="label mb-2 text-muted">{g.label}</h3>}
             <ul>
               <AnimatePresence initial={false}>
                 {g.items.map((e) => (
-                  <MemoryRow key={e.id} entry={e} />
+                  <MemoryRow key={e.id} entry={e} terms={terms} />
                 ))}
               </AnimatePresence>
             </ul>
@@ -69,7 +173,28 @@ export function VaultPanel() {
   )
 }
 
-function MemoryRow({ entry: e }: { entry: VaultEntry }) {
+const escapeRe = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/** The memory's text with each searched word picked out. */
+function Highlighted({ text, terms }: { text: string; terms: string[] }) {
+  if (!terms.length) return <>{text}</>
+  const re = new RegExp(`(${terms.map(escapeRe).join('|')})`, 'gi')
+  return (
+    <>
+      {text.split(re).map((part, i) =>
+        i % 2 ? (
+          <mark key={i} className="rounded-[3px] bg-accent/20 px-0.5 text-strong">
+            {part}
+          </mark>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  )
+}
+
+function MemoryRow({ entry: e, terms }: { entry: VaultEntry; terms: string[] }) {
   const [confirm, setConfirm] = useState(false)
   // The "Forget?" state backs off by itself if it isn't confirmed.
   useEffect(() => {
@@ -87,7 +212,9 @@ function MemoryRow({ entry: e }: { entry: VaultEntry }) {
       transition={morph}
       className="flex items-start gap-3 border-b border-line py-3 last:border-0"
     >
-      <p className="min-w-0 flex-1 text-[16px] leading-snug text-strong">{e.content}</p>
+      <p className="min-w-0 flex-1 text-[16px] leading-snug text-strong">
+        <Highlighted text={e.content} terms={terms} />
+      </p>
       <motion.button
         whileTap={press}
         onClick={() => (confirm ? void forgetFact(e.id) : setConfirm(true))}
@@ -115,9 +242,12 @@ function MemoryRow({ entry: e }: { entry: VaultEntry }) {
   )
 }
 
-function AddMemory() {
+function AddMemory({ defaultCategory, onSaved }: { defaultCategory: string | null; onSaved: () => void }) {
   const [text, setText] = useState('')
-  const [category, setCategory] = useState<string | null>(null)
+  // Adding while a category is picked files it there by default.
+  const [category, setCategory] = useState<string | null>(
+    defaultCategory && ADD_AS.includes(defaultCategory) ? defaultCategory : null,
+  )
   const [saving, setSaving] = useState(false)
   const [note, setNote] = useState<string | null>(null)
 
@@ -130,6 +260,7 @@ function AddMemory() {
       setText('')
       setCategory(null)
       setNote('Saved.')
+      onSaved()
     } else setNote("Couldn't save that. Try again in a moment.")
   }
 
@@ -152,6 +283,7 @@ function AddMemory() {
           value={text}
           onChange={(ev) => setText(ev.target.value)}
           maxLength={500}
+          autoFocus
           placeholder="Add something to remember…"
           aria-label="Add a memory"
           className="glass-pill h-11 min-w-0 flex-1 rounded-[8px] bg-transparent px-4 text-[16px] text-strong outline-none placeholder:text-faint"

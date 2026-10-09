@@ -69,3 +69,32 @@ export function grouped(
     items: by.get(c.id)!.sort((a, b) => (b.updated_at ?? b.created_at).localeCompare(a.updated_at ?? a.created_at)),
   }))
 }
+
+const categoryOf = (e: VaultEntry) =>
+  e.category && CATEGORIES.some((c) => c.id === e.category) ? e.category : 'context'
+
+/** Lower-cased words of a search, for matching and highlighting. */
+export const searchTerms = (query: string) => query.toLowerCase().split(/\s+/).filter(Boolean)
+
+/** Entries matching every search word (anywhere in the memory) and, if picked, one category. */
+export function filterEntries(
+  entries: Record<string, VaultEntry>,
+  query: string,
+  category: string | null,
+): Record<string, VaultEntry> {
+  const terms = searchTerms(query)
+  return Object.fromEntries(
+    Object.entries(entries).filter(([, e]) => {
+      if (category && categoryOf(e) !== category) return false
+      const text = e.content.toLowerCase()
+      return terms.every((t) => text.includes(t))
+    }),
+  )
+}
+
+/** The categories that have something in them, in display order, with counts. */
+export function categoryCounts(entries: Record<string, VaultEntry>): Array<{ id: string; label: string; n: number }> {
+  const n = new Map<string, number>()
+  for (const e of Object.values(entries)) n.set(categoryOf(e), (n.get(categoryOf(e)) ?? 0) + 1)
+  return CATEGORIES.filter((c) => n.has(c.id)).map((c) => ({ ...c, n: n.get(c.id)! }))
+}
