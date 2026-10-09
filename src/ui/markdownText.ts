@@ -29,3 +29,20 @@ export function firstSentence(text: string, max = 160): string {
   const s = (m ? m[1] : text).trim()
   return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s
 }
+
+/** A question big enough that the answer deserves the full reader. */
+export function isLargeQuestion(text: string): boolean {
+  const t = text.trim()
+  return t.length >= 60 || t.split(/\s+/).length >= 9
+}
+
+/** A reply that won't fit box 4: long, structured, or carrying images/tables. */
+export function isRichReply(md: string): boolean {
+  return (
+    md.length > 320 ||
+    /!\[[^\]]*]\(/.test(md) ||
+    /^\s*\|.*\|\s*$/m.test(md) ||
+    (md.match(/^\s*(?:[-*+]|\d+\.)\s+/gm) ?? []).length >= 3 ||
+    /```/.test(md)
+  )
+}

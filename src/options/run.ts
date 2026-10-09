@@ -5,6 +5,7 @@ import { useEntities } from '../stores/entities'
 import { optionsStore } from '../stores/options'
 import { snoozePushOffer } from '../stores/push'
 import { ui, useUi } from '../stores/ui'
+import { isLargeQuestion } from '../ui/markdownText'
 import { listen } from '../voice/speech'
 import type { LocalAct, Option } from './types'
 
@@ -33,8 +34,13 @@ export function toggleVoice(): void {
 
 /** Send a user turn. Off the chat screen, Wendy answers in the line above the grid. */
 export function say(text: string): boolean {
-  if (!useUi.getState().chatOpen) agent.showReply()
-  return chat(text)
+  const u = useUi.getState()
+  if (!u.chatOpen) agent.showReply()
+  const sent = chat(text)
+  // A big question gets the full reader straight away, so the whole answer can
+  // be read (and replied to from the rail) as it streams in.
+  if (sent && !u.chatOpen && !u.reader && isLargeQuestion(text)) ui.openReader()
+  return sent
 }
 
 async function markAllRead(): Promise<void> {

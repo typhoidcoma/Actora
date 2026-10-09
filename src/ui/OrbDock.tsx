@@ -10,6 +10,8 @@ import { Orb } from './orb/Orb'
 
 /** The visible blob is 60% of the canvas box; the rest is glow. */
 const BLOB = 0.6
+/** Orb size when it leads the reader header (Panel reserves room for it). */
+const READER_ORB = 56
 
 /**
  * One persistent orb that glides between three anchors, using transforms only:
@@ -20,6 +22,7 @@ const BLOB = 0.6
 export function OrbDock() {
   const m = useMetrics()
   const focus = useUi((s) => s.focus !== null || s.selected !== null || s.reader)
+  const reader = useUi((s) => s.reader)
   const chatOpen = useUi((s) => s.chatOpen)
   const [pressed, setPressed] = useState(false)
   const [hover, setHover] = useState(false)
@@ -35,6 +38,11 @@ export function OrbDock() {
     blob = 40
     cx = m.sheet.x + 22 + blob / 2
     cy = m.sheet.y + 18 + blob / 2
+  } else if (reader) {
+    // Reading Wendy's answer: she leads the header, in front of her name.
+    blob = READER_ORB
+    cx = m.gridX + 24 + blob / 2
+    cy = m.gridY + 20 + blob / 2
   } else if (focus) {
     // In the expanded tile's header, just left of its close button.
     blob = 40

@@ -17,6 +17,7 @@ export function Panel({
   onClose,
   children,
   footer,
+  lead = false,
 }: {
   layoutId: string
   accent: string
@@ -25,6 +26,8 @@ export function Panel({
   onClose: () => void
   children: ReactNode
   footer?: ReactNode
+  /** The orb docks at the header's left (Wendy's reader): reserve room and enlarge the title. */
+  lead?: boolean
 }) {
   const radius = useMetrics((s) => s.radius)
   const drag = useDragControls()
@@ -59,15 +62,25 @@ export function Panel({
       <motion.header
         layout="position"
         onPointerDown={(e) => drag.start(e)}
-        className="flex shrink-0 touch-none items-start justify-between gap-4 pt-5 pr-[124px] pb-3 pl-6"
+        className={`flex shrink-0 touch-none items-start justify-between gap-4 pt-5 pb-3 ${
+          lead ? 'min-h-[92px] pr-[84px] pl-[96px]' : 'pr-[124px] pl-6'
+        }`}
       >
-        <div className="min-w-0">
+        <div className={`min-w-0 ${lead ? 'flex min-h-14 flex-col justify-center' : ''}`}>
           {kicker && (
-            <div className="label mb-1.5" style={{ color: accent }}>
+            <div className="label mb-1" style={{ color: accent }}>
               {kicker}
             </div>
           )}
-          <h2 className="display text-[clamp(22px,calc(var(--grid)*0.06),34px)] leading-[1.05] text-strong">{title}</h2>
+          <h2
+            className={`display leading-[1.02] text-strong ${
+              lead
+                ? 'text-[clamp(30px,calc(var(--grid)*0.085),46px)] font-bold tracking-[-0.04em]'
+                : 'text-[clamp(22px,calc(var(--grid)*0.06),34px)]'
+            }`}
+          >
+            {title}
+          </h2>
         </div>
       </motion.header>
       <motion.button

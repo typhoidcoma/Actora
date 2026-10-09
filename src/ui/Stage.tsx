@@ -18,6 +18,7 @@ import { KeyboardSheet } from './KeyboardSheet'
 import { MoodLight } from './MoodLight'
 import { OptionRail } from './OptionRail'
 import { OrbDock, OrbSocket } from './OrbDock'
+import { startAutoReader } from './autoReader'
 import { useThemeSync } from './Theme'
 import { WendyLine } from './WendyLine'
 
@@ -56,6 +57,7 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
   useEffect(() => watchMetrics(), [])
   useEffect(() => startWendyOptions(), [])
   useEffect(() => startRanking(), [])
+  useEffect(() => startAutoReader(), [])
   useEffect(() => startGreeting(), [])
   useEffect(() => {
     void initPush()

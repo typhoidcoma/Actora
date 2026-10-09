@@ -40,7 +40,10 @@ export function PriorityCard({
 
   const header = (
     <div className={`flex items-center justify-between gap-2 ${right ? 'flex-row-reverse' : ''}`}>
-      <span className="label truncate">
+      <span
+        className="truncate font-semibold text-text"
+        style={{ fontSize: 'clamp(15px, calc(var(--grid) * 0.034), 20px)' }}
+      >
         <span className="num font-bold" style={{ color: rankTint }}>
           {rankLabel}
         </span>
@@ -95,7 +98,7 @@ export function PriorityCard({
       }}
     >
       <div className="min-w-0">
-        <div className="text-[11px] font-bold" style={{ color: kind.color }}>
+        <div className="text-[13px] font-bold" style={{ color: kind.color }}>
           {item.whyFrom === 'wendy' ? 'Wendy says' : 'Why now'}
         </div>
         <div className="line-clamp-2 text-[max(13px,calc(var(--grid)*0.024))] leading-snug font-medium text-strong">

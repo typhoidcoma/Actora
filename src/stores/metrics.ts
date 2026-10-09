@@ -84,7 +84,8 @@ export function measure(): Metrics {
   const gridY = stackTop + lineH + 6
 
   const lineW = Math.round(Math.min(vw - reserveX * 2, Math.max(gridW, 720)))
-  const line = { x: Math.round((vw - lineW) / 2), y: stackTop, w: lineW, h: lineH }
+  // Her line owns the whole band above the cards; text is centred in it.
+  const line = { x: Math.round((vw - lineW) / 2), y: safe.top, w: lineW, h: Math.max(lineH, gridY - safe.top) }
   const railW = Math.round(Math.min(vw - 16, 960))
   const rail = {
     x: Math.round((vw - railW) / 2),

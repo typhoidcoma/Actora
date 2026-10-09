@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAgent } from '../stores/agent'
 import { useMetrics } from '../stores/metrics'
@@ -48,13 +48,20 @@ export function WendyLine() {
     return { key: 'greeting', text: a.greeting.text, live: a.greeting.streaming }
   }, [a])
 
+  // Settled text gets a fresh word-by-word reveal whenever it changes (page
+  // load, cached → new greeting); text that just finished streaming keeps its
+  // key so it isn't revealed a second time.
+  const [streamed, setStreamed] = useState('')
+  if (content.live && content.text !== streamed) setStreamed(content.text)
+  const displayKey = content.live || content.text === streamed ? content.key : `${content.key}:${content.text}`
+
   const size = Math.round(
     m.compact ? Math.min(26, Math.max(20, m.line.h * 0.11)) : Math.max(18, Math.min(26, m.grid * 0.04)),
   )
 
   return (
     <div
-      className={`pointer-events-none fixed z-10 flex flex-col ${m.compact ? 'justify-center' : 'justify-end'}`}
+      className="pointer-events-none fixed z-10 flex flex-col justify-center"
       style={{ left: m.line.x, top: m.line.y, width: m.line.w, height: m.line.h }}
       aria-live="polite"
     >
@@ -65,9 +72,9 @@ export function WendyLine() {
           WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 14px)',
         }}
       >
-        <AnimatePresence mode="popLayout" initial={false}>
+        <AnimatePresence mode="popLayout">
           <motion.div
-            key={content.key}
+            key={displayKey}
             initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, y: -8, filter: 'blur(4px)', transition: { duration: 0.2 } }}
@@ -85,12 +92,37 @@ export function WendyLine() {
             ) : content.live ? (
               <Words text={content.text} />
             ) : (
-              content.text
+              <Reveal text={content.text} />
             )}
           </motion.div>
         </AnimatePresence>
       </div>
     </div>
+  )
+}
+
+/** Settled text arriving (page load, a new reply): words rise in one after another. */
+function Reveal({ text }: { text: string }) {
+  const parts = text.split(/(\s+)/)
+  let word = 0
+  return (
+    <>
+      {parts.map((w, i) => {
+        if (/^\s+$/.test(w)) return w
+        const delay = Math.min(word++ * 0.045, 1.2)
+        return (
+          <motion.span
+            key={i}
+            className="inline-block"
+            initial={{ opacity: 0, y: 8, filter: 'blur(3px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ duration: 0.45, delay, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {w}
+          </motion.span>
+        )
+      })}
+    </>
   )
 }
 

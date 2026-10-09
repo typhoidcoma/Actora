@@ -13,8 +13,11 @@ import { Panel } from './Panel'
 export function Reader() {
   const a = useAgent(
     useShallow((s) => {
+      const busy = s.awaitingTurn || s.turnId !== null
       const lastIdx = s.messages.map((m) => m.role).lastIndexOf('assistant')
-      const asked = [...s.messages.slice(0, lastIdx < 0 ? undefined : lastIdx)].reverse().find((m) => m.role === 'user')
+      // Mid-turn the question is the newest message; otherwise the one before the answer.
+      const before = busy ? s.messages : s.messages.slice(0, lastIdx < 0 ? undefined : lastIdx)
+      const asked = [...before].reverse().find((m) => m.role === 'user')
       return {
         answer: lastIdx >= 0 ? s.messages[lastIdx].text : '',
         asked: asked?.text ?? null,
@@ -27,16 +30,21 @@ export function Reader() {
     }),
   )
   const text = a.busy && a.streaming !== null ? stableMarkdown(a.streaming) : a.answer
-  const kicker = a.busy ? (a.phase === 'tool' ? `${toolLabel(a.tool)}…` : 'Writing…') : a.botName
+  const kicker = a.busy
+    ? a.phase === 'tool'
+      ? `${toolLabel(a.tool)}…`
+      : a.streaming
+        ? 'Writing…'
+        : 'Thinking…'
+    : 'Latest answer'
 
   return (
-    <Panel
-      layoutId="wendy-card"
-      accent="#A7C5BD"
-      kicker={kicker}
-      title={a.asked ? `“${a.asked}”` : 'Your answer'}
-      onClose={ui.closeReader}
-    >
+    <Panel lead layoutId="wendy-card" accent="#6E9C92" kicker={kicker} title={a.botName} onClose={ui.closeReader}>
+      {a.asked && (
+        <p className="mb-4 border-l-2 border-line pl-3 text-[15px] text-muted">
+          You asked <span className="text-text">“{a.asked}”</span>
+        </p>
+      )}
       {text ? (
         <div className="text-[16px] text-text">
           <LazyMarkdown text={text} />

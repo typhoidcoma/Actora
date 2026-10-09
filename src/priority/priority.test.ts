@@ -144,3 +144,15 @@ describe('Wendy actions', () => {
     expect(useUi.getState()).toMatchObject({ reader: true, selected: null })
   })
 })
+
+describe('auto reader heuristics', () => {
+  it('flags big questions and rich replies', async () => {
+    const { isLargeQuestion, isRichReply } = await import('../ui/markdownText')
+    expect(isLargeQuestion('Plan my day')).toBe(false)
+    expect(isLargeQuestion('Can you compare the three best running routes near me for tomorrow?')).toBe(true)
+    expect(isRichReply('Sure, done.')).toBe(false)
+    expect(isRichReply('Options:\n- a\n- b\n- c')).toBe(true)
+    expect(isRichReply('![x](https://e.com/a.png)')).toBe(true)
+    expect(isRichReply('| a | b |\n|---|---|')).toBe(true)
+  })
+})

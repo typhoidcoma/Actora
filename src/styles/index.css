@@ -196,8 +196,8 @@ button {
 
 /* Small sentence-case label (replaces the old tracked-uppercase mono eyebrow). */
 .label {
-  font-size: 0.8125rem;
-  font-weight: 500;
+  font-size: 0.9375rem;
+  font-weight: 600;
   color: var(--t-muted);
 }
 
