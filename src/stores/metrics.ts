@@ -68,8 +68,8 @@ function measure(): Metrics {
   // No top bar: Wendy's line starts just under the safe area.
   const headerH = safe.top + (short ? 10 : 18)
   const baseLineH = Math.round(short ? 46 : clamp(vh * 0.1, 72, 116))
-  // Room for two rows of option chips.
-  const railH = Math.max(safe.bottom, 10) + 112
+  // Room for two rows of option chips (phones: the icons sit beside the first row).
+  const railH = Math.max(safe.bottom, 10) + (compact ? 108 : 112)
   const availW = vw - reserveX * 2
   const availH = vh - headerH - baseLineH - railH - 12
 
@@ -131,7 +131,8 @@ function measure(): Metrics {
     const sGridW = Math.round(vw - reserveX * 2)
     const sGridY = lineY + lineH + 4
     const sGridH = Math.max(200, vh - railH - sGridY - 6)
-    const cellH = Math.round(clamp((sGridH - sGap * 3) / 4, 118, 200))
+    // Below ~100 px the cards can't hold their text; tiny phones scroll the column instead.
+    const cellH = Math.round(clamp((sGridH - sGap * 3) / 4, 100, 200))
     return {
       vw,
       vh,

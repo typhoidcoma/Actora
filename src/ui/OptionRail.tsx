@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { runOption, toggleVoice } from '../options/run'
 import type { Option } from '../options/types'
 import { useOptions } from '../options/useOptions'
@@ -9,9 +9,6 @@ import { ui } from '../stores/ui'
 import { jelly, morph } from './motion'
 import { sheen } from './sheen'
 import { useMetrics } from '../stores/metrics'
-
-/** Soft fade at the ends of the swipeable phone row, so it reads as scrollable. */
-const FADE_EDGES = 'linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 20px), transparent)'
 
 /**
  * The user's voice: what they can say or do next, always. Context-aware chips
@@ -35,11 +32,6 @@ export function OptionRail({
   const narrow = useMetrics((s) => s.compact)
   // Count what the user actually got to see (settled, not mid-turn), for staleness.
   const shownIds = options.map((o) => o.id).join('|')
-  // A new set of options (Wendy's arriving in front) starts the swipe row at its first, most relevant pill.
-  const row = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (narrow) row.current?.scrollTo({ left: 0, behavior: 'smooth' })
-  }, [shownIds, narrow])
   useEffect(() => {
     if (busy || loading || !shownIds) return
     const t = setTimeout(() => optionsStore.noteShown(options), 1500)
@@ -47,93 +39,114 @@ export function OptionRail({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by the visible ids
   }, [shownIds, busy, loading])
 
-  return (
-    <div className={`flex gap-2 ${narrow ? 'flex-col items-stretch' : 'items-center'} ${className}`}>
-      {/* Wide: up to two centred rows; labels truncate rather than spill under the icons.
-          Phone: one row you swipe through, so nothing wraps or gets clipped. */}
-      <div
-        ref={row}
-        className={
-          narrow
-            ? 'scroll-x flex min-w-0 snap-x scroll-pl-3 items-center gap-2 overflow-x-auto py-1 pr-5 pl-3 [&>*]:shrink-0 [&>*]:snap-start'
-            : 'flex max-h-[108px] min-w-0 flex-1 flex-wrap content-center items-center justify-center gap-2 overflow-hidden px-1 py-1.5'
-        }
-        style={narrow ? { maskImage: FADE_EDGES, WebkitMaskImage: FADE_EDGES } : undefined}
-      >
-        <AnimatePresence mode="popLayout" initial={false}>
-          {listening ? (
-            <motion.button
-              key="listening"
-              layout
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={morph}
-              onClick={toggleVoice}
-              className="glass-pill flex h-12 w-full min-w-0 items-center gap-3 rounded-[8px] px-5 text-left text-[15px] text-strong"
-            >
-              <motion.svg
-                viewBox="0 0 24 24"
-                className="h-[18px] w-[18px] shrink-0 text-urgent"
-                aria-hidden
-                animate={{ scale: [1, 1.15, 1], opacity: [1, 0.65, 1] }}
-                transition={{ duration: 1.1, repeat: Infinity }}
-              >
-                <rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor" />
-                <path
-                  d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  fill="none"
-                />
-              </motion.svg>
-              <span className="truncate">{interim || 'Listening…'}</span>
-            </motion.button>
-          ) : (
-            options.map((o, i) => <Chip key={o.id} option={o} index={i} disabled={offline || (busy && !o.act)} />)
-          )}
-          {!listening && loading && (
-            <motion.span
-              key="loading"
-              layout
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="glass-pill shimmer h-11 w-24 shrink-0 rounded-[8px]"
-              aria-hidden
-            />
-          )}
-        </AnimatePresence>
-      </div>
-
-      <div className={`flex shrink-0 items-center gap-1.5 pr-1 ${narrow ? 'justify-end' : ''}`}>
-        {contextKey !== 'chat' && (
-          <motion.button
-            whileTap={jelly}
-            onClick={ui.openChat}
-            aria-label="Open the conversation"
-            className="glass-pill grid h-10 w-10 place-items-center rounded-[8px] text-muted"
-          >
-            <ChatIcon />
-          </motion.button>
-        )}
+  const iconRow = (
+    <div className={`flex shrink-0 items-center gap-1.5 ${narrow ? 'float-right m-1 ml-2' : 'pr-1'}`}>
+      {contextKey !== 'chat' && (
         <motion.button
           whileTap={jelly}
-          onClick={() => ui.keyboard(true)}
-          disabled={offline}
-          aria-label="Type instead"
-          className="glass-pill grid h-10 w-10 place-items-center rounded-[8px] text-muted disabled:opacity-40"
+          onClick={ui.openChat}
+          aria-label="Open the conversation"
+          className="glass-pill grid h-10 w-10 place-items-center rounded-[8px] text-muted"
         >
-          <KeyboardIcon />
+          <ChatIcon />
         </motion.button>
-        {trailing}
+      )}
+      <motion.button
+        whileTap={jelly}
+        onClick={() => ui.keyboard(true)}
+        disabled={offline}
+        aria-label="Type instead"
+        className="glass-pill grid h-10 w-10 place-items-center rounded-[8px] text-muted disabled:opacity-40"
+      >
+        <KeyboardIcon />
+      </motion.button>
+      {trailing}
+    </div>
+  )
+
+  const pills = (
+    <AnimatePresence mode="popLayout" initial={false}>
+      {listening ? (
+        <motion.button
+          key="listening"
+          layout
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.96 }}
+          transition={morph}
+          onClick={toggleVoice}
+          className={`glass-pill flex h-12 min-w-0 ${narrow ? 'm-1 overflow-hidden' : 'w-full'} items-center gap-3 rounded-[8px] px-5 text-left text-[15px] text-strong`}
+        >
+          <motion.svg
+            viewBox="0 0 24 24"
+            className="h-[18px] w-[18px] shrink-0 text-urgent"
+            aria-hidden
+            animate={{ scale: [1, 1.15, 1], opacity: [1, 0.65, 1] }}
+            transition={{ duration: 1.1, repeat: Infinity }}
+          >
+            <rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor" />
+            <path
+              d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              fill="none"
+            />
+          </motion.svg>
+          <span className="truncate">{interim || 'Listening…'}</span>
+        </motion.button>
+      ) : (
+        options.map((o, i) => (
+          <Chip key={o.id} option={o} index={i} small={narrow} disabled={offline || (busy && !o.act)} />
+        ))
+      )}
+      {!listening && loading && (
+        <motion.span
+          key="loading"
+          layout
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className={`glass-pill shimmer w-24 shrink-0 rounded-[8px] ${narrow ? 'm-1 inline-block h-10 align-top' : 'h-11'}`}
+          aria-hidden
+        />
+      )}
+    </AnimatePresence>
+  )
+
+  // Phone: one flowing block, icons floated beside the first row; two rows of
+  // pills at most, so the cards keep their room. Pills that don't fit drop whole.
+  if (narrow) {
+    return (
+      <div className={`max-h-[100px] overflow-hidden px-0.5 py-0.5 text-center ${className}`}>
+        {iconRow}
+        {pills}
       </div>
+    )
+  }
+
+  return (
+    <div className={`flex items-center gap-2 ${className}`}>
+      {/* Up to two centred rows, most relevant first; long labels truncate rather than spill. */}
+      <div className="flex max-h-[108px] min-w-0 flex-1 flex-wrap content-center items-center justify-center gap-2 overflow-hidden px-1 py-1.5">
+        {pills}
+      </div>
+      {iconRow}
     </div>
   )
 }
 
-function Chip({ option, index, disabled }: { option: Option; index: number; disabled: boolean }) {
+function Chip({
+  option,
+  index,
+  small,
+  disabled,
+}: {
+  option: Option
+  index: number
+  small: boolean
+  disabled: boolean
+}) {
   return (
     <motion.button
       layout
@@ -156,7 +169,7 @@ function Chip({ option, index, disabled }: { option: Option; index: number; disa
       {...sheen}
       disabled={disabled}
       onClick={() => runOption(option)}
-      className={`glass-pill flex h-11 max-w-full min-w-0 items-center gap-2 rounded-[8px] px-4 text-[15px] whitespace-nowrap transition-opacity disabled:opacity-40 ${
+      className={`glass-pill max-w-full min-w-0 items-center gap-2 rounded-[8px] whitespace-nowrap ${small ? 'm-1 inline-flex h-10 px-3.5 align-top text-[14px]' : 'flex h-11 px-4 text-[15px]'} transition-opacity disabled:opacity-40 ${
         option.act ? 'font-medium text-strong' : 'text-text'
       }`}
     >

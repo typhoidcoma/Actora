@@ -2,6 +2,7 @@ import { motion } from 'motion/react'
 import { runOption } from '../../options/run'
 import { actOption } from '../../options/types'
 import type { RankedItem } from '../../stores/priority'
+import { useMetrics } from '../../stores/metrics'
 import { ui } from '../../stores/ui'
 import { press } from '../motion'
 import type { Corner } from '../tiles/Face'
@@ -28,6 +29,8 @@ export function PriorityCard({
   compact: boolean
 }) {
   const kind = KIND[item.kind]
+  // Short phones: cards squeeze to fit all four, so trim the padding and spacing.
+  const tight = useMetrics((m) => m.stack && m.cellH < 118)
   const right = corner === 1 || corner === 3
   const bottom = corner === 2 || corner === 3
   const heat = urgencyColor(item.urgency)
@@ -54,7 +57,7 @@ export function PriorityCard({
             runOption(actOption(item.primary!.label, item.primary!.act))
           }}
           aria-label={`${item.primary.label}: ${item.title}`}
-          className="glass-pill grid h-9 min-w-9 shrink-0 place-items-center rounded-[6px] px-2.5 text-[12px] font-semibold text-strong"
+          className={`glass-pill grid shrink-0 ${tight ? 'h-8 min-w-8' : 'h-9 min-w-9'} place-items-center rounded-[6px] px-2.5 text-[12px] font-semibold text-strong`}
         >
           {item.primary.act.type === 'complete' ? <Check /> : item.primary.label}
         </motion.button>
@@ -79,7 +82,11 @@ export function PriorityCard({
       >
         {item.title}
       </div>
-      <div className="mt-2 truncate text-[max(12px,calc(var(--grid)*0.025))] font-medium text-muted">{item.meta}</div>
+      <div
+        className={`${tight ? 'mt-1' : 'mt-2'} truncate text-[max(12px,calc(var(--grid)*0.025))] font-medium text-muted`}
+      >
+        {item.meta}
+      </div>
     </div>
   )
 
@@ -93,7 +100,9 @@ export function PriorityCard({
       label={`${rank === 1 ? 'Top priority' : `Priority ${rank}`}, ${kind.label}: ${item.title}`}
       onOpen={() => ui.open({ kind: item.kind, id: item.id })}
     >
-      <div className="flex h-full flex-col justify-between gap-2 p-[max(12px,calc(var(--grid)*0.035))]">
+      <div
+        className={`flex h-full flex-col justify-between ${tight ? 'gap-1 p-[10px]' : 'gap-2 p-[max(12px,calc(var(--grid)*0.035))]'}`}
+      >
         {bottom ? (
           <>
             {/* spacer: keeps the title centred, clear of the notch */}
