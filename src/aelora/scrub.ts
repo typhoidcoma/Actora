@@ -99,6 +99,10 @@ export function scrubToolLeaks(text: string, streaming = false): string {
   if (streaming) {
     const open = OPEN.exec(out)
     if (open && (TOOLS.has(open[1]) || open[1].includes('_'))) out = out.slice(0, open.index)
+    // Hold back a last word that may be the start of a call ("perf", "perform_re"…):
+    // it shows a token later if it was just a word.
+    const tail = /[a-z_]+$/.exec(out)
+    if (tail && [...TOOLS].some((t) => t.startsWith(tail[0]))) out = out.slice(0, tail.index)
     // Hold back a link that might turn out to be an answer link.
     const link = SAY_OPEN.exec(out)
     if (link) out = out.slice(0, link.index)

@@ -3,6 +3,7 @@ import type { MoodState, ServerFrame, TranscriptMessage } from './protocol'
 import type { FrameBus } from './socket'
 import { describeTool, toolDetail } from './activity'
 import { sayLinks, scrubToolLeaks } from './scrub'
+import { strayAction } from './actions'
 import { sayOption } from '../options/types'
 import { optionsStore } from '../stores/options'
 import { contextKeyOf, useUi } from '../stores/ui'
@@ -199,11 +200,14 @@ export function handleChatFrame(f: ServerFrame): boolean {
 
     case 'tool.progress': {
       if (!mine) return true
-      const name = String(f.name ?? '')
+      // A ui_action called by name (colors_set) runs here even though the server
+      // refuses it (router.ts), so it reads as screen work, not a failure.
+      const stray = strayAction(f.name) !== null
+      const name = stray ? 'ui_action' : String(f.name ?? '')
       if (f.phase === 'called') {
         set({ phase: 'tool', toolName: name, steps: startStep(s.steps, name, toolDetail(f.argsSummary)) })
       } else {
-        set({ phase: 'thinking', toolName: null, steps: endStep(s.steps, name, f.phase === 'failed') })
+        set({ phase: 'thinking', toolName: null, steps: endStep(s.steps, name, f.phase === 'failed' && !stray) })
         orbSignals.bump(0.45) // a small flare as each step lands
       }
       return true

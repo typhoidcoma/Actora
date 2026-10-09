@@ -48,6 +48,7 @@ import { request } from './request'
 import { describeScheme, type SchemeInput } from '../color/scheme'
 import { resetColors, setColors, useScheme } from '../stores/scheme'
 import type { FrameBus } from './socket'
+import { actionArgs, AVAILABLE_ACTIONS, strayAction } from './actions'
 
 /**
  * ui_action names we accept; advertised in client_state so Wendy can drive the
@@ -72,36 +73,7 @@ import type { FrameBus } from './socket'
  * Colours pass through the scheme engine (src/color/scheme.ts): contrast, gamut,
  * meaning and separation guardrails; what it changed comes back in screen.colors.notes.
  */
-export const AVAILABLE_ACTIONS = [
-  'home.show',
-  'priorities.set',
-  'card.open',
-  'card.close',
-  'item.focus',
-  'list.open',
-  'tile.focus',
-  'tile.close',
-  'reader.open',
-  'reader.close',
-  'finds.open',
-  'finds.close',
-  'finds.focus',
-  'finds.refresh',
-  'finds.set',
-  'vault.open',
-  'vault.close',
-  'vault.search',
-  'chat.open',
-  'chat.close',
-  'options.set',
-  'reply.show',
-  'reply.hide',
-  'theme.set',
-  'colors.set',
-  'colors.reset',
-  'voice.listen',
-  'push.offer',
-] as const
+export { AVAILABLE_ACTIONS } from './actions'
 
 /** Reaction states the orb can play (AVATAR-INTEGRATION.md DEFAULT_STATES). */
 const ANIMATIONS = [
@@ -498,6 +470,13 @@ function routeEvent(bus: FrameBus, event: string, data: Record<string, unknown> 
 }
 
 export function routeFrame(f: ServerFrame, bus: FrameBus): void {
+  // Wendy sometimes calls a ui_action by name as if it were its own tool
+  // (colors_set{…}); the server refuses it as unknown, so run it here instead.
+  if (f.type === 'tool.progress' && f.phase === 'called') {
+    const action = strayAction(f.name)
+    const args = action ? actionArgs(f.argsSummary) : null
+    if (action && args) runUiAction(action, args)
+  }
   // The fun-finds thread runs its own turns; claim its frames before the user's chat sees them.
   if (handleFindsFrame(f)) return
   if (handleChatFrame(f)) return

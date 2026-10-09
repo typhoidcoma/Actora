@@ -28,6 +28,16 @@ describe('scrubToolLeaks', () => {
     expect(scrubToolLeaks('see [the docs](https://x.dev) now')).toBe('see [the docs](https://x.dev) now')
   })
 
+  it('never flashes the start of a call while streaming', () => {
+    const t = 'perform_reaction{anchor:my bad,intensity:high,trigger:question_confusion}my bad, i blanked'
+    let acc = ''
+    for (const ch of t) {
+      acc += ch
+      expect(scrubToolLeaks(acc, true)).not.toMatch(/^p|[{}]/)
+    }
+    expect(scrubToolLeaks(t)).toBe('my bad, i blanked')
+  })
+
   it('leaves ordinary text alone', () => {
     for (const t of [
       'Your 3pm (with Sam) moved to 4.',
