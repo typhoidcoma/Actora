@@ -106,7 +106,7 @@ export function sendChat(bus: FrameBus, text: string): boolean {
   }
 
   set({
-    messages: [...s.messages, { id: bubbleId(), role: 'user', text: message }],
+    messages: [...s.messages, { id: bubbleId(), role: 'user', text: message, at: new Date().toISOString() }],
     awaitingTurn: true,
     streaming: '',
     phase: 'thinking',
@@ -255,6 +255,7 @@ export function handleChatFrame(f: ServerFrame): boolean {
         id: bubbleId(),
         role: 'assistant',
         text: scrubToolLeaks(raw),
+        at: new Date().toISOString(),
       }
       offerSayLinks(raw)
       // A call that got past the scrubber: log the raw form so the pattern can be fixed.
@@ -341,6 +342,7 @@ export function loadTranscript(
       seq: m.seq,
       role: m.role as 'user' | 'assistant',
       text: m.role === 'assistant' ? scrubToolLeaks(m.content) : m.content,
+      at: m.createdAt,
     }))
   const history = { hasMore: !!page.hasMore, cursor: page.nextBeforeSeq ?? null }
   const s = get()
@@ -356,7 +358,7 @@ export function loadTranscript(
     // A fresh read of the thread: her welcome isn't in it (system_chat), so it
     // stays at the end when nothing has been said since.
     const tail = s.messages.at(-1)
-    set({ messages: tail?.greeting ? [...bubbles, tail] : bubbles, history })
+    set({ messages: tail?.greeting ? [...bubbles, tail] : bubbles, history, transcriptReady: true })
   }
 }
 

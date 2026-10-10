@@ -11,6 +11,8 @@ export interface ChatBubble {
   seq?: number
   role: 'user' | 'assistant' | 'error'
   text: string
+  /** When it was said (ISO), so her welcome knows how long ago the last chat was. */
+  at?: string
   /**
    * Her welcome line, shown in the chat where she said it. It was written over
    * system_chat, so the server's history doesn't have it (see greetingInContext).
@@ -88,6 +90,8 @@ export interface AgentState {
   greeting: { text: string; streaming: boolean }
   /** A system_chat was sent and is not finished. */
   greetingPending: boolean
+  /** The main thread's latest messages have been read (or there is none): her welcome can pick up from them. */
+  transcriptReady: boolean
   line: LineMode
   notice: Notice | null
   /** Free text for line mode 'message' (e.g. push test results, install steps). */
@@ -116,6 +120,7 @@ export const useAgent = create<AgentState>(() => ({
   history: { hasMore: false, cursor: null },
   greeting: { text: '', streaming: false },
   greetingPending: false,
+  transcriptReady: false,
   line: 'greeting',
   notice: null,
   message: null,
@@ -136,6 +141,7 @@ export const agent = {
       history: { hasMore: false, cursor: null },
       greeting: { text: '', streaming: false },
       greetingPending: false,
+      transcriptReady: false,
       line: 'greeting',
       notice: null,
       message: null,

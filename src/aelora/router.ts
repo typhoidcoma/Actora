@@ -611,8 +611,11 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
       )
       if (id) {
         rememberMain(id)
-        void request(bus, { type: 'conversation.open', conversationId: id, limit: 40 }, 'conversation.messages')
-      }
+        void request(bus, { type: 'conversation.open', conversationId: id, limit: 40 }, 'conversation.messages').then(
+          // Couldn't read it: her welcome goes ahead without it.
+          (r) => r || useAgent.setState({ transcriptReady: true }),
+        )
+      } else useAgent.setState({ transcriptReady: true })
       return
     }
     case 'conversation.messages':
