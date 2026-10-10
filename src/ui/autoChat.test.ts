@@ -10,7 +10,8 @@ describe('following Wendy while she talks', () => {
   let stop: () => void
   beforeEach(() => {
     ui.closeAll()
-    useAgent.setState({ turnId: null, awaitingTurn: false, streaming: null, phase: 'idle' })
+    useAgent.setState({ turnId: null, awaitingTurn: false, streaming: null, phase: 'idle', messages: [] })
+    useUi.setState({ lineOverflow: false })
     stop = startAutoChat()
   })
   afterEach(() => stop())
@@ -47,5 +48,39 @@ describe('following Wendy while she talks', () => {
   it('from home, a short reply stays in her line', () => {
     talk('Done.')
     expect(useUi.getState()).toMatchObject({ chatOpen: false })
+  })
+
+  it('from home, a reply past its first sentence (her "Read all") opens the chat', () => {
+    talk('Done. I also moved Friday')
+    expect(useUi.getState().chatOpen).toBe(true)
+  })
+
+  it('from home, a first sentence too long for the line opens the chat', () => {
+    talk('A single sentence that runs on')
+    expect(useUi.getState().chatOpen).toBe(false)
+    useUi.setState({ lineOverflow: true })
+    expect(useUi.getState().chatOpen).toBe(true)
+  })
+
+  it('once closed, more sentences in the same turn leave it closed', () => {
+    talk('Done. I also ')
+    ui.closeChat()
+    talk('Done. I also moved Friday. And a third thing.')
+    expect(useUi.getState().chatOpen).toBe(false)
+  })
+
+  it('a whole reply landing as the turn ends opens the chat when it has more', () => {
+    useAgent.setState({ awaitingTurn: true, turnAt: 1 })
+    useAgent.setState({
+      awaitingTurn: false,
+      turnAt: null,
+      messages: [{ id: 'a1', role: 'assistant', text: 'Sure. Here is the rest of it.' }],
+    })
+    expect(useUi.getState().chatOpen).toBe(true)
+  })
+
+  it('a transcript loading at home, outside a turn, does not open the chat', () => {
+    useAgent.setState({ messages: [{ id: 'a1', role: 'assistant', text: 'Old. Reply with more.' }] })
+    expect(useUi.getState().chatOpen).toBe(false)
   })
 })

@@ -40,6 +40,8 @@ interface UiState {
   pastChats: boolean
   /** The typing sheet (keyboard button on the rail, "Type instead" in the menu on phones). */
   keyboardOpen: boolean
+  /** Her reply is cut off in the line above the cards (set by WendyLine; the chat opens for it). */
+  lineOverflow: boolean
 }
 
 const ITEM_TILE: Record<ItemKind, TileId> = {
@@ -62,6 +64,7 @@ export const useUi = create<UiState>(() => ({
   picking: null,
   pastChats: false,
   keyboardOpen: false,
+  lineOverflow: false,
 }))
 
 const same = (a: Selected | null, b: Selected) =>

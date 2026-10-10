@@ -5,7 +5,7 @@ import { useAgent } from '../stores/agent'
 import { ui, useUi, panelOpen } from '../stores/ui'
 import { useMetrics } from '../stores/metrics'
 import { Activity } from './Activity'
-import { firstSentence, plainText } from './markdownText'
+import { firstSentence, hasMore, plainText } from './markdownText'
 
 /**
  * Wendy's voice above the grid: her welcome, her replies to what you tapped,
@@ -60,9 +60,7 @@ export function WendyLine() {
       if (a.turnBusy && !a.streaming) return { key: 'thinking', text: '' }
       if (a.streaming) return { key: 'reply-live', text: firstSentence(plainText(a.streaming)), live: true }
       if (a.last?.role === 'assistant') {
-        const full = plainText(a.last.text)
-        const first = firstSentence(full)
-        return { key: `r:${a.last.id}`, text: first, more: full.length > first.length + 2 }
+        return { key: `r:${a.last.id}`, text: firstSentence(plainText(a.last.text)), more: hasMore(a.last.text) }
       }
       if (a.last?.role === 'error') return { key: `e:${a.last.id}`, text: a.last.text }
     }
@@ -137,8 +135,12 @@ export function WendyLine() {
     el.style.fontSize = `${fs}px`
     while (fs > min && el.scrollHeight > room) el.style.fontSize = `${--fs}px`
     setFit(fs)
-    setClamp(el.scrollHeight > room ? Math.max(2, Math.floor(room / (fs * 1.22))) : null)
-  }, [size, measured, content.live, m.line.h, m.line.w, m.compact])
+    const over = el.scrollHeight > room
+    setClamp(over ? Math.max(2, Math.floor(room / (fs * 1.22))) : null)
+    // A reply cut off here is a reply for the chat (autoChat opens it).
+    const reply = content.key === 'reply-live' || content.key.startsWith('r:')
+    if (useUi.getState().lineOverflow !== (over && reply)) useUi.setState({ lineOverflow: over && reply })
+  }, [size, measured, content.live, content.key, m.line.h, m.line.w, m.compact])
 
   return (
     <motion.div

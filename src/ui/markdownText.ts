@@ -25,6 +25,12 @@ export function firstSentence(text: string, max = 160): string {
   return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s
 }
 
+/** A reply with more than its first sentence: her line shows "Read all" (and the chat opens for it). */
+export function hasMore(md: string): boolean {
+  const full = plainText(md)
+  return full.length > firstSentence(full).length + 2
+}
+
 /** A question big enough that the answer deserves the full chat. */
 export function isLargeQuestion(text: string): boolean {
   const t = text.trim()
