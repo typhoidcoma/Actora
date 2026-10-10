@@ -27,6 +27,20 @@ describe('idle → home', () => {
     stop()
   })
 
+  it('a panel with a lot to read stays up for reading time', () => {
+    vi.useFakeTimers()
+    const words = Array.from({ length: 200 }, () => 'word').join(' ') // ~1 min at 200 wpm
+    Object.assign(document, { querySelector: () => ({ textContent: words }) })
+    const stop = startIdleHome(500, 1000)
+    ui.open({ kind: 'task', id: 't1' })
+    vi.advanceTimersByTime(30_000)
+    expect(useUi.getState().selected).not.toBeNull()
+    vi.advanceTimersByTime(31_000)
+    expect(useUi.getState().selected).toBeNull()
+    stop()
+    Object.assign(document, { querySelector: undefined })
+  })
+
   it('closes whatever is open after the idle time', () => {
     vi.useFakeTimers()
     const stop = startIdleHome(500, 1000)

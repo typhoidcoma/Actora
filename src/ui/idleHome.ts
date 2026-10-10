@@ -6,7 +6,7 @@ import { panelOpen, ui, useUi } from '../stores/ui'
 const CHAT_IDLE_MS = 10_000
 /** Any other panel (lists, items, finds, the Vault) left alone this long goes home. */
 const PANEL_IDLE_MS = 6_000
-/** The longest a quiet conversation waits for reading time. */
+/** The longest a quiet chat or panel waits for reading time. */
 const READ_CAP_MS = 2 * 60_000
 
 const away = () => {
@@ -21,7 +21,8 @@ const inConversation = () => {
 /**
  * Eases back to home when nothing is happening, so the app always looks ready
  * for Wendy to be proactive: 10 s after a conversation goes quiet, 6 s for
- * other panels. Taps, keys, scrolling (inside panels too), moving the pointer
+ * other panels, either stretched to give what's on screen time to be read.
+ * Taps, keys, scrolling (inside panels too), moving the pointer
  * and selecting text all count as activity. Never while Wendy is working or
  * talking, the mic is listening, the keyboard is up, or text is selected:
  * the clock restarts once those end.
@@ -47,12 +48,20 @@ export function startIdleHome(chatMs = CHAT_IDLE_MS, panelMs = PANEL_IDLE_MS): (
     )
   }
 
-  // A conversation stays up at least as long as it takes to read her last answer
-  // (about 200 words a minute), so a long one isn't whisked away mid-read.
-  const readMs = () => {
-    const last = useAgent.getState().messages.findLast((m) => m.role === 'assistant')
-    const words = last ? last.text.split(/\s+/).filter(Boolean).length : 0
-    return Math.min(Math.max(chatMs, (words / 200) * 60_000), Math.max(chatMs, READ_CAP_MS))
+  // Stays up at least as long as it takes to read (about 200 words a minute), so
+  // a long answer or brief isn't whisked away mid-read.
+  const readMs = (base: number, text: string) => {
+    const words = text.split(/\s+/).filter(Boolean).length
+    return Math.min(Math.max(base, (words / 200) * 60_000), Math.max(base, READ_CAP_MS))
+  }
+  // The chat: her last answer. A panel: whatever it shows (a task's brief, a list, a find).
+  const waitMs = () => {
+    if (inConversation()) {
+      const last = useAgent.getState().messages.findLast((m) => m.role === 'assistant')
+      return readMs(chatMs, last?.text ?? '')
+    }
+    const panel = typeof document !== 'undefined' ? document.querySelector?.('[data-panel]') : null
+    return readMs(panelMs, panel?.textContent ?? '')
   }
 
   const arm = () => {
@@ -63,7 +72,7 @@ export function startIdleHome(chatMs = CHAT_IDLE_MS, panelMs = PANEL_IDLE_MS): (
         if (busy()) return arm()
         if (away()) ui.closeAll()
       },
-      inConversation() ? readMs() : panelMs,
+      waitMs(),
     )
   }
 

@@ -47,6 +47,8 @@ export function Panel({
       dragElastic={{ top: 0, bottom: 0.45 }}
       onDragEnd={onDragEnd}
       {...sheen}
+      // idleHome reads its text to give a long brief time to be read.
+      data-panel
       className="glass glass-thick pointer-events-auto absolute inset-0 z-10 flex flex-col overflow-hidden"
       style={{ borderRadius: radius + 1 }}
     >
