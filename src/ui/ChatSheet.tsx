@@ -4,7 +4,6 @@ import { useEffect, useLayoutEffect, useRef } from 'react'
 import { loadEarlier } from '../aelora/client'
 import { useAgent, type ChatBubble } from '../stores/agent'
 import { useMetrics } from '../stores/metrics'
-import { useChatFooter } from '../stores/chatFooter'
 import { ui, useUi } from '../stores/ui'
 import { toolLabel } from './format'
 import { Activity } from './Activity'
@@ -31,25 +30,6 @@ export function ChatSheet() {
 
 function Sheet() {
   const m = useMetrics()
-  // Toasts sit above the answers and message box, not on them: tell them where those start.
-  const footer = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const el = footer.current
-    if (!el) return
-    const measure = () => useChatFooter.setState({ top: el.getBoundingClientRect().top })
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-    window.addEventListener('resize', measure)
-    // The sheet morphs in; measure again once it has landed.
-    const t = setTimeout(measure, 450)
-    measure()
-    return () => {
-      ro.disconnect()
-      window.removeEventListener('resize', measure)
-      clearTimeout(t)
-      useChatFooter.setState({ top: null })
-    }
-  }, [])
   const drag = useDragControls()
   const onDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.y > 110 || info.velocity.y > 700) ui.closeChat()
@@ -95,10 +75,7 @@ function Sheet() {
           <SheetHeader onPointerDown={(e) => drag.start(e)} />
           <Transcript />
           <PendingStrip />
-          <div
-            ref={footer}
-            className="shrink-0 border-t border-line px-3 pt-1 pb-[max(8px,env(safe-area-inset-bottom))]"
-          >
+          <div className="shrink-0 border-t border-line px-3 pt-1 pb-[max(8px,env(safe-area-inset-bottom))]">
             <div className="mx-auto w-full max-w-[780px]">
               <OptionRail contextKey="chat" />
               <div className="pt-2">
@@ -267,9 +244,25 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
         initial={{ opacity: 0, y: 10, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={morph}
-        className="chat-user selectable max-w-[80%] self-end rounded-[6px] rounded-br-[3px] bg-accent/25 px-4 py-2.5 text-[15px] text-strong"
+        className={`chat-user selectable relative max-w-[80%] self-end rounded-[6px] rounded-br-[3px] bg-accent/25 px-4 py-2.5 text-[15px] text-strong ${bubble.react ? 'mb-3' : ''}`}
       >
         {bubble.text}
+        {/* Wendy's "got it" (message.react): pops onto the corner of what the user said. */}
+        <AnimatePresence>
+          {bubble.react && (
+            <motion.span
+              key={bubble.react}
+              role="img"
+              aria-label={`Wendy reacted ${bubble.react}`}
+              initial={{ scale: 0.3, opacity: 0, rotate: -12 }}
+              animate={{ scale: 1, opacity: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 16 }}
+              className="glass-pill absolute -bottom-4 -left-3 grid h-8 min-w-8 select-none place-items-center rounded-full px-1.5 text-[17px] leading-none"
+            >
+              {bubble.react}
+            </motion.span>
+          )}
+        </AnimatePresence>
       </motion.div>
     )
   }
@@ -291,29 +284,11 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
       <div className="selectable">
         <Markdown text={bubble.text} />
       </div>
-      <div className="flex items-center">
-        {/* Her own acknowledgement (reply.react): pops in under her words. */}
-        <AnimatePresence>
-          {bubble.react && (
-            <motion.span
-              key={bubble.react}
-              role="img"
-              aria-label={`Wendy reacted ${bubble.react}`}
-              initial={{ scale: 0.3, opacity: 0, rotate: -12 }}
-              animate={{ scale: 1, opacity: 1, rotate: 0 }}
-              transition={{ type: 'spring', stiffness: 420, damping: 16 }}
-              className="glass-pill mr-1 mt-0.5 grid h-8 min-w-8 place-items-center rounded-full px-1.5 text-[18px] leading-none"
-            >
-              {bubble.react}
-            </motion.span>
-          )}
-        </AnimatePresence>
-        {/* Quiet until hovered on desktop; always there (faint) on touch. */}
-        <CopyButton
-          text={copyableText(bubble.text)}
-          className={`chat-copy mt-0.5 opacity-60 group-hover:opacity-100 focus-visible:opacity-100 ${bubble.react ? '' : '-ml-2'}`}
-        />
-      </div>
+      {/* Quiet until hovered on desktop; always there (faint) on touch. */}
+      <CopyButton
+        text={copyableText(bubble.text)}
+        className="chat-copy -ml-2 mt-0.5 opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
+      />
     </motion.div>
   )
 }

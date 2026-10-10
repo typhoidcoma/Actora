@@ -5,7 +5,7 @@ import { useAgent } from '../stores/agent'
 import { ui, useUi, panelOpen } from '../stores/ui'
 import { useMetrics } from '../stores/metrics'
 import { Activity } from './Activity'
-import { firstSentence, hasMore, plainText } from './markdownText'
+import { firstSentence, hasMore, liveTail, plainText } from './markdownText'
 
 /**
  * Wendy's voice above the grid: her welcome, her replies to what you tapped,
@@ -48,7 +48,6 @@ export function WendyLine() {
     live?: boolean
     kicker?: string
     more?: boolean
-    react?: string
   } => {
     // Without the top bar this line is the only place a dead connection can show.
     if (stalled === 'fatal')
@@ -65,19 +64,23 @@ export function WendyLine() {
     if (a.line === 'message' && a.message) return { key: `m:${a.message}`, kicker: 'Actora', text: a.message }
     if (a.line === 'reply') {
       if (a.turnBusy && !a.streaming) return { key: 'thinking', text: '' }
-      if (a.streaming) return { key: 'reply-live', text: firstSentence(plainText(a.streaming)), live: true }
+      // Still typing (the chat closed on her): follow her latest words, with a way back into the chat.
+      if (a.streaming) {
+        const full = plainText(a.streaming)
+        const text = liveTail(full, stack ? 100 : 150)
+        return { key: 'reply-live', text, live: true, more: full.length > text.length }
+      }
       if (a.last?.role === 'assistant') {
         return {
           key: `r:${a.last.id}`,
           text: firstSentence(plainText(a.last.text)),
           more: hasMore(a.last.text),
-          react: a.last.react,
         }
       }
       if (a.last?.role === 'error') return { key: `e:${a.last.id}`, text: a.last.text }
     }
     return { key: 'greeting', text: a.greeting.text, live: a.greeting.streaming }
-  }, [a, stalled])
+  }, [a, stalled, stack])
 
   // Settled text gets a fresh word-by-word reveal whenever it changes (page
   // load, cached → new greeting); text that just finished streaming keeps its
@@ -133,7 +136,7 @@ export function WendyLine() {
   const lastMeasure = useRef(0)
   const [fit, setFit] = useState(size)
   const [clamp, setClamp] = useState<number | null>(null)
-  const measured = `${content.kicker ? `${content.kicker}  ` : ''}${content.text}${content.react ? ` ${content.react}` : ''}${content.more ? '   Read all' : ''}`
+  const measured = `${content.kicker ? `${content.kicker}  ` : ''}${content.text}${content.more ? (content.live ? '   Open chat' : '   Read all') : ''}`
   useLayoutEffect(() => {
     const el = measureRef.current
     if (!el) return
@@ -205,25 +208,12 @@ export function WendyLine() {
             ) : (
               <Reveal text={content.text} />
             )}
-            {content.react && (
-              <motion.span
-                key={content.react}
-                role="img"
-                aria-label={`Wendy reacted ${content.react}`}
-                initial={{ scale: 0.3, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 420, damping: 16, delay: 0.3 }}
-                className="ml-2 inline-block not-italic"
-              >
-                {content.react}
-              </motion.span>
-            )}
             {content.more && (
               <button
                 onClick={ui.openChat}
                 className="pointer-events-auto ml-3 align-middle font-sans text-[14px] font-semibold text-accent underline decoration-accent/40 underline-offset-4"
               >
-                Read all
+                {content.live ? 'Open chat' : 'Read all'}
               </button>
             )}
           </motion.div>

@@ -21,7 +21,7 @@ export const AVAILABLE_ACTIONS = [
   'options.set',
   'reply.show',
   'reply.hide',
-  'reply.react',
+  'message.react',
   'theme.set',
   'colors.set',
   'colors.reset',
@@ -31,9 +31,10 @@ export const AVAILABLE_ACTIONS = [
 
 /**
  * Old names still obeyed (and scrubbed if written as text) but no longer advertised:
- * there is no reader, only the chat, and naming one made her talk about it.
+ * there is no reader, only the chat, and naming one made her talk about it;
+ * reply.react became message.react (the emoji goes on the user's message).
  */
-export const LEGACY_ACTIONS = ['reader.open', 'reader.close'] as const
+export const LEGACY_ACTIONS = ['reader.open', 'reader.close', 'reply.react'] as const
 
 export const ACCEPTED_ACTIONS: readonly string[] = [...AVAILABLE_ACTIONS, ...LEGACY_ACTIONS]
 

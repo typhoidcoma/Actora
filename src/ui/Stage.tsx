@@ -22,6 +22,7 @@ import { Toaster } from './Toast'
 import { startMoments } from './moments'
 import { DateSheet } from './DateSheet'
 import { SessionChip } from './SessionChip'
+import { TypingPeek } from './TypingPeek'
 import { PastChats } from './PastChats'
 import { OrbDock, OrbSocket } from './OrbDock'
 import { startAutoChat } from './autoChat'
@@ -135,6 +136,7 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
       </AnimatePresence>
       <KeyboardSheet />
       <SessionChip />
+      <TypingPeek />
       <PastChats />
       <DateSheet />
       <Toaster />

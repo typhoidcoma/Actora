@@ -113,7 +113,6 @@ export function sendChat(bus: FrameBus, text: string): boolean {
     toolName: null,
     steps: [],
     turnAt: Date.now(),
-    pendingReact: null,
   })
   clearTimeout(turnTimer)
   turnTimer = setTimeout(() => failTurn(), TURN_TIMEOUT_MS)
@@ -256,7 +255,6 @@ export function handleChatFrame(f: ServerFrame): boolean {
         id: bubbleId(),
         role: 'assistant',
         text: scrubToolLeaks(raw),
-        ...(s.pendingReact ? { react: s.pendingReact } : {}),
       }
       offerSayLinks(raw)
       // A call that got past the scrubber: log the raw form so the pattern can be fixed.
@@ -265,7 +263,6 @@ export function handleChatFrame(f: ServerFrame): boolean {
         messages: [...s.messages, bubble],
         streaming: null,
         turnId: null,
-        pendingReact: null,
         phase: 'idle',
         toolName: null,
         ...(f.mood && typeof f.mood === 'object' ? { mood: f.mood as MoodState } : {}),
@@ -400,19 +397,15 @@ export function abortTurnOnDisconnect(): void {
 const ONE_EMOJI = /^\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|️|⃣|‍\p{Extended_Pictographic}️?)*$/u
 
 /**
- * reply.react: Wendy puts an emoji on her reply to acknowledge something, at her
- * own discretion. Mid-turn it waits for the reply; otherwise it goes on her
- * latest one. Anything that isn't a single emoji is ignored.
+ * message.react: Wendy puts an emoji on the user's latest message, her "got it"
+ * at a glance (at her own discretion). Anything that isn't a single emoji is
+ * ignored.
  */
-export function reactToReply(emoji: unknown): boolean {
+export function reactToMessage(emoji: unknown): boolean {
   const e = typeof emoji === 'string' ? emoji.trim() : ''
   if (!e || e.length > 16 || !ONE_EMOJI.test(e)) return false
   const s = get()
-  if (s.turnId || s.awaitingTurn) {
-    set({ pendingReact: e })
-    return true
-  }
-  const i = s.messages.findLastIndex((m) => m.role === 'assistant')
+  const i = s.messages.findLastIndex((m) => m.role === 'user')
   if (i < 0) return false
   set({ messages: s.messages.map((m, j) => (j === i ? { ...m, react: e } : m)) })
   return true

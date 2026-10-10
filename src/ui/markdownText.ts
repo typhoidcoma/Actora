@@ -31,6 +31,26 @@ export function hasMore(md: string): boolean {
   return full.length > firstSentence(full).length + 2
 }
 
+/**
+ * The end of what she's typing, whole sentences where they fit: while a reply
+ * streams outside the chat, the line follows her latest words instead of
+ * sitting on the first sentence.
+ */
+export function liveTail(text: string, max = 150): string {
+  const t = text.trim()
+  if (t.length <= max) return t
+  const parts = t.match(/[^.!?]+(?:[.!?]+\s*|$)/g) ?? [t]
+  let out = ''
+  for (let i = parts.length - 1; i >= 0; i--) {
+    if (out && out.length + parts[i].length > max) break
+    out = parts[i] + out
+  }
+  out = out.trim()
+  if (out.length <= max) return `…${out}`
+  // One long sentence still arriving: its last words, from a word boundary.
+  return `…${out.slice(-(max - 1)).replace(/^\S*\s+/, '')}`
+}
+
 /** A question big enough that the answer deserves the full chat. */
 export function isLargeQuestion(text: string): boolean {
   const t = text.trim()
