@@ -88,7 +88,13 @@ export interface AgentState {
 
   /** Welcome line, streamed over system_chat. */
   /** Her welcome, or a check-in (same path, but it stays up until answered). */
-  greeting: { text: string; streaming: boolean; checkin?: boolean }
+  greeting: {
+    text: string
+    streaming: boolean
+    checkin?: boolean
+    /** Seen and moved on from (left home after it, or started talking): it doesn't come back on the line. */
+    spent?: boolean
+  }
   /** A system_chat was sent and is not finished. */
   greetingPending: boolean
   /** The main thread's latest messages have been read (or there is none): her welcome can pick up from them. */

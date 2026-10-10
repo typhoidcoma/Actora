@@ -113,6 +113,8 @@ export function sendChat(bus: FrameBus, text: string): boolean {
     toolName: null,
     steps: [],
     turnAt: Date.now(),
+    // Talking to her moves past her welcome (or check-in): it won't come back on the line.
+    ...(s.greeting.text ? { greeting: { ...s.greeting, spent: true } } : {}),
   })
   clearTimeout(turnTimer)
   turnTimer = setTimeout(() => failTurn(), TURN_TIMEOUT_MS)

@@ -79,6 +79,8 @@ export function WendyLine() {
       }
       if (a.last?.role === 'error') return { key: `e:${a.last.id}`, text: a.last.text }
     }
+    // Once seen and moved on from, her welcome stays gone until she has something new.
+    if (a.greeting.spent) return { key: 'greeting', text: '' }
     return { key: 'greeting', text: a.greeting.text, live: a.greeting.streaming }
   }, [a, stalled, stack])
 

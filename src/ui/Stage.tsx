@@ -84,6 +84,18 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
         if (contextKeyOf(s) !== contextKeyOf(p) && transient && !a.turnId && !a.awaitingTurn) {
           agent.showGreeting()
         }
+        // Leaving home after her welcome has been said: it's been seen, and it
+        // mustn't greet again each time a window closes. (A check-in waits for its answer.)
+        const g = a.greeting
+        if (
+          contextKeyOf(p) === 'home' &&
+          contextKeyOf(s) !== 'home' &&
+          g.text &&
+          !g.streaming &&
+          !g.checkin &&
+          !g.spent
+        )
+          useAgent.setState({ greeting: { ...g, spent: true } })
       }),
     [],
   )

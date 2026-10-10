@@ -194,7 +194,7 @@ function screenSummary(key: string, s: Snapshot): string {
     )
   const mood = s.agent.mood
   if (mood?.emotion) lines.push(`Wendy's current mood: ${mood.emotion}${mood.intensity ? ` (${mood.intensity})` : ''}.`)
-  if (s.agent.line === 'greeting' && s.agent.greeting?.text)
+  if (s.agent.line === 'greeting' && s.agent.greeting?.text && !s.agent.greeting.spent)
     lines.push(`Wendy's line above the grid says: "${s.agent.greeting.text.slice(0, 200)}"`)
   if (s.agent.line === 'notice' && s.agent.notice) {
     lines.push(

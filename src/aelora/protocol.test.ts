@@ -174,6 +174,20 @@ describe('chat turn', () => {
     expect(greetingInContext()).toBeNull()
   })
 
+  it('talking to her uses up her welcome, and a new one starts fresh', async () => {
+    const { sendGreeting } = await import('./chat')
+    sendGreeting(bus, 'APP EVENT: welcome')
+    frame({ type: 'done', channelId: 'system:u1', text: 'Morning!' })
+    expect(useAgent.getState().greeting.spent).toBeUndefined()
+    sendChat(bus, 'hi')
+    expect(useAgent.getState().greeting).toMatchObject({ text: 'Morning!', spent: true })
+    frame({ type: 'chat.start', conversationId: cid })
+    frame({ type: 'done', conversationId: cid, text: 'Hey.' })
+    sendGreeting(bus, 'APP EVENT: welcome back')
+    frame({ type: 'done', channelId: 'system:u1', text: 'Welcome back.' })
+    expect(useAgent.getState().greeting.spent).toBeUndefined()
+  })
+
   it('a newer welcome replaces an unanswered one', async () => {
     const { sendGreeting } = await import('./chat')
     for (const text of ['Hi one.', 'Hi two.']) {
