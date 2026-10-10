@@ -101,6 +101,8 @@ function PendingStrip() {
 }
 
 function SheetHeader({ onPointerDown }: { onPointerDown: (e: React.PointerEvent) => void }) {
+  // Phones: the sheet starts at the very top, so the header steps down past the status bar.
+  const inset = useMetrics((m) => m.sheet.inset)
   const botName = useAgent((s) => s.botName)
   const phase = useAgent((s) => s.phase)
   const tool = useAgent((s) => s.toolName)
@@ -120,8 +122,12 @@ function SheetHeader({ onPointerDown }: { onPointerDown: (e: React.PointerEvent)
     <header
       onPointerDown={onPointerDown}
       className="relative flex h-[76px] shrink-0 touch-none items-center gap-3 pr-4 pl-[76px]"
+      style={inset ? { height: 76 + inset, paddingTop: inset } : undefined}
     >
-      <div className="absolute top-2 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-text/15" />
+      <div
+        className="absolute top-2 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-text/15"
+        style={inset ? { top: 8 + inset } : undefined}
+      />
       <div className="min-w-0 flex-1">
         <div className="chat-name display text-[26px] leading-none text-strong">{botName}</div>
         <AnimatePresence mode="wait" initial={false}>

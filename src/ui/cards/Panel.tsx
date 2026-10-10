@@ -28,6 +28,9 @@ export function Panel({
   footer?: ReactNode
 }) {
   const radius = useMetrics((s) => s.radius)
+  // Phones: edge to edge from the top of the screen; the header keeps clear of the status bar.
+  const stack = useMetrics((s) => s.stack)
+  const inset = useMetrics((s) => s.panelInset)
   const drag = useDragControls()
   const onDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.y > 90 || info.velocity.y > 600) onClose()
@@ -50,7 +53,7 @@ export function Panel({
       // idleHome reads its text to give a long brief time to be read.
       data-panel
       className="glass glass-thick pointer-events-auto absolute inset-0 z-10 flex flex-col overflow-hidden"
-      style={{ borderRadius: radius + 1 }}
+      style={{ borderRadius: stack ? `0 0 ${radius + 4}px ${radius + 4}px` : radius + 1 }}
     >
       <div
         aria-hidden
@@ -64,6 +67,7 @@ export function Panel({
         onPointerDown={(e) => drag.start(e)}
         // The orb docks on the left of every panel header (OrbDock), in front of the title.
         className="flex min-h-[92px] shrink-0 touch-none items-start justify-between gap-4 pt-5 pr-[84px] pb-3 pl-[96px]"
+        style={inset ? { paddingTop: 20 + inset } : undefined}
       >
         <div className="flex min-h-14 min-w-0 flex-col justify-center">
           {kicker && (
@@ -81,6 +85,7 @@ export function Panel({
         onClick={onClose}
         aria-label="Close"
         className="glass-pill absolute top-5 right-6 grid h-11 w-11 place-items-center rounded-full text-muted"
+        style={inset ? { top: 20 + inset } : undefined}
       >
         <svg viewBox="0 0 16 16" className="h-4 w-4">
           <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />

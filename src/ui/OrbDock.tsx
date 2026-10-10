@@ -38,12 +38,12 @@ export function OrbDock() {
   if (chatOpen) {
     blob = 40
     cx = m.sheet.x + 22 + blob / 2
-    cy = m.sheet.y + 18 + blob / 2
+    cy = m.sheet.y + m.sheet.inset + 18 + blob / 2
   } else if (focus) {
     // Any open panel (list, item, finds, Vault): she leads the header, in front of its title.
     blob = PANEL_ORB
     cx = m.panel.x + 24 + blob / 2
-    cy = m.panel.y + 20 + blob / 2
+    cy = m.panel.y + m.panelInset + 20 + blob / 2
   }
   const scale = (blob / m.orb) * (pressed ? 0.9 : 1)
   const resting = !chatOpen && !focus

@@ -33,9 +33,12 @@ interface Metrics {
   line: { x: number; y: number; w: number; h: number }
   /** Option rail, docked to the bottom edge. `top` is where its band starts (the grid's bottom): pills centre in it. */
   rail: { x: number; y: number; w: number; h: number; padBottom: number; top: number }
-  sheet: { x: number; y: number; w: number; h: number; radius: number }
+  /** inset: on phones the sheet runs to the very top; its header keeps this clear of the status bar. */
+  sheet: { x: number; y: number; w: number; h: number; radius: number; inset: number }
   /** Where open panels (lists, items, finds, the Vault) sit: the grid, or on phones nearly the whole screen. */
   panel: { x: number; y: number; w: number; h: number }
+  /** Phones: panels run edge to edge under the status bar; this is how far their content keeps clear of it. */
+  panelInset: number
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
@@ -101,15 +104,17 @@ function measure(): Metrics {
   const line = { x: Math.round((vw - lineW) / 2), y: safe.top, w: lineW, h: Math.max(lineH, gridY - safe.top) }
 
   // The chat is where Wendy's words live in full: as big as the screen allows,
-  // still a sheet (a margin all round on tablets; the whole height on phones).
+  // still a sheet on tablets (a margin all round); on phones it fills the screen
+  // edge to edge, its header clear of the status bar.
   const sheetW = compact ? vw : Math.round(Math.min(vw - 32, 1000))
-  const sheetH = compact ? Math.round(vh - safe.top - 8) : Math.round(Math.min(vh - 32 - safe.top - safe.bottom, 1100))
+  const sheetH = compact ? vh : Math.round(Math.min(vh - 32 - safe.top - safe.bottom, 1100))
   const sheet = {
     w: sheetW,
     h: sheetH,
     x: Math.round((vw - sheetW) / 2),
-    y: compact ? vh - sheetH : Math.round((vh - sheetH) / 2),
-    radius: 10,
+    y: compact ? 0 : Math.round((vh - sheetH) / 2),
+    radius: compact ? 0 : 10,
+    inset: compact ? safe.top : 0,
   }
   const rail = {
     x: Math.round((vw - Math.min(vw - 16, 960)) / 2),
@@ -158,8 +163,10 @@ function measure(): Metrics {
       stack: true,
       cellH,
       line: { x: sGridX, y: lineY, w: sGridW, h: lineH },
-      // Open panels use the whole screen between the status bar and the option rail.
-      panel: { x: sGridX, y: safe.top + 8, w: sGridW, h: rail.y - (safe.top + 8) - 4 },
+      // Open panels run edge to edge, from the very top (their header keeps clear of
+      // the status bar) down to the option rail.
+      panel: { x: 0, y: 0, w: vw, h: rail.y - 4 },
+      panelInset: safe.top,
       rail: { ...rail, top: sGridY + sGridH },
       sheet: sheet,
     }
@@ -184,6 +191,7 @@ function measure(): Metrics {
     cellH: 0,
     line,
     panel: { x: gridX, y: gridY, w: gridW, h: gridH },
+    panelInset: 0,
     rail: { ...rail, top: gridY + gridH },
     sheet: sheet,
   }
