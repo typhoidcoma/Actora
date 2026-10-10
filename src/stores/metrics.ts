@@ -114,7 +114,7 @@ function measure(): Metrics {
     x: Math.round((vw - sheetW) / 2),
     y: compact ? 0 : Math.round((vh - sheetH) / 2),
     radius: compact ? 0 : 10,
-    inset: compact ? safe.top : 0,
+    inset: compact ? safe.top + 8 : 0,
   }
   const rail = {
     x: Math.round((vw - Math.min(vw - 16, 960)) / 2),
@@ -134,7 +134,12 @@ function measure(): Metrics {
     const sGap = tall ? 10 : 8
     const minCell = 96
     const orbS = Math.round(tall ? clamp(vw * 0.16, 56, 72) : clamp(vh * 0.07, 44, 56))
-    const orbTop = safe.top + (tall ? 12 : 8)
+    // Breathing room above the orb (up to 28 px), taken only from height her line
+    // and the cards can spare: her line keeps at least 3 lines' worth (~72 px), so
+    // short screens get a smaller cushion rather than cut-off words.
+    const spareForLine = vh - railH - 6 - (safe.top + orbS + 6) - (minCell * 4 + sGap * 3)
+    const cushion = Math.round(clamp(Math.min(spareForLine - 72, vh * 0.035), 8, 28))
+    const orbTop = safe.top + cushion
     const lineY = orbTop + orbS + 2
     const lineRoom = vh - railH - 6 - (lineY + 4) - (minCell * 4 + sGap * 3)
     const lineH = Math.round(clamp(Math.min(vh * 0.12, lineRoom), 60, 124))
@@ -166,7 +171,8 @@ function measure(): Metrics {
       // Open panels run edge to edge, from the very top (their header keeps clear of
       // the status bar) down to the option rail.
       panel: { x: 0, y: 0, w: vw, h: rail.y - 4 },
-      panelInset: safe.top,
+      // Past the status bar, plus a little air so the docked orb never hugs the top edge.
+      panelInset: safe.top + 8,
       rail: { ...rail, top: sGridY + sGridH },
       sheet: sheet,
     }
