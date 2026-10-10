@@ -24,11 +24,15 @@ export function startFreshness(): () => void {
     if (idleHome()) return window.location.reload()
     if (waiting) return
     waiting = true
-    const off = useUi.subscribe(() => {
+    // Wait for home and quiet: a panel closing, or Wendy finishing her turn.
+    const check = () => {
       if (!idleHome()) return
-      off()
+      offUi()
+      offAgent()
       window.location.reload()
-    })
+    }
+    const offUi = useUi.subscribe(check)
+    const offAgent = useAgent.subscribe(check)
   }
   const check = async () => {
     if (waiting) return

@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef } from 'react'
 import { loadEarlier } from '../aelora/client'
 import { useAgent, type ChatBubble } from '../stores/agent'
 import { useMetrics } from '../stores/metrics'
+import { useChatFooter } from '../stores/chatFooter'
 import { ui, useUi } from '../stores/ui'
 import { toolLabel } from './format'
 import { Activity } from './Activity'
@@ -30,6 +31,25 @@ export function ChatSheet() {
 
 function Sheet() {
   const m = useMetrics()
+  // Toasts sit above the answers and message box, not on them: tell them where those start.
+  const footer = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = footer.current
+    if (!el) return
+    const measure = () => useChatFooter.setState({ top: el.getBoundingClientRect().top })
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    window.addEventListener('resize', measure)
+    // The sheet morphs in; measure again once it has landed.
+    const t = setTimeout(measure, 450)
+    measure()
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', measure)
+      clearTimeout(t)
+      useChatFooter.setState({ top: null })
+    }
+  }, [])
   const drag = useDragControls()
   const onDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.y > 110 || info.velocity.y > 700) ui.closeChat()
@@ -75,7 +95,10 @@ function Sheet() {
           <SheetHeader onPointerDown={(e) => drag.start(e)} />
           <Transcript />
           <PendingStrip />
-          <div className="shrink-0 border-t border-line px-3 pt-1 pb-[max(8px,env(safe-area-inset-bottom))]">
+          <div
+            ref={footer}
+            className="shrink-0 border-t border-line px-3 pt-1 pb-[max(8px,env(safe-area-inset-bottom))]"
+          >
             <div className="mx-auto w-full max-w-[780px]">
               <OptionRail contextKey="chat" />
               <div className="pt-2">

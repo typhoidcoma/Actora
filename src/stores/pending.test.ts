@@ -15,7 +15,7 @@ describe('waiting for the user OK (pending_action)', () => {
     expect(usePending.getState().items.a1.status).toBe('retryable')
     pending.apply({ type: 'pending_action:done', id: 'a1' })
     expect(usePending.getState().items.a1).toBeUndefined()
-    expect(useToast.getState().toast?.text).toBe('Email sent')
+    expect(useToast.getState().toasts.at(-1)?.text).toBe('Email sent')
   })
 
   it('answers are user messages that name the action', () => {

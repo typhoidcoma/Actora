@@ -330,6 +330,10 @@ export function loadTranscript(
     }))
   const history = { hasMore: !!page.hasMore, cursor: page.nextBeforeSeq ?? null }
   const s = get()
+  const held = new Set(s.messages.map((b) => b.seq).filter((x): x is number => x !== undefined))
+  const newestHeld = Math.max(-1, ...held)
+  // An older page we already hold every message of (a repeated "Load earlier"): nothing to do.
+  if (bubbles.length && bubbles.every((b) => held.has(b.seq ?? -1)) && (bubbles.at(-1)?.seq ?? 0) < newestHeld) return
   const oldestHeld = s.messages.find((b) => b.seq !== undefined)?.seq
   const firstNew = messages[0]?.seq
   if (oldestHeld !== undefined && firstNew !== undefined && firstNew < oldestHeld) {

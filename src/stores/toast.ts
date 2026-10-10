@@ -2,8 +2,10 @@ import { create } from 'zustand'
 
 /**
  * Quick feedback for something the user just did ("Done: Wire the shader ·
- * Undo"), or that just failed. One at a time, newest wins, shown above the rail
- * on every screen (phone panels included, where Wendy's line is hidden).
+ * Undo"), or that just failed. A small stack (newest at the bottom), shown
+ * above the rail on every screen (phone panels included, where Wendy's line is
+ * hidden). Each toast keeps its own timer, so a new one never takes away an
+ * earlier one's Undo while its window is still open.
  */
 export interface Toast {
   id: number
@@ -17,13 +19,14 @@ export interface Toast {
 }
 
 interface ToastState {
-  toast: Toast | null
+  toasts: Toast[]
 }
 
-export const useToast = create<ToastState>(() => ({ toast: null }))
+export const useToast = create<ToastState>(() => ({ toasts: [] }))
 
+const MAX = 3
 let seq = 0
-let timer: ReturnType<typeof setTimeout> | undefined
+const timers = new Map<number, ReturnType<typeof setTimeout>>()
 
 export const toast = {
   show(text: string, opts: Partial<Omit<Toast, 'id' | 'text'>> = {}): number {
@@ -35,17 +38,34 @@ export const toast = {
       action: opts.action,
       ms: opts.ms ?? (opts.undo ? 6000 : 4000),
     }
-    useToast.setState({ toast: t })
-    clearTimeout(timer)
-    timer = setTimeout(() => toast.dismiss(t.id), t.ms)
+    useToast.setState((s) => {
+      let list = [...s.toasts.filter((x) => x.text !== text), t]
+      // Too many: the oldest without an Undo goes first (an open Undo is kept as long as possible).
+      while (list.length > MAX) {
+        const drop = list.find((x) => !x.undo) ?? list[0]
+        list = list.filter((x) => x !== drop)
+      }
+      return { toasts: list }
+    })
+    timers.set(
+      t.id,
+      setTimeout(() => toast.dismiss(t.id), t.ms),
+    )
     return t.id
   },
   error(text: string, opts: Partial<Omit<Toast, 'id' | 'text' | 'tone'>> = {}): number {
     return toast.show(text, { ...opts, tone: 'error' })
   },
-  /** Dismiss (only if it's still the one showing). */
+  /** Dismiss one toast (or all). */
   dismiss(id?: number) {
-    if (id === undefined || useToast.getState().toast?.id === id) useToast.setState({ toast: null })
+    if (id === undefined) {
+      timers.forEach((t) => clearTimeout(t))
+      timers.clear()
+      return useToast.setState({ toasts: [] })
+    }
+    clearTimeout(timers.get(id))
+    timers.delete(id)
+    useToast.setState((s) => ({ toasts: s.toasts.filter((x) => x.id !== id) }))
   },
 }
 

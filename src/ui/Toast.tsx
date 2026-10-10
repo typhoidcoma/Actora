@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { useAgent } from '../stores/agent'
 import { panelOpen, useUi } from '../stores/ui'
 import { useMetrics } from '../stores/metrics'
+import { useChatFooter } from '../stores/chatFooter'
 import { toast, useToast } from '../stores/toast'
 import { press } from './motion'
 
@@ -38,23 +39,35 @@ function usePhoneNotes() {
   }, [])
 }
 
-/** The feedback bar: sits just above the option rail, centred, on every screen. */
+/**
+ * The feedback stack: just above whatever the user is tapping. On home that's
+ * the option rail; with the chat open, the chat's own answers and message box;
+ * on a phone with a panel open, the panel's bottom edge. Centred.
+ */
 export function Toaster() {
   usePhoneNotes()
-  const t = useToast((s) => s.toast)
+  const toasts = useToast((s) => s.toasts)
   const rail = useMetrics((m) => m.rail)
+  const stack = useMetrics((m) => m.stack)
+  const panel = useMetrics((m) => m.panel)
+  const vh = useMetrics((m) => m.vh)
+  const chatOpen = useUi((s) => s.chatOpen)
+  const inPanel = useUi((s) => panelOpen(s))
+  const chatFooterTop = useChatFooter((s) => s.top)
   const w = Math.min(rail.w - 16, 460)
+  const above = chatOpen && chatFooterTop !== null ? chatFooterTop : stack && inPanel ? panel.y + panel.h : rail.y
 
   return (
     <div
-      className="pointer-events-none fixed z-40 flex justify-center"
-      style={{ left: rail.x, width: rail.w, bottom: window.innerHeight - rail.y + 8 }}
+      className="pointer-events-none fixed z-40 flex flex-col items-center gap-2"
+      style={{ left: rail.x, width: rail.w, bottom: vh - above + 8 }}
       aria-live="polite"
     >
-      <AnimatePresence>
-        {t && (
+      <AnimatePresence initial={false}>
+        {toasts.map((t) => (
           <motion.div
             key={t.id}
+            layout
             initial={{ opacity: 0, y: 10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, transition: { duration: 0.15 } }}
@@ -83,7 +96,7 @@ export function Toaster() {
               </motion.button>
             )}
           </motion.div>
-        )}
+        ))}
       </AnimatePresence>
     </div>
   )

@@ -128,14 +128,19 @@ export function chat(text: string): boolean {
 }
 
 /** Older messages for the open thread (paging backwards; the page is prepended). */
+let loadingEarlier = false
 export function loadEarlier(): void {
   const a = useAgent.getState()
-  if (!socket || !a.conversationId || !a.history.hasMore || a.history.cursor === null) return
+  // One page at a time: a double tap must not fetch the same page twice.
+  if (loadingEarlier || !socket || !a.conversationId || !a.history.hasMore || a.history.cursor === null) return
+  loadingEarlier = true
   void request(
     socket,
     { type: 'conversation.open', conversationId: a.conversationId, limit: 40, beforeSeq: a.history.cursor },
     'conversation.messages',
-  )
+  ).finally(() => {
+    loadingEarlier = false
+  })
 }
 
 /** Welcome line over system_chat (an app event, not a user turn). */
@@ -484,10 +489,13 @@ export async function rememberFact(content: string, category?: string): Promise<
 export async function forgetByText(text: string): Promise<void> {
   await loadVault()
   const want = text.trim().toLowerCase()
-  const hit = Object.values(useVault.getState().entries).find((e) => {
-    const c = e.content.trim().toLowerCase()
-    return c === want || c.includes(want) || want.includes(c)
-  })
+  const entries = Object.values(useVault.getState().entries).filter((e) => e.content.trim())
+  const norm = (e: VaultEntry) => e.content.trim().toLowerCase()
+  const newest = (a: VaultEntry, b: VaultEntry) => (b.created_at ?? '').localeCompare(a.created_at ?? '')
+  // The one just saved: an exact match, else the newest that contains these words.
+  const hit =
+    entries.find((e) => norm(e) === want) ??
+    entries.filter((e) => norm(e).includes(want) || want.includes(norm(e))).sort(newest)[0]
   if (hit && (await forgetFact(hit.id))) toast.show('Forgotten')
   else toast.error("Couldn't find that to forget. It's in the Vault if you want to remove it there.")
 }

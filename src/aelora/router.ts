@@ -12,6 +12,7 @@ import { adoptGreetingUser } from './greeting'
 import { adoptMainUser, recallMain, rememberMain } from './mainThread'
 import { CATEGORIES, useVault, vault, type VaultEntry } from '../stores/vault'
 import { pending, usePending, waiting } from '../stores/pending'
+import { toast } from '../stores/toast'
 import { refreshGoogle } from '../google/google'
 import { flushCaptures } from '../stores/captures'
 import { sessions } from '../stores/session'
@@ -510,7 +511,9 @@ function routeEvent(bus: FrameBus, event: string, data: Record<string, unknown> 
       return
     case 'conversation': {
       const s = useAgent.getState()
-      if (sub === 'conversation:appended' && data.conversationId === s.conversationId && !s.turnId) {
+      // Another device added to this thread: reload it, unless a turn of ours is under way
+      // (reloading then would drop the message just sent until the reply lands).
+      if (sub === 'conversation:appended' && data.conversationId === s.conversationId && !s.turnId && !s.awaitingTurn) {
         void request(
           bus,
           { type: 'conversation.open', conversationId: s.conversationId, limit: 40 },
@@ -570,6 +573,7 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
         pending.clear()
         sessions.clear()
         optionsStore.resetHistory()
+        toast.dismiss()
       } else if (useUi.getState().vault) {
         void import('./client').then((m) => m.loadVault())
       }
