@@ -3,9 +3,9 @@ import { useOptionsStore } from '../stores/options'
 import { panelOpen, ui, useUi } from '../stores/ui'
 
 /** A conversation with Wendy (the chat) left alone this long goes home. */
-const CHAT_IDLE_MS = 6_000
+const CHAT_IDLE_MS = 10_000
 /** Any other panel (lists, items, finds, the Vault) left alone this long goes home. */
-const PANEL_IDLE_MS = 2 * 60_000
+const PANEL_IDLE_MS = 6_000
 /** The longest a quiet conversation waits for reading time. */
 const READ_CAP_MS = 2 * 60_000
 
@@ -20,7 +20,7 @@ const inConversation = () => {
 
 /**
  * Eases back to home when nothing is happening, so the app always looks ready
- * for Wendy to be proactive: 6 s after a conversation goes quiet, 2 min for
+ * for Wendy to be proactive: 10 s after a conversation goes quiet, 6 s for
  * other panels. Taps, keys, scrolling (inside panels too), moving the pointer
  * and selecting text all count as activity. Never while Wendy is working or
  * talking, the mic is listening, the keyboard is up, or text is selected:
