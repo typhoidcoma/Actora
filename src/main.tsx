@@ -21,7 +21,8 @@ if (import.meta.env.DEV) {
     import('./options/run'),
     import('./stores/agent'),
     import('./aelora/client'),
-  ]).then(([router, run, a, client]) => {
+    import('./checkins/checkins'),
+  ]).then(([router, run, a, client, checkins]) => {
     ;(window as unknown as { __actora: object }).__actora = {
       ui: router.runUiAction,
       chat: run.say,
@@ -34,6 +35,8 @@ if (import.meta.env.DEV) {
       agent: a.useAgent,
       // A raw request over the live socket, e.g. __actora.ask({type: 'session.list'}, 'session.list')
       ask: client.ask,
+      // A check-in right now, skipping the timing rules.
+      checkin: () => checkins.sendCheckin(),
     }
   })
 }

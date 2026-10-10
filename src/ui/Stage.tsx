@@ -20,6 +20,7 @@ import { MoodLight } from './MoodLight'
 import { OptionRail } from './OptionRail'
 import { Toaster } from './Toast'
 import { startMoments } from './moments'
+import { startCheckins } from '../checkins/checkins'
 import { DateSheet } from './DateSheet'
 import { SessionChip } from './SessionChip'
 import { TypingPeek } from './TypingPeek'
@@ -68,6 +69,7 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
   useEffect(() => startGreeting(), [])
   useEffect(() => startIdleHome(), [])
   useEffect(() => startMoments(), [])
+  useEffect(() => startCheckins(), [])
   useEffect(() => {
     void initPush()
     return setNotificationOpener(openNotification)

@@ -10,6 +10,7 @@ export type LocalAct =
   | { type: 'voice' }
   | { type: 'enablePush' }
   | { type: 'snoozePush' }
+  | { type: 'checkinLater' }
   | { type: 'installHelp' }
   | { type: 'huntFinds' }
   | { type: 'saveFind'; id: string }

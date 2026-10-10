@@ -18,6 +18,7 @@ import { agent, orbSignals, useAgent } from '../stores/agent'
 import { useEntities } from '../stores/entities'
 import { optionsStore } from '../stores/options'
 import { snoozePushOffer } from '../stores/push'
+import { checkinLater } from '../checkins/checkins'
 import { toast } from '../stores/toast'
 import { panelOpen, ui, useUi } from '../stores/ui'
 import { isLargeQuestion } from '../ui/markdownText'
@@ -127,6 +128,8 @@ function runAct(act: LocalAct): void {
     case 'snoozePush':
       snoozePushOffer()
       return
+    case 'checkinLater':
+      return checkinLater()
     case 'installHelp':
       return agent.showMessage(INSTALL_HELP)
     case 'huntFinds':

@@ -15,6 +15,7 @@ import { ROLE } from './brand'
 import { useMetrics } from '../stores/metrics'
 import { resetColors, useScheme } from '../stores/scheme'
 import { toast } from '../stores/toast'
+import { setCheckins, useCheckins } from '../checkins/checkins'
 import { connectGoogle, disconnectGoogle, googleHint, googleNeedsAction, syncGoogle, useGoogle } from '../google/google'
 
 function useStatus(): { text: string; tone: 'ok' | 'busy' | 'warn' } {
@@ -100,6 +101,7 @@ function Sheet({
   const sky = useSky()
   const compact = useMetrics((m) => m.compact)
   const google = useGoogle((g) => g.status)
+  const checkins = useCheckins((c) => c.on)
   const wendyColors = useScheme((s) => s.source === 'wendy')
   const wendyUntil = useScheme((s) => s.until)
   const email = useAgent((s) => s.email)
@@ -182,6 +184,10 @@ function Sheet({
       )}
       <Item onClick={go(() => ui.openVault())}>Vault</Item>
       <Item onClick={go(() => ui.pastChats(true))}>Past chats</Item>
+      {/* Wendy's now-and-then "how's it going?" while the app is open. */}
+      <Item onClick={() => setCheckins(!checkins)} hint={checkins ? 'On' : 'Off'}>
+        Check-ins
+      </Item>
       {/* Phones have no keyboard button on the rail; typing lives here. */}
       {compact && <Item onClick={go(() => ui.keyboard(true))}>Type instead</Item>}
       {push === 'on' && (

@@ -158,6 +158,19 @@ describe('merge', () => {
     expect(withOffer).toEqual(['plan my day!', 'Done', 'Let Wendy remind me'])
   })
 
+  it('a check-in keeps its "Not now" however many answers she gave', () => {
+    const local = [actOption('Done', { type: 'complete', id: 'a' }), actOption('Start', { type: 'startTask', id: 'a' })]
+    const pushed = [
+      sayOption('Going well', 'a', 'pushed'),
+      sayOption('Help me', 'b', 'pushed'),
+      sayOption('Not yet', 'c', 'pushed'),
+      actOption('Not now', { type: 'checkinLater' }),
+    ]
+    const out = mergeOptions(local, [], pushed, 4).map((o) => o.label)
+    expect(out.at(-1)).toBe('Not now')
+    expect(out).toHaveLength(4)
+  })
+
   it('puts what answers her question first, even with five ideas and two actions in play', () => {
     const local = [
       actOption('Done', { type: 'complete', id: 'a' }),

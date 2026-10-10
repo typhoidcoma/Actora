@@ -35,6 +35,7 @@ import {
   type ThemeMode,
   type TileId,
 } from '../stores/ui'
+import { setCheckins, useCheckins } from '../checkins/checkins'
 import { greetingInContext, handleChatFrame, loadTranscript, reactToMessage } from './chat'
 import {
   isEventFrame,
@@ -73,6 +74,7 @@ import { eventVerdict } from './owner'
  *   options.set {options: [{label, say}]}                  replace the tap options here
  *   chat.open · chat.close · reply.show · reply.hide
  *   message.react {emoji}                                  one emoji on the user's message: her "got it"
+ *   checkins.set {on}                                      her now-and-then check-ins on or off
  *   theme.set {mode: auto|day|dusk} · voice.listen · push.offer
  *   colors.set {seed?, harmony?, accent?, urgent?, mid?, calm?, task?, event?, reminder?, goal?,
  *               wendy?, finds?, neutral?, ambient?: hex[], orb?: hex[], hours?}   restyle the app
@@ -143,6 +145,8 @@ function screen() {
     theme: u.theme,
     themeNow: typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dusk' ? 'dusk' : 'day',
     reminders: usePush.getState().status,
+    // Her now-and-then check-ins (the user can turn them off; so can she, when asked).
+    checkins: useCheckins.getState().on ? 'on' : 'off',
     // Prepared actions the user hasn't answered yet (they approve with a tap, in a later turn).
     pending: waiting(usePending.getState().items).map((p) => ({ id: p.id, kind: p.kind })),
     priorities,
@@ -375,6 +379,9 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
     case 'reply.hide':
       return agent.showGreeting()
     // (reply.react: its old name.)
+    case 'checkins.set':
+      if (typeof args.on === 'boolean') setCheckins(args.on)
+      return
     case 'message.react':
     case 'reply.react':
       return void reactToMessage(args.emoji)

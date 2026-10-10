@@ -92,7 +92,13 @@ export function WendyLine() {
   // Once her words have sat still for a while, the line fades off and leaves the
   // grid clean; anything new brings it straight back. Things that need the user
   // (a reminder, a dead connection) and live work (thinking, streaming) stay.
-  const holds = content.live || content.key === 'thinking' || !!stalled || content.kicker === 'Reminder'
+  const holds =
+    content.live ||
+    content.key === 'thinking' ||
+    !!stalled ||
+    content.kicker === 'Reminder' ||
+    // A check-in is a question waiting for them: it stays until answered or replaced.
+    (content.key === 'greeting' && !!a.greeting.checkin)
   const signature = `${content.key}|${content.text}`
   // Whether it's new is decided once, when the text first appears, so a re-render
   // mid-reveal can't cut the animation short.

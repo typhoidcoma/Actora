@@ -123,7 +123,12 @@ export function sendChat(bus: FrameBus, text: string): boolean {
  * Ask Wendy for a welcome line over system_chat (no history, mood or fact
  * side effects). The directive is an app event, never a user turn.
  */
-export function sendGreeting(bus: FrameBus, directive: string, onDone?: (text: string) => void): boolean {
+export function sendGreeting(
+  bus: FrameBus,
+  directive: string,
+  onDone?: (text: string) => void,
+  checkin = false,
+): boolean {
   const s = get()
   if (s.greetingPending || s.turnId || s.awaitingTurn) return false
   if (!bus.send({ type: 'system_chat', message: directive })) return false
@@ -131,7 +136,7 @@ export function sendGreeting(bus: FrameBus, directive: string, onDone?: (text: s
   // A fresh line every time: the old one clears and the orb thinks until her words stream in.
   set({
     greetingPending: true,
-    greeting: { text: '', streaming: true },
+    greeting: { text: '', streaming: true, checkin },
     ...(s.phase === 'idle' ? { phase: 'thinking' as const } : {}),
   })
   clearTimeout(greetingTimer)
@@ -153,11 +158,11 @@ function handleSystemFrame(f: ServerFrame): boolean {
   switch (f.type) {
     case 'chat.start':
       rawGreeting = ''
-      set({ greeting: { text: '', streaming: true } })
+      set({ greeting: { ...get().greeting, text: '', streaming: true } })
       return true
     case 'token':
       rawGreeting += String(f.delta ?? '')
-      set({ greeting: { text: scrubToolLeaks(rawGreeting, true), streaming: true } })
+      set({ greeting: { ...get().greeting, text: scrubToolLeaks(rawGreeting, true), streaming: true } })
       if (s.line === 'greeting' && !s.turnId) set({ phase: 'speaking' })
       orbSignals.bump(0.12)
       return true
@@ -167,7 +172,7 @@ function handleSystemFrame(f: ServerFrame): boolean {
       const text = scrubToolLeaks(raw)
       offerSayLinks(raw)
       set({
-        greeting: { text, streaming: false },
+        greeting: { ...get().greeting, text, streaming: false },
         greetingPending: false,
         // Into the chat too, so answering it there reads as one conversation
         // (an earlier, unanswered welcome gives way to the new one).
@@ -175,7 +180,13 @@ function handleSystemFrame(f: ServerFrame): boolean {
           ? {
               messages: [
                 ...get().messages.filter((m) => !m.greeting),
-                { id: bubbleId(), role: 'assistant' as const, text, greeting: true as const },
+                {
+                  id: bubbleId(),
+                  role: 'assistant' as const,
+                  text,
+                  greeting: true as const,
+                  at: new Date().toISOString(),
+                },
               ],
             }
           : {}),

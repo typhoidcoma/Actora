@@ -148,9 +148,9 @@ export function loadEarlier(): void {
   })
 }
 
-/** Welcome line over system_chat (an app event, not a user turn). */
-export function greet(directive: string, onDone?: (text: string) => void): boolean {
-  return socket ? sendGreeting(socket, directive, onDone) : false
+/** Welcome line (or a check-in) over system_chat (an app event, not a user turn). */
+export function greet(directive: string, onDone?: (text: string) => void, checkin = false): boolean {
+  return socket ? sendGreeting(socket, directive, onDone, checkin) : false
 }
 
 /** Fire-and-forget message on the live socket. */

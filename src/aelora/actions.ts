@@ -27,6 +27,7 @@ export const AVAILABLE_ACTIONS = [
   'colors.reset',
   'voice.listen',
   'push.offer',
+  'checkins.set',
 ] as const
 
 /**

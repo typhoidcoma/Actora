@@ -87,8 +87,11 @@ const norm = (s: string) =>
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
 
-/** App housekeeping (the reminders offer): useful, but never worth outranking real options. */
-const TRAILING = new Set(['enablePush', 'snoozePush', 'installHelp'])
+/**
+ * App housekeeping (the reminders offer) and ways to wave something off (a
+ * check-in's "Not now"): never worth outranking real options, but always there, last.
+ */
+const TRAILING = new Set(['enablePush', 'snoozePush', 'installHelp', 'checkinLater'])
 
 /**
  * Most relevant first. Wendy's options are written for this exact moment (an
@@ -106,7 +109,9 @@ export function mergeOptions(
   max = 6,
   stale: (o: Option) => boolean = () => false,
 ): Option[] {
-  const trailing = local.filter((o) => o.act && TRAILING.has(o.act.type))
+  const isTrailing = (o: Option) => !!o.act && TRAILING.has(o.act.type)
+  const trailing = [...pushed.filter(isTrailing), ...local.filter(isTrailing)]
+  pushed = pushed.filter((o) => !isTrailing(o))
   const acts = local.filter((o) => !o.alt && ((o.act && !TRAILING.has(o.act.type)) || (o.pin && !o.act)))
   const says = local.filter((o) => !o.pin && (o.alt ? !(o.act && TRAILING.has(o.act.type)) : !o.act))
   const room = max - trailing.length
