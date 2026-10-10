@@ -82,7 +82,7 @@ export interface TranscriptMessage {
 
 export type ReactionBus = 'positive' | 'negative' | 'cognitive'
 
-export interface AvatarReact {
+interface AvatarReact {
   type: 'avatar.react'
   trigger: string
   bus: ReactionBus

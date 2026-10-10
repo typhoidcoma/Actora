@@ -9,7 +9,7 @@ import { toast } from '../stores/toast'
  * invite tools can't run without it, so it lives in the menu, and a tool that
  * fails for want of it offers to connect.
  */
-export interface GoogleStatus {
+interface GoogleStatus {
   configured: boolean
   connected: boolean
   google_email?: string | null

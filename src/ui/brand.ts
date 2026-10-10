@@ -20,7 +20,6 @@ export const EXT = {
   ink: '#1A1936',
   mist: '#8C8BAE',
   butter: '#FFE08A',
-  apricot: '#FF9E3D',
   blush: '#F59AAE',
   mint: '#9EF0DD',
   tealDeep: '#14A88B',
@@ -36,9 +35,7 @@ export const EXT = {
 const role = (name: string) => `var(--role-${name})`
 
 export const ROLE = {
-  accent: role('accent'),
   urgent: role('urgent'),
-  calm: role('calm'),
   kind: {
     task: role('task'),
     event: role('event'),

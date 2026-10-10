@@ -3,7 +3,7 @@ import type { EmotionVector, MoodState, ReactionBus } from '../aelora/protocol'
 import type { SocketStatus } from '../aelora/socket'
 import type { StepIcon } from '../aelora/activity'
 
-export type OrbPhase = 'offline' | 'idle' | 'thinking' | 'speaking' | 'tool'
+type OrbPhase = 'offline' | 'idle' | 'thinking' | 'speaking' | 'tool'
 
 export interface ChatBubble {
   id: string
@@ -23,7 +23,7 @@ export interface Reaction {
 }
 
 /** A proactive notification Wendy is "saying" in the line. */
-export interface Notice {
+interface Notice {
   notificationId: string
   title: string
   body: string | null
@@ -44,7 +44,7 @@ export interface Step {
   status: 'running' | 'done' | 'failed'
 }
 
-export type LineMode = 'greeting' | 'reply' | 'notice' | 'message'
+type LineMode = 'greeting' | 'reply' | 'notice' | 'message'
 
 export interface AgentState {
   connection: SocketStatus

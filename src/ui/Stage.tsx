@@ -24,7 +24,7 @@ import { DateSheet } from './DateSheet'
 import { SessionChip } from './SessionChip'
 import { PastChats } from './PastChats'
 import { OrbDock, OrbSocket } from './OrbDock'
-import { startAutoReader } from './autoReader'
+import { startAutoChat } from './autoChat'
 import { useThemeSync } from './Theme'
 import { WendyLine } from './WendyLine'
 
@@ -63,7 +63,7 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
   useEffect(() => watchMetrics(), [])
   useEffect(() => startWendyOptions(), [])
   useEffect(() => startRanking(), [])
-  useEffect(() => startAutoReader(), [])
+  useEffect(() => startAutoChat(), [])
   useEffect(() => startGreeting(), [])
   useEffect(() => startIdleHome(), [])
   useEffect(() => startMoments(), [])

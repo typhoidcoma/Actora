@@ -120,7 +120,6 @@
   --role-finds: #e3425f;
   --ink-finds: #d12e51;
   --on-accent: #181730;
-  --t-fringe: 0;
   --t-ambient: 0.6;
   --t-grain: 0.07;
   --t-grain-blend: multiply;
@@ -163,7 +162,6 @@
   --role-finds: #e3425f;
   --ink-finds: #e84663;
   --on-accent: #191832;
-  --t-fringe: 1;
   --t-ambient: 0.75;
   --t-grain: 0.06;
   --t-grain-blend: overlay;
@@ -589,30 +587,6 @@ button {
   }
 }
 
-/* Wendy's answer inside box 4: compact, image previews shown separately. */
-.card-md .md {
-  font-size: inherit;
-  line-height: 1.45;
-}
-.card-md .md img,
-.card-md .md table {
-  display: none;
-}
-.card-md .md p,
-.card-md .md ul,
-.card-md .md ol {
-  margin-bottom: 0.4em;
-}
-/* Markers inside the flow, so they wrap around the notch with the text. */
-.card-md .md ol,
-.card-md .md ul {
-  list-style-position: inside;
-  padding-left: 0;
-}
-.card-md .md ul > li::before {
-  margin-left: 0;
-}
-
 /* Wendy's current step: a highlight sweeping through the words. */
 .text-sweep {
   background: linear-gradient(
@@ -652,7 +626,7 @@ button {
   mix-blend-mode: plus-lighter;
 }
 
-/* Horizontal swipe rows (phone option rail): no visible scrollbar. */
+/* Horizontal chip rows (the Vault categories): no visible scrollbar. */
 .scroll-x {
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;

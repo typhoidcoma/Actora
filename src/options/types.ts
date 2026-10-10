@@ -1,24 +1,17 @@
-import type { Selected, TileId } from '../stores/ui'
+import type { Selected } from '../stores/ui'
 import { shortLabel } from './label'
 
 /** Something a chip does directly, without a chat turn. */
 export type LocalAct =
-  | { type: 'focus'; tile: TileId }
-  | { type: 'close' }
-  | { type: 'openChat' }
-  | { type: 'select'; item: Selected }
   | { type: 'complete'; id: string }
   | { type: 'reschedule'; id: string; due: string }
   | { type: 'markRead'; id: string }
   | { type: 'markAllRead' }
   | { type: 'voice' }
-  | { type: 'keyboard' }
   | { type: 'enablePush' }
   | { type: 'snoozePush' }
   | { type: 'installHelp' }
-  | { type: 'greeting' }
   | { type: 'huntFinds' }
-  | { type: 'openFinds' }
   | { type: 'saveFind'; id: string }
   | { type: 'askDelete'; item: Selected }
   | { type: 'retry' }

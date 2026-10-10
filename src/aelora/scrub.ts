@@ -118,7 +118,7 @@ function closing(text: string, from: number): number {
 }
 
 /** Screen actions written into the reply, found with their (balanced) argument text. */
-export function textActions(
+function textActions(
   text: string,
   /** Still streaming: an action not closed yet runs to the end (it's still arriving). */
   openEnded = true,

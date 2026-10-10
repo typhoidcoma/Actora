@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useAgent } from '../stores/agent'
 import { ui, useUi } from '../stores/ui'
-import { startAutoReader } from './autoReader'
+import { startAutoChat } from './autoChat'
 
 const talk = (text: string) =>
   useAgent.setState({ turnId: 'c1', awaitingTurn: false, streaming: text, phase: 'speaking' })
@@ -11,7 +11,7 @@ describe('following Wendy while she talks', () => {
   beforeEach(() => {
     ui.closeAll()
     useAgent.setState({ turnId: null, awaitingTurn: false, streaming: null, phase: 'idle' })
-    stop = startAutoReader()
+    stop = startAutoChat()
   })
   afterEach(() => stop())
 

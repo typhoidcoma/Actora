@@ -31,7 +31,7 @@ export function isLargeQuestion(text: string): boolean {
   return t.length >= 60 || t.split(/\s+/).length >= 9
 }
 
-/** A reply that won't fit box 4: long, structured, or carrying images/tables. */
+/** A reply too big for her line: long, structured, or carrying images/tables (the chat opens for it). */
 export function isRichReply(md: string): boolean {
   return (
     md.length > 320 ||

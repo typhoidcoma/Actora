@@ -38,7 +38,7 @@ interface UiState {
   picking: string | null
   /** The Past chats sheet (from the menu). */
   pastChats: boolean
-  /** Hidden text fallback (behind the mic chip). */
+  /** The typing sheet (keyboard button on the rail, "Type instead" in the menu on phones). */
   keyboardOpen: boolean
 }
 
@@ -124,7 +124,7 @@ export const ui = {
   pastChats: (open: boolean) => useUi.setState({ pastChats: open }),
 }
 
-/** Aelora canvas app ids ↔ our tiles (WEBSOCKET.md → "Canvas commands"). Legacy `tasks` folds into `goals`. */
+/** Aelora canvas app ids ↔ our lists (WEBSOCKET.md → "Canvas commands"). openAppsFor reports tasks as Aelora's `goals` app. */
 export const APP_TO_TILE: Record<string, TileId | 'chat' | 'vault'> = {
   goals: 'goals',
   tasks: 'tasks',

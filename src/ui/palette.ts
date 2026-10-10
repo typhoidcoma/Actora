@@ -3,7 +3,7 @@ import { clamp, hexToOklch, type Oklch, oklchToHex, parseHex } from '../color/ok
 import type { Role, Scheme } from '../color/scheme'
 import { useScheme } from '../stores/scheme'
 
-export type RGB = [number, number, number]
+type RGB = [number, number, number]
 export type Triad = [RGB, RGB, RGB]
 
 const rgb = (hex: string): RGB => parseHex(hex) ?? [0.5, 0.5, 0.5]

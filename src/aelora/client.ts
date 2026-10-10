@@ -454,18 +454,6 @@ export function captureTask(title: string): Promise<void> {
   return capture(socket, a.connection === 'open', a.userId, title)
 }
 
-/** A task straight onto the list, no conversation (quick capture). */
-export async function createTask(title: string): Promise<boolean> {
-  if (!socket || !title.trim()) return false
-  const reply = await request<{ type: string; task?: Task }>(
-    socket,
-    { type: 'task.create', title: title.trim().slice(0, 200) },
-    'task.created',
-  )
-  if (reply?.task) entities.upsertTask(reply.task)
-  return !!reply
-}
-
 // ── The Vault (what Wendy remembers) ──────────────────────────────────────────────
 
 /** Load everything Wendy remembers (refreshed each time the Vault opens). */

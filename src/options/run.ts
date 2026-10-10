@@ -101,14 +101,6 @@ export function snoozeTime(when: 'hour' | 'tonight' | 'tomorrow', now = new Date
 
 function runAct(act: LocalAct): void {
   switch (act.type) {
-    case 'focus':
-      return ui.focus(act.tile)
-    case 'close':
-      return ui.closeAll()
-    case 'openChat':
-      return ui.openChat()
-    case 'select':
-      return ui.open(act.item)
     case 'complete':
       void completeTask(act.id)
       ui.select(null)
@@ -129,8 +121,6 @@ function runAct(act: LocalAct): void {
       return
     case 'voice':
       return toggleVoice()
-    case 'keyboard':
-      return ui.keyboard(true)
     case 'enablePush':
       void enablePush()
       return
@@ -139,12 +129,8 @@ function runAct(act: LocalAct): void {
       return
     case 'installHelp':
       return agent.showMessage(INSTALL_HELP)
-    case 'greeting':
-      return agent.showGreeting()
     case 'huntFinds':
       return hunt()
-    case 'openFinds':
-      return ui.openFinds()
     case 'saveFind':
       void saveFind(act.id)
       return

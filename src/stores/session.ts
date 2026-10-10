@@ -5,7 +5,7 @@ import { create } from 'zustand'
  * start_session tool, shown as a timer chip until it's ended. The anchor is
  * what the user is focusing on.
  */
-export interface FocusSession {
+interface FocusSession {
   id: string
   started_at: string
   ended_at: string | null

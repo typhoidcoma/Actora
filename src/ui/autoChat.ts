@@ -12,7 +12,7 @@ import { isRichReply } from './markdownText'
  * If the user closes the chat during that turn it stays closed until the next
  * one, and a panel Wendy opens herself mid-turn (card.open…) is left alone.
  */
-export function startAutoReader(): () => void {
+export function startAutoChat(): () => void {
   let dismissedTurn: string | null = null
   /** The turn in which Wendy opened a panel herself (her screen action wins). */
   let shownByWendy: string | null = null

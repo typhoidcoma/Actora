@@ -31,7 +31,7 @@ export function usePendingAction(): PendingAction | undefined {
 }
 
 /** What each kind is, in words, and what "yes" does. */
-export const KINDS: Record<string, { label: string; yes: string; done: string }> = {
+const KINDS: Record<string, { label: string; yes: string; done: string }> = {
   send_email: { label: 'Email ready to send', yes: 'Send it', done: 'Email sent' },
   send_invite: { label: 'Invite ready to send', yes: 'Send invite', done: 'Invite sent' },
   update_invite: { label: 'Meeting change', yes: 'Send update', done: 'Guests updated' },

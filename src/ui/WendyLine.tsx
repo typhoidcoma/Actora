@@ -24,8 +24,7 @@ const fadedAway = new Set<string>()
 export function WendyLine() {
   const m = useMetrics()
   const stalled = useStalled()
-  // With the reader open, the reader is her voice: the line steps back rather than echo it.
-  // On phones every panel takes the full screen, so the line steps back for all of them.
+  // On phones every panel takes the full screen, so the line steps back while one is open.
   const stack = useMetrics((s) => s.stack)
   const quiet = useUi((s) => stack && panelOpen(s))
   const a = useAgent(
@@ -42,7 +41,7 @@ export function WendyLine() {
     })),
   )
 
-  // Her full answer lives in box 4; this line carries only the first sentence.
+  // Her full answer lives in the chat; this line carries only the first sentence.
   const content = useMemo((): { key: string; text: string; live?: boolean; kicker?: string; more?: boolean } => {
     // Without the top bar this line is the only place a dead connection can show.
     if (stalled === 'fatal')

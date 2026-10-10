@@ -6,7 +6,7 @@
 //   drop    – someone else's, or unprovable on an admin socket and screen-driving
 //   refetch – unprovable data change on an admin socket: reload our own copy instead
 
-export type Verdict = 'apply' | 'drop' | 'refetch'
+type Verdict = 'apply' | 'drop' | 'refetch'
 
 /** Events that drive the screen or Wendy's state: never act on one we can't prove is ours. */
 const SCREEN = new Set(['agent_command', 'ui', 'mood', 'emotion', 'mindmap', 'persona.reloaded'])

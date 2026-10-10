@@ -6,7 +6,7 @@ screen:
 - **Wendy's line** across the top: her welcome, the first sentence of each reply, and reminders.
 - **The grid**: four 4:3 cards around an orb that is Wendy.
   - Three **priority cards**, ranked: the things to tackle next, from any domain.
-  - **Box 4** (bottom-right): fun finds Wendy searched the web for, picked for you, under a headline she writes. Images crossfade behind a big count of fun things you have not seen yet. Her full answers open in a reader, either automatically for big questions or by tapping her line.
+  - **Box 4** (bottom-right): fun finds Wendy searched the web for, picked for you, under a headline she writes. Images crossfade behind a big count of fun things you have not seen yet. While something she prepared waits for your OK (an email, an invite), it takes this box instead. Her full answers live in the chat, which opens on its own for big questions and rich answers, or from "Read all" under her line.
 - **The option rail** along the bottom: what you can say or do next.
 
 **Nothing requires typing.** Tap the orb to talk, tap an option, or tap a card for its actions. Wendy can drive every
@@ -108,23 +108,17 @@ options for that context, merged in this order:
 3. **Options pushed by Wendy** through the `options.set` ui_action. These win until you move to another context.
 
 Tapping a _say_ option sends a chat turn, and Wendy answers in the line above the grid. The orb is the microphone: tap
-it to talk, and its pulse follows the words as they come in. Hold it to open the full conversation. A chat button and a
-tucked-away keyboard sit at the end of the rail.
+it to talk, and its pulse follows the words as they come in. Hold it to open the full conversation. On iPad a chat button, a
+keyboard button and the menu sit at the end of the rail; on phones the options are a 2×2 grid with chat and the menu
+beside it (typing is in the menu). Inside the chat there is always a message box with a mic.
 
 ### Wendy drives the UI (`src/aelora/router.ts`)
 
-`client_state` advertises these ui_actions:
-
-- `tile.focus` and `tile.close`
-- `chat.open` and `chat.close`
-- `item.focus {kind,id}`
-- `options.set {options}`
-- `reply.show` and `reply.hide`
-- `theme.set {mode}`
-- `voice.listen`
-- `push.offer`
-
-Alongside them it sends a `ui.screen` snapshot of what is on screen. That snapshot is ready for a persona that reads it.
+`client_state` advertises the ui_actions Wendy can call (`AVAILABLE_ACTIONS` in `src/aelora/actions.ts`): screen moves
+(`home.show`, `card.open`, `list.open`, `chat.open`, `finds.*`, `vault.*`), the cards (`priorities.set`), the pills
+(`options.set`), the look (`theme.set`, `colors.set`, `colors.reset`), and offers (`push.offer`, `voice.listen`).
+Alongside them it sends a `ui.screen` snapshot of what is on screen, with real ids. The playbook Wendy follows, with
+every action and when to use it, is [docs/wendy-ui.md](docs/wendy-ui.md).
 
 ### Wendy's line (`src/ui/WendyLine.tsx`, `src/aelora/greeting.ts`)
 

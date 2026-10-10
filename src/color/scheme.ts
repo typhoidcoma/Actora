@@ -22,7 +22,7 @@ import { clamp, contrast, deltaE, ensureContrast, hexToOklch, hueDiff, type Oklc
 export const ROLES = ['accent', 'urgent', 'mid', 'calm', 'task', 'event', 'reminder', 'goal', 'wendy', 'finds'] as const
 export type Role = (typeof ROLES)[number]
 type Theme = 'day' | 'dusk'
-export type Harmony = 'analogous' | 'complementary' | 'triadic' | 'split'
+type Harmony = 'analogous' | 'complementary' | 'triadic' | 'split'
 const HARMONIES: Harmony[] = ['analogous', 'complementary', 'triadic', 'split']
 
 export interface SchemeInput extends Partial<Record<Role, string>> {
@@ -52,7 +52,7 @@ interface Surface {
   drop: string
 }
 
-export interface Applied {
+interface Applied {
   surface: Surface
   role: Record<Role, string>
   ink: Record<Role, string>
