@@ -387,10 +387,10 @@ export function openThread(id: string): void {
 }
 
 /** A clean slate: the next message starts a new thread. */
-export function newThread(): void {
+export function newThread(open = true): void {
   rememberMain(null)
   useAgent.setState({ conversationId: null, messages: [], history: { hasMore: false, cursor: null } })
-  ui.openChat()
+  if (open) ui.openChat()
 }
 
 export async function deleteThread(id: string): Promise<boolean> {

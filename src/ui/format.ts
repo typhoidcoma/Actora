@@ -55,3 +55,9 @@ export function dueLabel(due: string | null): string | null {
 /** "list_events" → "List events" */
 export const toolLabel = (name: string | null) =>
   name ? name.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()) : ''
+
+/** A complete date (four-digit year), today or later, and not absurdly far out. */
+export function validDay(d: string, today: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d < today) return false
+  return Number(d.slice(0, 4)) <= Number(today.slice(0, 4)) + 10
+}

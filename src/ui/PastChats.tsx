@@ -24,17 +24,36 @@ function Sheet() {
   const h = Math.min(m.vh - 120, 620)
   const close = () => ui.pastChats(false)
 
-  const load = (before?: string) =>
-    listThreads(before).then((r) => {
+  // One page at a time (a double tap on "Show older" must not load it twice).
+  const [loading, setLoading] = useState(false)
+  const load = (before?: string) => {
+    if (loading) return
+    setLoading(true)
+    void listThreads(before).then((r) => {
+      setLoading(false)
       if (!r) return setFailed(true)
-      setThreads((cur) => [...(before ? (cur ?? []) : []), ...r.threads])
+      setThreads((cur) => {
+        const have = new Set((before ? (cur ?? []) : []).map((t) => t.id))
+        return [...(before ? (cur ?? []) : []), ...r.threads.filter((t) => !have.has(t.id))]
+      })
       setNext(r.next)
     })
-  useEffect(() => void load(), [])
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- first page once, on open
+  useEffect(() => load(), [])
+  // An unanswered "Delete chat" goes back to plain Delete.
+  useEffect(() => {
+    if (!confirm) return
+    const t = setTimeout(() => setConfirm(null), 4000)
+    return () => clearTimeout(t)
+  }, [confirm])
 
   const remove = async (id: string) => {
     setConfirm(null)
-    if (await deleteThread(id)) setThreads((cur) => cur?.filter((t) => t.id !== id) ?? null)
+    if (!(await deleteThread(id))) return
+    setThreads((cur) => cur?.filter((t) => t.id !== id) ?? null)
+    // The chat being shown is gone: start fresh rather than keep talking into it.
+    if (id === current) newThread(false)
   }
 
   return (
@@ -48,6 +67,7 @@ function Sheet() {
       />
       <motion.div
         role="dialog"
+        aria-modal="true"
         aria-label="Past chats"
         initial={{ opacity: 0, y: 24, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -85,7 +105,9 @@ function Sheet() {
                 <button
                   onClick={() => {
                     close()
-                    openThread(t.id)
+                    // The current one is already loaded: just show it (don't reload it mid-turn).
+                    if (t.id === current) ui.openChat()
+                    else openThread(t.id)
                   }}
                   className="min-w-0 flex-1 py-3 text-left"
                 >
@@ -110,7 +132,8 @@ function Sheet() {
           {next && (
             <div className="flex justify-center py-3">
               <button
-                onClick={() => void load(next)}
+                onClick={() => load(next)}
+                disabled={loading}
                 className="glass-pill h-11 rounded-[8px] px-4 text-[14px] font-medium text-muted"
               >
                 Show older

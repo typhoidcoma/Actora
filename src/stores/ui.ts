@@ -88,7 +88,7 @@ export const ui = {
   focus: (id: TileId | null) => useUi.setState({ ...CLOSED, focus: id }),
   openChat: () => useUi.setState({ ...CLOSED, chatOpen: true }),
   closeChat: () => useUi.setState({ chatOpen: false }),
-  closeAll: () => useUi.setState({ ...CLOSED, keyboardOpen: false }),
+  closeAll: () => useUi.setState({ ...CLOSED, keyboardOpen: false, pastChats: false, picking: null }),
   /** Open an item in its own panel (from a card, or when Wendy points at it). */
   open: (item: Selected) => useUi.setState({ ...CLOSED, selected: item }),
   /** Open an item in its panel, already asking whether to delete it. */

@@ -32,6 +32,8 @@ export function CardShell({
 }) {
   const radius = useMetrics((s) => s.radius)
   const onKey = (e: KeyboardEvent) => {
+    // Only the card itself: Enter on its quick action belongs to that button.
+    if (e.target !== e.currentTarget) return
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
       onOpen()

@@ -37,6 +37,8 @@ export function shortLabel(raw: string, max = LABEL_MAX): string {
     .replace(/\s*\([^)]*\)/g, '')
     .replace(/[.!。…]+$/, '')
     .trim()
+  // Nothing left (it was all an aside in brackets): work from the words as written.
+  if (!t) t = plain.replace(/[()]/g, '').trim()
   const stripped = t.replace(FILLER, '').trim()
   // Keep the opener when it's most of the answer ("Yes please", "Sure thing").
   // (and an asked-for action loses its question mark: "Can you move it?" → "Move it").
@@ -49,5 +51,5 @@ export function shortLabel(raw: string, max = LABEL_MAX): string {
   if (clause.length <= max && clause.split(' ').length >= 2) return cap(clause)
 
   const cut = wordsUpTo(t, max)
-  return cap(cut || t.slice(0, max).trim())
+  return cap(cut || t.slice(0, max).trim() || plain.slice(0, max).trim())
 }

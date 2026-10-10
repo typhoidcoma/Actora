@@ -48,6 +48,9 @@ function Sheet() {
         onClick={() => ui.keyboard(false)}
       />
       <motion.form
+        role="dialog"
+        aria-modal="true"
+        aria-label="Type to Wendy"
         onSubmit={submit}
         initial={{ opacity: 0, y: 24, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}

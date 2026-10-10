@@ -117,7 +117,7 @@ export function OptionRail({
   // Phone: a tidy 2×2 grid of equal tiles (the four most relevant, two lines of
   // text each) with chat and the menu in a column beside it. Nothing reflows
   // around anything, and the menu isn't inside a clipped box. Typing lives in
-  // the menu here (the chat sheet keeps its keyboard button).
+  // the menu here (the chat has its own message box).
   if (narrow) {
     const shown = options.slice(0, 4)
     return (
@@ -154,25 +154,15 @@ export function OptionRail({
         {/* In the chat, the message box (Composer) replaces these. */}
         {!inChat && (
           <div className="flex shrink-0 flex-col justify-between gap-2">
-            {contextKey !== 'chat' ? (
-              <motion.button
-                whileTap={jelly}
-                onClick={ui.openChat}
-                aria-label="Open the conversation"
-                className="glass-pill grid h-[44px] w-11 place-items-center rounded-[8px] text-muted"
-              >
-                <ChatIcon />
-              </motion.button>
-            ) : (
-              <motion.button
-                whileTap={jelly}
-                onClick={() => ui.keyboard(true)}
-                aria-label="Type instead"
-                className="glass-pill grid h-[44px] w-11 place-items-center rounded-[8px] text-muted disabled:opacity-40"
-              >
-                <KeyboardIcon />
-              </motion.button>
-            )}
+            {/* Phones: chat here; typing lives in the menu ("Type instead"). */}
+            <motion.button
+              whileTap={jelly}
+              onClick={ui.openChat}
+              aria-label="Open the conversation"
+              className="glass-pill grid h-[44px] w-11 place-items-center rounded-[8px] text-muted"
+            >
+              <ChatIcon />
+            </motion.button>
             {trailing}
           </div>
         )}

@@ -192,6 +192,8 @@ function Transcript() {
   const newest = messages.at(-1)?.id
   const oldest = messages[0]?.id
   const prev = useRef({ newest, oldest, height: 0 })
+  // Something waiting for the user's OK appears above the answers: keep the end in view.
+  const waiting = usePendingAction()?.id ?? null
 
   useLayoutEffect(() => {
     const el = ref.current
@@ -201,11 +203,17 @@ function Transcript() {
       // Older page prepended ("Load earlier"): keep the reader's place.
       el.scrollTop += el.scrollHeight - p.height
     } else {
-      el.scrollTo({ top: el.scrollHeight, behavior: first.current || streaming ? 'auto' : 'smooth' })
+      // Follow her words only if the reader is at (or near) the bottom: scrolling up to
+      // re-read mid-answer isn't yanked back. Their own new message always scrolls.
+      const nearBottom = p.height - el.scrollTop - el.clientHeight < 120
+      const mine = messages.at(-1)?.role === 'user' && newest !== p.newest
+      if (first.current || nearBottom || mine || waiting) {
+        el.scrollTo({ top: el.scrollHeight, behavior: first.current || streaming ? 'auto' : 'smooth' })
+      }
     }
     first.current = false
     prev.current = { newest, oldest, height: el.scrollHeight }
-  }, [messages, streaming, newest, oldest])
+  }, [messages, streaming, newest, oldest, waiting])
 
   return (
     <div ref={ref} className="scroll-y min-h-0 flex-1 px-5 pt-1 pb-4">

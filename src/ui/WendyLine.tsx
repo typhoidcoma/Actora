@@ -118,24 +118,28 @@ export function WendyLine() {
   // Long lines step their size down until they fit the band (measured before
   // paint), never below a readable minimum; past that, it ends in an ellipsis on
   // the last line that fits (and replies keep their "Read all").
-  const textRef = useRef<HTMLDivElement>(null)
+  // Measured on a hidden copy of the text, so the visible line's styles (which
+  // React owns) are never touched; while streaming, at most every ~150 ms.
+  const measureRef = useRef<HTMLDivElement>(null)
+  const lastMeasure = useRef(0)
   const [fit, setFit] = useState(size)
   const [clamp, setClamp] = useState<number | null>(null)
+  const measured = `${content.kicker ? `${content.kicker}  ` : ''}${content.text}${content.more ? '   Read all' : ''}`
   useLayoutEffect(() => {
-    const el = textRef.current
+    const el = measureRef.current
     if (!el) return
+    const now = performance.now()
+    if (content.live && now - lastMeasure.current < 150) return
+    lastMeasure.current = now
     const room = m.line.h - 6
     const min = m.compact ? 14 : 16
     let fs = size
-    el.style.display = 'block'
-    el.style.webkitLineClamp = 'unset'
+    el.textContent = measured
     el.style.fontSize = `${fs}px`
     while (fs > min && el.scrollHeight > room) el.style.fontSize = `${--fs}px`
     setFit(fs)
     setClamp(el.scrollHeight > room ? Math.max(2, Math.floor(room / (fs * 1.22))) : null)
-    el.style.display = ''
-    el.style.webkitLineClamp = ''
-  }, [size, displayKey, content.text, m.line.h, m.line.w, m.compact])
+  }, [size, measured, content.live, m.line.h, m.line.w, m.compact])
 
   return (
     <motion.div
@@ -149,11 +153,17 @@ export function WendyLine() {
       // inert, not aria-hidden: hiding it also drops focus (e.g. from "Read all", which opens the chat).
       inert={hidden}
     >
+      {/* The measuring copy: same width, font and padding as the line, never seen. */}
+      <div
+        ref={measureRef}
+        aria-hidden
+        className="display invisible absolute inset-x-0 top-0 px-1 text-center"
+        style={{ lineHeight: 1.22 }}
+      />
       <div className="relative max-h-full overflow-hidden">
         <AnimatePresence mode="popLayout">
           <motion.div
             key={displayKey}
-            ref={textRef}
             initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, y: -8, filter: 'blur(4px)', transition: { duration: 0.2 } }}

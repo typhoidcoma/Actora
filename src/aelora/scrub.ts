@@ -6,6 +6,7 @@
 import { AVAILABLE_ACTIONS } from './actions'
 
 const KNOWN_ACTIONS = new Set<string>(AVAILABLE_ACTIONS)
+const ACTION_NAMES: readonly string[] = AVAILABLE_ACTIONS
 
 const TOOLS = new Set([
   'perform_reaction',
@@ -59,6 +60,7 @@ const TOOLS = new Set([
   'confirm_action',
   'discard_action',
 ])
+const TOOL_NAMES = [...TOOLS]
 
 // name{…} or name(…) with no nested brackets: tool-call syntax, not prose.
 const CALL = /\b([a-z]+(?:_[a-z]+)*)\s*([({])([^(){}]*)[)}]/gi
@@ -116,13 +118,21 @@ function closing(text: string, from: number): number {
 }
 
 /** Screen actions written into the reply, found with their (balanced) argument text. */
-export function textActions(text: string): Array<{ action: string; start: number; end: number; args: string }> {
+export function textActions(
+  text: string,
+  /** Still streaming: an action not closed yet runs to the end (it's still arriving). */
+  openEnded = true,
+): Array<{ action: string; start: number; end: number; args: string }> {
   const out: Array<{ action: string; start: number; end: number; args: string }> = []
   for (const m of text.matchAll(ACTION_HEAD)) {
     const action = m[1].toLowerCase()
     if (!KNOWN_ACTIONS.has(action)) continue
+    // Inside an action already found (named in its arguments): part of that one.
+    if (out.some((a) => m.index >= a.start && m.index < a.end)) continue
     const open = m.index + m[0].length
     const end = closing(text, open)
+    // Never closes in a finished reply: prose like "theme.set (dusk — enjoy!", leave it.
+    if (end < 0 && !openEnded) continue
     out.push({
       action,
       start: m.index,
@@ -159,7 +169,7 @@ export function scrubToolLeaks(text: string, streaming = false): string {
   let out = text.replace(/\\([_{}()[\]])/g, '$1').replace(/(`+|\*{1,2})([a-z]+(?:_[a-z]+)*)\1(?=\s*[({])/gi, '$2')
   // 2. Screen actions written out (options.set{…}, nested args and all). One still
   //    arriving at the end of a stream is cut from where it starts.
-  for (const a of textActions(out).reverse()) out = `${out.slice(0, a.start)} ${out.slice(a.end)}`
+  for (const a of textActions(out, streaming).reverse()) out = `${out.slice(0, a.start)} ${out.slice(a.end)}`
   // 3. Drop the tool calls themselves.
   out = out
     .replace(CALL, (m, name: string, bracket: string, inner: string) => (isCall(name, bracket, inner) ? ' ' : m))
@@ -172,10 +182,10 @@ export function scrubToolLeaks(text: string, streaming = false): string {
     // Hold back a last word that may be the start of a call ("perf", "`perform_re"…):
     // it shows a token later if it was just a word.
     const tail = /(?:`+|\*+)?([a-z_]+)(?:`+|\*+)?$/.exec(out)
-    if (tail && [...TOOLS].some((t) => t.startsWith(tail[1]))) out = out.slice(0, tail.index)
+    if (tail && TOOL_NAMES.some((t) => t.startsWith(tail[1]))) out = out.slice(0, tail.index)
     // A screen action's name still arriving ("[options.se", "reader.").
     const act = /\[?\b([a-z]+\.[a-z]*)\]?$/.exec(out)
-    if (act && [...KNOWN_ACTIONS].some((a) => a.startsWith(act[1]))) out = out.slice(0, act.index)
+    if (act && ACTION_NAMES.some((a) => a.startsWith(act[1]))) out = out.slice(0, act.index)
     // An opening ` or ** with nothing after it yet: wait to see what it wraps.
     out = out.replace(/(?:`+|\*+)$/, '')
     // Hold back a link that might turn out to be an answer link.

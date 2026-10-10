@@ -5,6 +5,7 @@ import { useEntities } from '../stores/entities'
 import { useMetrics } from '../stores/metrics'
 import { ui, useUi } from '../stores/ui'
 import { morph, press } from './motion'
+import { validDay } from './format'
 
 const iso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -22,6 +23,10 @@ function Sheet({ taskId }: { taskId: string }) {
   // Fixed when the sheet opens (the list of days shouldn't shift under a finger).
   const [now] = useState(() => new Date())
   const days = Array.from({ length: 8 }, (_, i) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + i))
+  const [other, setOther] = useState('')
+  const pickIfValid = (d: string) => {
+    if (validDay(d, iso(now))) pick(d)
+  }
   const pick = (d: string) => {
     ui.pickDay(null)
     ui.select(null)
@@ -41,6 +46,7 @@ function Sheet({ taskId }: { taskId: string }) {
       />
       <motion.div
         role="dialog"
+        aria-modal="true"
         aria-label={`Pick a day for ${task?.title ?? 'this task'}`}
         initial={{ opacity: 0, y: 24, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -64,12 +70,26 @@ function Sheet({ taskId }: { taskId: string }) {
         </div>
         <label className="mt-3 flex h-12 items-center justify-between gap-3 rounded-[8px] px-1 text-[14px] text-muted">
           Another day
-          <input
-            type="date"
-            min={iso(now)}
-            onChange={(e) => e.target.value && pick(e.target.value)}
-            className="glass-pill h-11 rounded-[8px] px-3 text-strong"
-          />
+          <span className="flex items-center gap-2">
+            {/* Typing a date fires change on every digit ("0002-10-15"): only a full,
+                sensible date counts, set on Enter, on leaving the field, or with Set. */}
+            <input
+              type="date"
+              min={iso(now)}
+              value={other}
+              onChange={(e) => setOther(e.target.value)}
+              onBlur={() => pickIfValid(other)}
+              onKeyDown={(e) => e.key === 'Enter' && pickIfValid(other)}
+              className="glass-pill h-11 rounded-[8px] px-3 text-strong"
+            />
+            <button
+              onClick={() => pickIfValid(other)}
+              disabled={!validDay(other, iso(now))}
+              className="glass-pill h-11 rounded-[8px] px-3 text-[14px] font-semibold text-accent disabled:opacity-40"
+            >
+              Set
+            </button>
+          </span>
         </label>
       </motion.div>
     </>

@@ -104,7 +104,7 @@ function screenSummary(key: string, s: Snapshot): string {
       p.pushed && p.pushed.until > s.now ? p.pushed.entries : null,
     )
     lines.push(
-      `Screen: home. The three priority cards, in order: ${top.map((t, i) => `#${i + 1} ${t.kind} "${t.title}" (${t.meta})`).join('; ') || 'none'}. Box 4 shows Wendy's latest answer.`,
+      `Screen: home. The three priority cards, in order: ${top.map((t, i) => `#${i + 1} ${t.kind} "${t.title}" (${t.meta})`).join('; ') || 'none'}. Box 4 has Wendy's fun finds (or something waiting for the user's OK).`,
       taskLine(5),
       eventLine(3),
     )
@@ -382,6 +382,13 @@ export function startWendyOptions(): () => void {
     const key = contextKeyOf(useUi.getState())
     const sig = signature(key)
     if (sig === lastSig) return
+    // Rate-limited: try again when the pause ends (not marked done, so it isn't skipped then).
+    const hitFirst = cache.get(sig)
+    if (Date.now() < pausedUntil && !(hitFirst && Date.now() - hitFirst.at < CACHE_MS)) {
+      clearTimeout(timer)
+      timer = setTimeout(() => void generate(), pausedUntil - Date.now() + 50)
+      return
+    }
     lastSig = sig
 
     const hit = cache.get(sig)

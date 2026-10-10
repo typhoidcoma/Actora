@@ -4,6 +4,7 @@ import { useAgent } from '../../stores/agent'
 import { useTaskBrief } from '../../tasks/brief'
 import { usePriorities } from '../../priority/usePriorities'
 import { clashes } from '../tiles/data'
+import { linkParts } from '../markdownText'
 import { useShallow } from 'zustand/react/shallow'
 import { useEntities } from '../../stores/entities'
 import { ui, useUi, type Selected } from '../../stores/ui'
@@ -276,22 +277,21 @@ function About({
 
 /** Text with its web links tappable (a saved find's notes carry its URL). */
 function Linked({ text }: { text: string }) {
-  const parts = text.split(/(https?:\/\/[^\s<>"')]+)/g)
   return (
     <>
-      {parts.map((part, i) =>
-        /^https?:\/\//.test(part) ? (
+      {linkParts(text).map((p, i) =>
+        typeof p === 'string' ? (
+          p
+        ) : (
           <a
             key={i}
-            href={part}
+            href={p.href}
             target="_blank"
             rel="noreferrer noopener"
             className="break-all text-accent underline decoration-accent/40 underline-offset-4"
           >
-            {part.replace(/^https?:\/\/(www\.)?/, '').slice(0, 48)}
+            {p.label}
           </a>
-        ) : (
-          part
         ),
       )}
     </>

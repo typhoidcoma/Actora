@@ -55,6 +55,7 @@ export function PriorityCard({
       {item.primary && item.primary.act.type !== 'complete' && (
         <motion.button
           whileTap={press}
+          onPointerDownCapture={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation()
             runOption(actOption(item.primary!.label, item.primary!.act))

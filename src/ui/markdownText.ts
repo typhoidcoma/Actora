@@ -46,6 +46,40 @@ export function isRichReply(md: string): boolean {
  * Markdown as text worth pasting: paragraphs and list lines kept, links as
  * "text (url)", emphasis and heading marks dropped, images left out.
  */
+/**
+ * Text split into plain parts and links: Markdown links ([label](url)) keep
+ * their label; bare URLs lose trailing punctuation ("…/a." links to …/a) and
+ * keep balanced parentheses (wiki/Foo_(bar)).
+ */
+export function linkParts(text: string): Array<string | { href: string; label: string }> {
+  const out: Array<string | { href: string; label: string }> = []
+  const re = /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|https?:\/\/[^\s<>"]+/g
+  let last = 0
+  for (const m of text.matchAll(re)) {
+    let href = m[2] ?? m[0]
+    let label = m[1] ?? ''
+    let end = m.index + m[0].length
+    if (!m[2]) {
+      // Bare URL: shed trailing punctuation, and a ")" that has no "(" of its own.
+      for (;;) {
+        const tail = href.at(-1)
+        const opens = (href.match(/\(/g) ?? []).length
+        const closes = (href.match(/\)/g) ?? []).length
+        if (tail && /[.,;:!?'"]/.test(tail)) href = href.slice(0, -1)
+        else if (tail === ')' && closes > opens) href = href.slice(0, -1)
+        else break
+      }
+      end = m.index + href.length
+      label = href.replace(/^https?:\/\/(www\.)?/, '').slice(0, 48)
+    }
+    if (m.index > last) out.push(text.slice(last, m.index))
+    out.push({ href, label })
+    last = end
+  }
+  if (last < text.length) out.push(text.slice(last))
+  return out
+}
+
 export function copyableText(md: string): string {
   return md
     .replace(/!\[[^\]]*]\([^)]*\)/g, '')

@@ -11,7 +11,24 @@ const LEAD_MS = 10 * 60_000
  * Once per occurrence, all-day events skipped, never while Wendy is mid-turn.
  */
 export function startMoments(): () => void {
-  const nudged = new Set<string>()
+  const KEY = 'actora.nudged.v1'
+  const nudged = new Set<string>(
+    (() => {
+      try {
+        return JSON.parse(sessionStorage.getItem(KEY) ?? '[]') as string[]
+      } catch {
+        return []
+      }
+    })(),
+  )
+  const remember = (key: string) => {
+    nudged.add(key)
+    try {
+      sessionStorage.setItem(KEY, JSON.stringify([...nudged].slice(-50)))
+    } catch {
+      /* private mode */
+    }
+  }
   const check = () => {
     const a = useAgent.getState()
     if (a.connection !== 'open' || a.turnId || a.awaitingTurn) return
@@ -21,7 +38,7 @@ export function startMoments(): () => void {
       const start = Date.parse(e.start_time)
       const key = `${e.id}@${e.occurrence_start ?? e.start_time}`
       if (nudged.has(key) || start - now > LEAD_MS || start - now < 60_000) continue
-      nudged.add(key)
+      remember(key)
       const mins = Math.max(1, Math.round((start - now) / 60_000))
       toast.show(`${e.title} in ${mins} min`, {
         ms: 30_000,

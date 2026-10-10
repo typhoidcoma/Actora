@@ -132,7 +132,7 @@ function Sheet({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 8, scale: 0.97 }}
       transition={{ type: 'spring', stiffness: 500, damping: 34 }}
-      className="glass glass-thick absolute right-0 bottom-[52px] z-50 w-72 origin-bottom-right p-2"
+      className="glass glass-thick scroll-y absolute right-0 bottom-[52px] z-50 max-h-[calc(100dvh-140px)] w-72 origin-bottom-right overflow-y-auto p-2"
       style={{ borderRadius: 10 }}
     >
       <div
