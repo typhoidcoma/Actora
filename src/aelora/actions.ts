@@ -1,4 +1,4 @@
-/** ui_action names we accept (the catalog is documented in router.ts and docs/wendy-ui.md). */
+/** ui_action names we advertise to Wendy (the catalog is documented in router.ts and docs/wendy-ui.md). */
 export const AVAILABLE_ACTIONS = [
   'home.show',
   'priorities.set',
@@ -8,8 +8,6 @@ export const AVAILABLE_ACTIONS = [
   'list.open',
   'tile.focus',
   'tile.close',
-  'reader.open',
-  'reader.close',
   'finds.open',
   'finds.close',
   'finds.focus',
@@ -30,7 +28,15 @@ export const AVAILABLE_ACTIONS = [
   'push.offer',
 ] as const
 
-const KNOWN = new Set<string>(AVAILABLE_ACTIONS)
+/**
+ * Old names still obeyed (and scrubbed if written as text) but no longer advertised:
+ * there is no reader, only the chat, and naming one made her talk about it.
+ */
+export const LEGACY_ACTIONS = ['reader.open', 'reader.close'] as const
+
+export const ACCEPTED_ACTIONS: readonly string[] = [...AVAILABLE_ACTIONS, ...LEGACY_ACTIONS]
+
+const KNOWN = new Set<string>(ACCEPTED_ACTIONS)
 
 /**
  * A tool name that is really one of our ui_actions ("colors_set", "colors.set",

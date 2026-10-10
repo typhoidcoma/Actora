@@ -3,10 +3,10 @@
 // server should catch that; until it does, never show it.
 
 /** Wendy's tools on Aelora (WEBSOCKET.md → tool catalog). */
-import { AVAILABLE_ACTIONS } from './actions'
+import { ACCEPTED_ACTIONS } from './actions'
 
-const KNOWN_ACTIONS = new Set<string>(AVAILABLE_ACTIONS)
-const ACTION_NAMES: readonly string[] = AVAILABLE_ACTIONS
+const KNOWN_ACTIONS = new Set<string>(ACCEPTED_ACTIONS)
+const ACTION_NAMES: readonly string[] = ACCEPTED_ACTIONS
 
 const TOOLS = new Set([
   'perform_reaction',

@@ -64,7 +64,7 @@ import { eventVerdict } from './owner'
  *   card.open / item.focus {kind, id} · card.close         one item in its own panel
  *   list.open / tile.focus {tile, kind?, id?} · tile.close full Tasks/Calendar/Goals/Inbox list
  *                                                          (with kind+id: that row highlighted)
- *   reader.open · reader.close                             aliases of chat.open / chat.close (no separate reader)
+ *   (reader.open · reader.close: old aliases of chat.open / chat.close, obeyed but not advertised)
  *   finds.open · finds.close · finds.refresh               box 4: the fun finds / hunt for more
  *   finds.focus {id}                                       open the finds with one picked
  *   finds.set {items: [{title, blurb, why, url, image, source, tag}]}   the fun finds cards
