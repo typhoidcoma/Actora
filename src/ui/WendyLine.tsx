@@ -202,10 +202,23 @@ export function WendyLine() {
                 : {}),
             }}
           >
-            {content.kicker && (
-              <span className="mr-2 align-middle font-sans text-[13px] font-medium tracking-wide text-accent not-italic">
+            {content.kicker === 'Reminder' ? (
+              // A reminder going off: the same alarm pulse as its card.
+              <span className="mr-2 inline-flex items-center gap-1.5 align-middle font-sans text-[13px] font-semibold tracking-wide text-urgent not-italic">
+                <motion.span
+                  aria-hidden
+                  className="h-2 w-2 rounded-full bg-urgent"
+                  animate={{ scale: [1, 1.6, 1], opacity: [1, 0.5, 1] }}
+                  transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+                />
                 {content.kicker}
               </span>
+            ) : (
+              content.kicker && (
+                <span className="mr-2 align-middle font-sans text-[13px] font-medium tracking-wide text-accent not-italic">
+                  {content.kicker}
+                </span>
+              )
             )}
             {content.key === 'thinking' ? (
               <Activity />

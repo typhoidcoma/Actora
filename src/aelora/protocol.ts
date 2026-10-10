@@ -120,6 +120,19 @@ export type ClientMessage = { type: string } & Record<string, unknown>
 export const delivered = (n: Pick<Notification, 'sent_at' | 'scheduled_for'>, now = Date.now()): boolean =>
   !!n.sent_at || !n.scheduled_for || Date.parse(n.scheduled_for) <= now
 
+/** How long a reminder that just went off keeps "ringing" (its card glows) unless it's acknowledged. */
+export const RING_MS = 15 * 60_000
+
+/** A reminder that has just gone off and nobody has said "Got it" to yet: an alarm, right now. */
+export const ringing = (
+  n: Pick<Notification, 'sent_at' | 'scheduled_for' | 'read_at' | 'created_at'>,
+  now = Date.now(),
+): boolean => {
+  if (n.read_at || !delivered(n, now)) return false
+  const at = Date.parse(n.sent_at ?? n.scheduled_for ?? n.created_at)
+  return Number.isFinite(at) && now - at < RING_MS
+}
+
 export function isEventFrame(f: ServerFrame): f is EventFrame {
   return f.type === 'event' && typeof f.event === 'string' && !!f.data && typeof f.data === 'object'
 }

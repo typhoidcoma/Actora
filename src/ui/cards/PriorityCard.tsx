@@ -1,4 +1,7 @@
-import { motion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
+import { ringing } from '../../aelora/protocol'
+import { useEntities } from '../../stores/entities'
+import { useNow } from '../tiles/data'
 import { runOption } from '../../options/run'
 import { actOption } from '../../options/types'
 import type { RankedItem } from '../../stores/priority'
@@ -42,14 +45,30 @@ export function PriorityCard({
   const warmth = Math.round(Math.max(0, item.urgency - 0.4) * 110)
   const glow = `color-mix(in srgb, ${heat} ${warmth}%, ${kind.color})`
   const labelTint = `color-mix(in srgb, ${heat} ${Math.max(35, warmth)}%, var(--t-text))`
+  // A reminder going off right now rings: the card glows and pulses like an alarm
+  // until it's acknowledged (Got it, opened) or a quarter of an hour passes.
+  const reminder = useEntities((s) => (item.kind === 'notification' ? s.notifications[item.id] : undefined))
+  const now = useNow(15_000)
+  const ring = !!reminder && ringing(reminder, now)
+  const still = useReducedMotion()
+  const alarm = 'var(--color-urgent)'
 
   const header = (
     <div className={`flex items-center justify-between gap-2 ${right ? 'flex-row-reverse' : ''}`}>
       <span
-        className="truncate font-bold"
-        style={{ fontSize: 'clamp(15px, calc(var(--grid) * 0.034), 20px)', color: labelTint }}
+        className={`flex min-w-0 items-center gap-1.5 overflow-visible pl-0.5 font-bold ${right ? 'flex-row-reverse' : ''}`}
+        style={{ fontSize: 'clamp(15px, calc(var(--grid) * 0.034), 20px)', color: ring ? alarm : labelTint }}
       >
-        {kind.label}
+        {ring && (
+          <motion.span
+            aria-hidden
+            className="h-2 w-2 shrink-0 rounded-full"
+            style={{ background: alarm }}
+            animate={still ? undefined : { scale: [1, 1.6, 1], opacity: [1, 0.5, 1] }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        )}
+        <span className="truncate">{ring ? `${kind.label} · now` : kind.label}</span>
       </span>
       {/* Tasks finish from their panel or by voice; a lone checkbox looked out of place here. */}
       {item.primary && item.primary.act.type !== 'complete' && (
@@ -101,11 +120,33 @@ export function PriorityCard({
       accent={glow}
       hidden={hidden}
       // Screen readers still hear the order, which the layout shows visually.
-      label={`${rank === 1 ? 'Top priority' : `Priority ${rank}`}, ${kind.label}: ${item.title}`}
+      label={`${rank === 1 ? 'Top priority' : `Priority ${rank}`}, ${kind.label}${ring ? ' going off now' : ''}: ${item.title}`}
       onOpen={() => ui.open({ kind: item.kind, id: item.id, occurrence: item.occurrence })}
     >
+      {ring && (
+        // The alarm glow: a warm ring round the inside edge, breathing in and out.
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-0"
+          style={{ borderRadius: 'inherit' }}
+          initial={{ opacity: 0 }}
+          animate={
+            still
+              ? { opacity: 1, boxShadow: `inset 0 0 0 2px ${alarm}, inset 0 0 26px -6px ${alarm}` }
+              : {
+                  opacity: [0.55, 1, 0.55],
+                  boxShadow: [
+                    `inset 0 0 0 1.5px ${alarm}, inset 0 0 14px -8px ${alarm}`,
+                    `inset 0 0 0 2.5px ${alarm}, inset 0 0 38px -4px ${alarm}`,
+                    `inset 0 0 0 1.5px ${alarm}, inset 0 0 14px -8px ${alarm}`,
+                  ],
+                }
+          }
+          transition={still ? { duration: 0.3 } : { duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      )}
       <div
-        className={`flex h-full flex-col justify-between ${tight ? 'gap-1 p-[10px]' : 'gap-2 p-[max(12px,calc(var(--grid)*0.035))]'}`}
+        className={`relative flex h-full flex-col justify-between ${tight ? 'gap-1 p-[10px]' : 'gap-2 p-[max(12px,calc(var(--grid)*0.035))]'}`}
       >
         {bottom ? (
           <>

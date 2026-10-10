@@ -92,6 +92,25 @@ describe('entity sync', () => {
   })
 })
 
+describe('a reminder ringing', () => {
+  const now = Date.parse('2026-10-10T12:00:00Z')
+  const n = (over: object) => ({
+    sent_at: null,
+    scheduled_for: null,
+    read_at: null,
+    created_at: '2026-10-10T11:00:00Z',
+    ...over,
+  })
+  it('rings for a quarter of an hour after it goes off, until acknowledged', async () => {
+    const { ringing } = await import('./protocol')
+    expect(ringing(n({ sent_at: '2026-10-10T11:58:00Z' }), now)).toBe(true)
+    expect(ringing(n({ sent_at: '2026-10-10T11:40:00Z' }), now)).toBe(false) // 20 min ago
+    expect(ringing(n({ sent_at: '2026-10-10T11:58:00Z', read_at: '2026-10-10T11:59:00Z' }), now)).toBe(false)
+    expect(ringing(n({ scheduled_for: '2026-10-10T12:30:00Z' }), now)).toBe(false) // not yet
+    expect(ringing(n({ scheduled_for: '2026-10-10T11:55:00Z' }), now)).toBe(true)
+  })
+})
+
 describe('chat turn', () => {
   let bus: FakeBus
   const cid = '11111111-1111-1111-1111-111111111111'
