@@ -164,14 +164,20 @@ function handleSystemFrame(f: ServerFrame): boolean {
       return true
     case 'token':
       rawGreeting += String(f.delta ?? '')
-      set({ greeting: { ...get().greeting, text: scrubToolLeaks(rawGreeting, true), streaming: true } })
+      set({
+        greeting: {
+          ...get().greeting, // Her welcome answers nobody: an opening "got it" emoji (her reply habit) is just dropped.
+          text: scrubToolLeaks(splitAck(rawGreeting).rest, true),
+          streaming: true,
+        },
+      })
       if (s.line === 'greeting' && !s.turnId) set({ phase: 'speaking' })
       orbSignals.bump(0.12)
       return true
     case 'done': {
       clearTimeout(greetingTimer)
       const raw = String(f.text ?? rawGreeting)
-      const text = scrubToolLeaks(raw)
+      const text = scrubToolLeaks(splitAck(raw).rest)
       offerSayLinks(raw)
       set({
         greeting: { ...get().greeting, text, streaming: false },

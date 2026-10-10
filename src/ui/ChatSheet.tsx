@@ -244,6 +244,8 @@ function Transcript() {
 }
 
 function Bubble({ bubble }: { bubble: ChatBubble }) {
+  // A reply that was nothing but her "got it" emoji (now on the user's message) leaves no bubble.
+  if (bubble.role === 'assistant' && !bubble.text.trim()) return null
   if (bubble.role === 'user') {
     return (
       <motion.div

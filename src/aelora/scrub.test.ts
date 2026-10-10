@@ -93,3 +93,19 @@ describe('scrubToolLeaks', () => {
       expect(scrubToolLeaks(t)).toBe(t)
   })
 })
+
+describe('screen commands written as links', () => {
+  it('drops a list of them, and unlinks one inline; real links stay', () => {
+    const reply =
+      'You\'ve got "You Know" at 6:00.\n\n- [open you know card](card.open)\n- [open huemains card](#huemains)\n- [close calendar](tile.close)\n\nMore at [the site](https://example.com), or [tap here](ui:home.show) to go back.'
+    const out = scrubToolLeaks(reply)
+    expect(out).not.toMatch(/open you know card|open huemains card|close calendar/)
+    expect(out).toContain('[the site](https://example.com)')
+    expect(out).toContain('or tap here to go back.')
+  })
+
+  it('keeps images and answer links to their own handling', () => {
+    expect(scrubToolLeaks('![a trail](https://x.test/t.jpg)')).toBe('![a trail](https://x.test/t.jpg)')
+    expect(sayLinks('[Yes](say:Yes please)')).toEqual([{ label: 'Yes', say: 'Yes please' }])
+  })
+})

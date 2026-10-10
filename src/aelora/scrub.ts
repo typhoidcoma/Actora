@@ -86,6 +86,11 @@ const SAY_LINK = /\[([^\]\n]{1,120})\]\(\s*say:([^)\n]*)\)/g
 // One still arriving at the end of a stream: "[keep it", "[keep it](sa"…
 const SAY_OPEN = /\[[^\]\n]*(?:\](?:\((?:\s*s(?:a(?:y(?::[^)\n]*)?)?)?)?)?)?$/
 
+// Screen commands written as links: "[open you know card](card.open)",
+// "[close calendar](#close)". Anything that isn't a web, mail or phone link
+// (or an answer link) does nothing when tapped, so it never shows as a link.
+const APP_LINK = /(?<!!)\[([^\]\n]{1,120})\]\(\s*(?!https?:|mailto:|tel:|say:)[^)\n]*\)/g
+
 /** The answers Wendy wrote as say: links, in order, deduped. */
 export function sayLinks(text: string): Array<{ label: string; say: string }> {
   const out: Array<{ label: string; say: string }> = []
@@ -176,6 +181,9 @@ export function scrubToolLeaks(text: string, streaming = false): string {
     // 3. Answer links go to the pills (sayLinks); a list item that held one goes with it.
     .replace(new RegExp(`^[ \\t]*(?:[-*+]|\\d+\\.)[ \\t]+${SAY_LINK.source}[ \\t]*$`, 'gm'), '')
     .replace(SAY_LINK, '')
+    // A list item that's only a screen command goes; one inline keeps its words, unlinked.
+    .replace(new RegExp(`^[ \\t]*(?:[-*+]|\\d+\\.)[ \\t]+${APP_LINK.source}[ \\t]*$`, 'gm'), '')
+    .replace(APP_LINK, '$1')
   if (streaming) {
     const open = OPEN.exec(out)
     if (open && (TOOLS.has(open[1].toLowerCase()) || open[1].includes('_'))) out = out.slice(0, open.index)

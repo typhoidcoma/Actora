@@ -7,7 +7,15 @@ import remarkGfm from 'remark-gfm'
 // third-party preview images (FRONTEND.md → "Rendering her replies").
 // react-markdown never renders raw HTML, so no sanitiser is needed.
 const components: Components = {
-  a: ({ node: _node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+  // Only real links are links; anything else (a screen command she wrote as one) is just its words.
+  a: ({ node: _node, href, children, ...props }) =>
+    href && /^(https?:|mailto:|tel:)/i.test(href) ? (
+      <a {...props} href={href} target="_blank" rel="noopener noreferrer">
+        {children}
+      </a>
+    ) : (
+      <span>{children}</span>
+    ),
   img: ({ node: _node, alt, src, ...props }) => (
     <img
       {...props}

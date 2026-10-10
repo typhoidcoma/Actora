@@ -207,6 +207,16 @@ describe('chat turn', () => {
     expect(useAgent.getState().greeting.spent).toBeUndefined()
   })
 
+  it('a welcome that opens with her "got it" emoji drops it (it answers nobody)', async () => {
+    const { sendGreeting } = await import('./chat')
+    sendGreeting(bus, 'APP EVENT: welcome back')
+    frame({ type: 'token', channelId: 'system:u1', delta: '👀 look who' })
+    expect(useAgent.getState().greeting.text).toBe('look who')
+    frame({ type: 'done', channelId: 'system:u1', text: '👀 look who made it back.' })
+    expect(useAgent.getState().greeting.text).toBe('look who made it back.')
+    expect(useAgent.getState().messages.at(-1)?.text).toBe('look who made it back.')
+  })
+
   it('a newer welcome replaces an unanswered one', async () => {
     const { sendGreeting } = await import('./chat')
     for (const text of ['Hi one.', 'Hi two.']) {
