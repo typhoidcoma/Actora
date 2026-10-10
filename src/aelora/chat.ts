@@ -234,7 +234,12 @@ export function handleChatFrame(f: ServerFrame): boolean {
     case 'token':
       if (!mine) return true
       rawReply += String(f.delta ?? '')
-      set({ streaming: scrubToolLeaks(rawReply, true), phase: 'speaking', toolName: null })
+      {
+        // Her opening emoji is her "got it": it goes onto the user's message the moment it arrives.
+        const { ack, rest } = splitAck(rawReply)
+        if (ack) ackLastUserMessage(ack)
+        set({ streaming: scrubToolLeaks(rest, true), phase: 'speaking', toolName: null })
+      }
       orbSignals.bump()
       return true
 
@@ -264,17 +269,19 @@ export function handleChatFrame(f: ServerFrame): boolean {
       if (!mine) return true
       clearTimeout(turnTimer)
       const raw = String(f.text ?? rawReply)
+      const { ack, rest } = splitAck(raw)
+      if (ack) ackLastUserMessage(ack)
       const bubble: ChatBubble = {
         id: bubbleId(),
         role: 'assistant',
-        text: scrubToolLeaks(raw),
+        text: scrubToolLeaks(rest),
         at: new Date().toISOString(),
       }
       offerSayLinks(raw)
       // A call that got past the scrubber: log the raw form so the pattern can be fixed.
       if (/[a-z]+_[a-z_]+\W{0,3}[({]/i.test(bubble.text)) console.warn('[scrub] leak survived:', JSON.stringify(raw))
       set({
-        messages: [...s.messages, bubble],
+        messages: [...get().messages, bubble],
         streaming: null,
         turnId: null,
         phase: 'idle',
@@ -348,15 +355,19 @@ export function loadTranscript(
   messages: TranscriptMessage[],
   page: { hasMore?: boolean; nextBeforeSeq?: number | null } = {},
 ): void {
-  const bubbles: ChatBubble[] = messages
-    .filter((m) => m.role === 'user' || m.role === 'assistant')
-    .map((m) => ({
-      id: `m${m.seq}`,
-      seq: m.seq,
-      role: m.role as 'user' | 'assistant',
-      text: m.role === 'assistant' ? scrubToolLeaks(m.content) : m.content,
-      at: m.createdAt,
-    }))
+  const bubbles: ChatBubble[] = []
+  for (const m of messages) {
+    if (m.role !== 'user' && m.role !== 'assistant') continue
+    let text = m.content
+    if (m.role === 'assistant') {
+      // Her opening emoji was her "got it": back onto the message it answered.
+      const { ack, rest } = splitAck(text)
+      const prev = bubbles.at(-1)
+      if (ack && prev?.role === 'user') prev.react = ack
+      text = scrubToolLeaks(rest)
+    }
+    bubbles.push({ id: `m${m.seq}`, seq: m.seq, role: m.role, text, at: m.createdAt })
+  }
   const history = { hasMore: !!page.hasMore, cursor: page.nextBeforeSeq ?? null }
   const s = get()
   const held = new Set(s.messages.map((b) => b.seq).filter((x): x is number => x !== undefined))
@@ -409,7 +420,9 @@ export function abortTurnOnDisconnect(): void {
 }
 
 /** One emoji (with its skin tone, variation or ZWJ sequence), nothing else. */
-const ONE_EMOJI = /^\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|️|⃣|‍\p{Extended_Pictographic}️?)*$/u
+const ONE_EMOJI = /^\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F|\u20E3|\u200D\p{Extended_Pictographic}\uFE0F?)*$/u
+/** The same, opening a reply (with any space after it). */
+const LEADING_EMOJI = /^\s*(\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F|\u20E3|\u200D\p{Extended_Pictographic}\uFE0F?)*)\s*/u
 
 /**
  * message.react: Wendy puts an emoji on the user's latest message, her "got it"
@@ -424,4 +437,20 @@ export function reactToMessage(emoji: unknown): boolean {
   if (i < 0) return false
   set({ messages: s.messages.map((m, j) => (j === i ? { ...m, react: e } : m)) })
   return true
+}
+
+/**
+ * Her reply opens with one emoji, her acknowledgement of what the user said
+ * ("🎉 Huge! …"): split it off so it can sit on their message instead.
+ */
+export function splitAck(text: string): { ack: string | null; rest: string } {
+  const m = LEADING_EMOJI.exec(text)
+  return m ? { ack: m[1], rest: text.slice(m[0].length) } : { ack: null, rest: text }
+}
+
+function ackLastUserMessage(emoji: string) {
+  const m = get().messages
+  const i = m.findLastIndex((b) => b.role === 'user')
+  if (i < 0 || m[i].react === emoji) return
+  set({ messages: m.map((b, j) => (j === i ? { ...b, react: emoji } : b)) })
 }

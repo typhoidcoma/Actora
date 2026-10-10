@@ -217,6 +217,43 @@ describe('chat turn', () => {
     expect(reactToMessage('👩‍💻')).toBe(true)
   })
 
+  it('her opening emoji goes onto the user message the moment it streams in', async () => {
+    const { splitAck } = await import('./chat')
+    expect(splitAck('🎉 Huge!')).toEqual({ ack: '🎉', rest: 'Huge!' })
+    expect(splitAck('👩‍💻Got it')).toEqual({ ack: '👩‍💻', rest: 'Got it' })
+    expect(splitAck('Hi 🎉')).toEqual({ ack: null, rest: 'Hi 🎉' })
+    expect(splitAck('**Wow**')).toEqual({ ack: null, rest: '**Wow**' })
+
+    sendChat(bus, 'I just ran my first marathon!')
+    frame({ type: 'chat.start', conversationId: cid })
+    frame({ type: 'token', conversationId: cid, delta: '🎉' })
+    expect(useAgent.getState().messages.at(-1)).toMatchObject({ role: 'user', react: '🎉' })
+    expect(useAgent.getState().streaming).toBe('')
+    frame({ type: 'token', conversationId: cid, delta: ' That is huge.' })
+    expect(useAgent.getState().streaming).toBe('That is huge.')
+    frame({ type: 'done', conversationId: cid, text: '🎉 That is huge. How do your legs feel?' })
+    const m = useAgent.getState().messages
+    expect(m.at(-2)).toMatchObject({ role: 'user', react: '🎉' })
+    expect(m.at(-1)).toMatchObject({ role: 'assistant', text: 'That is huge. How do your legs feel?' })
+  })
+
+  it('a reread thread puts each opening emoji back on the message it answered', async () => {
+    const { loadTranscript } = await import('./chat')
+    loadTranscript([
+      { seq: 1, role: 'user', content: 'rent went up again', createdAt: '' },
+      { seq: 2, role: 'assistant', content: '😮‍💨 Ugh, again? Want to look at options?', createdAt: '' },
+      { seq: 3, role: 'user', content: 'later', createdAt: '' },
+      { seq: 4, role: 'assistant', content: 'Sure.', createdAt: '' },
+    ])
+    const m = useAgent.getState().messages
+    expect(m.map((b) => [b.text, b.react ?? null])).toEqual([
+      ['rent went up again', '😮‍💨'],
+      ['Ugh, again? Want to look at options?', null],
+      ['later', null],
+      ['Sure.', null],
+    ])
+  })
+
   it('refuses a second chat while one is in flight', () => {
     expect(sendChat(bus, 'one')).toBe(true)
     expect(sendChat(bus, 'two')).toBe(false)
