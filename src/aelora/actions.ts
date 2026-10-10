@@ -21,6 +21,7 @@ export const AVAILABLE_ACTIONS = [
   'options.set',
   'reply.show',
   'reply.hide',
+  'reply.react',
   'theme.set',
   'colors.set',
   'colors.reset',

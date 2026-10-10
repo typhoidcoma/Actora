@@ -35,7 +35,7 @@ import {
   type ThemeMode,
   type TileId,
 } from '../stores/ui'
-import { greetingInContext, handleChatFrame, loadTranscript } from './chat'
+import { greetingInContext, handleChatFrame, loadTranscript, reactToReply } from './chat'
 import {
   isEventFrame,
   PLUTCHIK,
@@ -72,6 +72,7 @@ import { eventVerdict } from './owner'
  *   vault.search {query?, category?}                       open the Vault filtered
  *   options.set {options: [{label, say}]}                  replace the tap options here
  *   chat.open · chat.close · reply.show · reply.hide
+ *   reply.react {emoji}                                    one emoji on her reply: her acknowledgement
  *   theme.set {mode: auto|day|dusk} · voice.listen · push.offer
  *   colors.set {seed?, harmony?, accent?, urgent?, mid?, calm?, task?, event?, reminder?, goal?,
  *               wendy?, finds?, neutral?, ambient?: hex[], orb?: hex[], hours?}   restyle the app
@@ -373,6 +374,8 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
       return agent.showReply()
     case 'reply.hide':
       return agent.showGreeting()
+    case 'reply.react':
+      return void reactToReply(args.emoji)
     case 'theme.set':
       if (THEMES.has(args.mode as ThemeMode)) ui.setTheme(args.mode as ThemeMode)
       return

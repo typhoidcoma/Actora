@@ -16,6 +16,8 @@ export interface ChatBubble {
    * system_chat, so the server's history doesn't have it (see greetingInContext).
    */
   greeting?: true
+  /** An emoji Wendy put on her own reply (reply.react), her acknowledgement at a glance. */
+  react?: string
 }
 
 export interface Reaction {
@@ -86,6 +88,8 @@ export interface AgentState {
   greeting: { text: string; streaming: boolean }
   /** A system_chat was sent and is not finished. */
   greetingPending: boolean
+  /** reply.react arrived mid-turn: it goes on the reply once it lands. */
+  pendingReact: string | null
   line: LineMode
   notice: Notice | null
   /** Free text for line mode 'message' (e.g. push test results, install steps). */
@@ -114,6 +118,7 @@ export const useAgent = create<AgentState>(() => ({
   history: { hasMore: false, cursor: null },
   greeting: { text: '', streaming: false },
   greetingPending: false,
+  pendingReact: null,
   line: 'greeting',
   notice: null,
   message: null,
@@ -134,6 +139,7 @@ export const agent = {
       history: { hasMore: false, cursor: null },
       greeting: { text: '', streaming: false },
       greetingPending: false,
+      pendingReact: null,
       line: 'greeting',
       notice: null,
       message: null,

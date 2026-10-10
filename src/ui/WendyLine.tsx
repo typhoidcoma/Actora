@@ -42,7 +42,14 @@ export function WendyLine() {
   )
 
   // Her full answer lives in the chat; this line carries only the first sentence.
-  const content = useMemo((): { key: string; text: string; live?: boolean; kicker?: string; more?: boolean } => {
+  const content = useMemo((): {
+    key: string
+    text: string
+    live?: boolean
+    kicker?: string
+    more?: boolean
+    react?: string
+  } => {
     // Without the top bar this line is the only place a dead connection can show.
     if (stalled === 'fatal')
       return { key: 'conn-fatal', kicker: 'Offline', text: "Can't reach Wendy. Reload to try again." }
@@ -60,7 +67,12 @@ export function WendyLine() {
       if (a.turnBusy && !a.streaming) return { key: 'thinking', text: '' }
       if (a.streaming) return { key: 'reply-live', text: firstSentence(plainText(a.streaming)), live: true }
       if (a.last?.role === 'assistant') {
-        return { key: `r:${a.last.id}`, text: firstSentence(plainText(a.last.text)), more: hasMore(a.last.text) }
+        return {
+          key: `r:${a.last.id}`,
+          text: firstSentence(plainText(a.last.text)),
+          more: hasMore(a.last.text),
+          react: a.last.react,
+        }
       }
       if (a.last?.role === 'error') return { key: `e:${a.last.id}`, text: a.last.text }
     }
@@ -121,7 +133,7 @@ export function WendyLine() {
   const lastMeasure = useRef(0)
   const [fit, setFit] = useState(size)
   const [clamp, setClamp] = useState<number | null>(null)
-  const measured = `${content.kicker ? `${content.kicker}  ` : ''}${content.text}${content.more ? '   Read all' : ''}`
+  const measured = `${content.kicker ? `${content.kicker}  ` : ''}${content.text}${content.react ? ` ${content.react}` : ''}${content.more ? '   Read all' : ''}`
   useLayoutEffect(() => {
     const el = measureRef.current
     if (!el) return
@@ -192,6 +204,19 @@ export function WendyLine() {
               content.text
             ) : (
               <Reveal text={content.text} />
+            )}
+            {content.react && (
+              <motion.span
+                key={content.react}
+                role="img"
+                aria-label={`Wendy reacted ${content.react}`}
+                initial={{ scale: 0.3, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 420, damping: 16, delay: 0.3 }}
+                className="ml-2 inline-block not-italic"
+              >
+                {content.react}
+              </motion.span>
             )}
             {content.more && (
               <button

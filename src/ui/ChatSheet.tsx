@@ -291,11 +291,29 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
       <div className="selectable">
         <Markdown text={bubble.text} />
       </div>
-      {/* Quiet until hovered on desktop; always there (faint) on touch. */}
-      <CopyButton
-        text={copyableText(bubble.text)}
-        className="chat-copy -ml-2 mt-0.5 opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
-      />
+      <div className="flex items-center">
+        {/* Her own acknowledgement (reply.react): pops in under her words. */}
+        <AnimatePresence>
+          {bubble.react && (
+            <motion.span
+              key={bubble.react}
+              role="img"
+              aria-label={`Wendy reacted ${bubble.react}`}
+              initial={{ scale: 0.3, opacity: 0, rotate: -12 }}
+              animate={{ scale: 1, opacity: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 16 }}
+              className="glass-pill mr-1 mt-0.5 grid h-8 min-w-8 place-items-center rounded-full px-1.5 text-[18px] leading-none"
+            >
+              {bubble.react}
+            </motion.span>
+          )}
+        </AnimatePresence>
+        {/* Quiet until hovered on desktop; always there (faint) on touch. */}
+        <CopyButton
+          text={copyableText(bubble.text)}
+          className={`chat-copy mt-0.5 opacity-60 group-hover:opacity-100 focus-visible:opacity-100 ${bubble.react ? '' : '-ml-2'}`}
+        />
+      </div>
     </motion.div>
   )
 }

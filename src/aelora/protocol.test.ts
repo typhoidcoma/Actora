@@ -183,6 +183,34 @@ describe('chat turn', () => {
     expect(useAgent.getState().messages.map((m) => m.text)).toEqual(['Hi two.'])
   })
 
+  it('reply.react puts one emoji on her reply, mid-turn or after', async () => {
+    const { reactToReply } = await import('./chat')
+    const { runUiAction } = await import('./router')
+    sendChat(bus, 'I finished the deck')
+    frame({ type: 'chat.start', conversationId: cid })
+    runUiAction('reply.react', { emoji: '🎉' })
+    frame({ type: 'done', conversationId: cid, text: 'Nice work.' })
+    expect(useAgent.getState().messages.at(-1)).toMatchObject({ text: 'Nice work.', react: '🎉' })
+    // After the turn: her latest reply, and it can change.
+    expect(reactToReply('👍🏽')).toBe(true)
+    expect(useAgent.getState().messages.at(-1)?.react).toBe('👍🏽')
+    // Only a single emoji; words, two emoji or junk are ignored.
+    for (const bad of ['yay', '🎉🎉', '', 42, '<b>', '❤️ ok']) expect(reactToReply(bad)).toBe(false)
+    expect(reactToReply('❤️')).toBe(true)
+    expect(reactToReply('👩‍💻')).toBe(true)
+  })
+
+  it('a reaction from an earlier turn never lands on the next reply', () => {
+    sendChat(bus, 'one')
+    frame({ type: 'chat.start', conversationId: cid })
+    useAgent.setState({ pendingReact: '🔥' })
+    frame({ type: 'error', code: 'llm_failed', conversationId: cid })
+    sendChat(bus, 'two')
+    frame({ type: 'chat.start', conversationId: cid })
+    frame({ type: 'done', conversationId: cid, text: 'Plain.' })
+    expect(useAgent.getState().messages.at(-1)?.react).toBeUndefined()
+  })
+
   it('refuses a second chat while one is in flight', () => {
     expect(sendChat(bus, 'one')).toBe(true)
     expect(sendChat(bus, 'two')).toBe(false)
