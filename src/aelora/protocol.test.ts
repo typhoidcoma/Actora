@@ -237,6 +237,24 @@ describe('chat turn', () => {
     expect(m.at(-1)).toMatchObject({ role: 'assistant', text: 'That is huge. How do your legs feel?' })
   })
 
+  it('a laugh only goes on a message that was funny; she sees what she used lately', async () => {
+    const { ackFits, recentAcks } = await import('./chat')
+    expect(ackFits('😂', 'ugh my landlord raised the rent again')).toBe(false)
+    expect(ackFits('😂', 'my cat knocked my coffee onto the keyboard lol')).toBe(true)
+    expect(ackFits('😮‍💨', 'ugh my landlord raised the rent again')).toBe(true)
+
+    sendChat(bus, 'ugh my landlord raised the rent again')
+    frame({ type: 'chat.start', conversationId: cid })
+    frame({ type: 'done', conversationId: cid, text: '😂 Classic landlord.' })
+    expect(useAgent.getState().messages.at(-2)?.react).toBeUndefined()
+    expect(useAgent.getState().messages.at(-1)?.text).toBe('Classic landlord.')
+
+    sendChat(bus, 'I got the job!')
+    frame({ type: 'chat.start', conversationId: cid })
+    frame({ type: 'done', conversationId: cid, text: '🎉 Amazing.' })
+    expect(recentAcks()).toEqual(['🎉'])
+  })
+
   it('a reread thread puts each opening emoji back on the message it answered', async () => {
     const { loadTranscript } = await import('./chat')
     loadTranscript([

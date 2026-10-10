@@ -36,7 +36,7 @@ import {
   type TileId,
 } from '../stores/ui'
 import { setCheckins, useCheckins } from '../checkins/checkins'
-import { greetingInContext, handleChatFrame, loadTranscript, reactToMessage } from './chat'
+import { greetingInContext, recentAcks, handleChatFrame, loadTranscript, reactToMessage } from './chat'
 import {
   isEventFrame,
   PLUTCHIK,
@@ -103,6 +103,7 @@ const ANIMATIONS = [
 function screen() {
   const u = useUi.getState()
   const greeting = greetingInContext()
+  const acks = recentAcks()
   const e = useEntities.getState()
   // The open list's rows, with ids so she can point at one (card.open / list.open).
   const visible =
@@ -139,6 +140,8 @@ function screen() {
     selected: u.selected,
     // Her welcome line, sent outside this thread: when the user answers, this is what they're answering.
     ...(greeting ? { yourGreeting: greeting } : {}),
+    // The emoji she opened her last replies with (shown on the user's messages): vary them.
+    ...(acks.length ? { yourRecentEmoji: acks.join(' ') } : {}),
     chat: u.chatOpen,
     vault: u.vault ? { open: true, query: v.query, category: v.category } : { open: false },
     // The user's Look setting, and what's actually showing now (auto follows the sun).

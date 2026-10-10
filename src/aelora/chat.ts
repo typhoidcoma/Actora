@@ -363,7 +363,7 @@ export function loadTranscript(
       // Her opening emoji was her "got it": back onto the message it answered.
       const { ack, rest } = splitAck(text)
       const prev = bubbles.at(-1)
-      if (ack && prev?.role === 'user') prev.react = ack
+      if (ack && prev?.role === 'user' && ackFits(ack, prev.text)) prev.react = ack
       text = scrubToolLeaks(rest)
     }
     bubbles.push({ id: `m${m.seq}`, seq: m.seq, role: m.role, text, at: m.createdAt })
@@ -420,9 +420,11 @@ export function abortTurnOnDisconnect(): void {
 }
 
 /** One emoji (with its skin tone, variation or ZWJ sequence), nothing else. */
-const ONE_EMOJI = /^\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F|\u20E3|\u200D\p{Extended_Pictographic}\uFE0F?)*$/u
+const ONE_EMOJI =
+  /^\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F|\u20E3|\u200D\p{Extended_Pictographic}\uFE0F?)*$/u
 /** The same, opening a reply (with any space after it). */
-const LEADING_EMOJI = /^\s*(\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F|\u20E3|\u200D\p{Extended_Pictographic}\uFE0F?)*)\s*/u
+const LEADING_EMOJI =
+  /^\s*(\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F|\u20E3|\u200D\p{Extended_Pictographic}\uFE0F?)*)\s*/u
 
 /**
  * message.react: Wendy puts an emoji on the user's latest message, her "got it"
@@ -451,6 +453,23 @@ export function splitAck(text: string): { ack: string | null; rest: string } {
 function ackLastUserMessage(emoji: string) {
   const m = get().messages
   const i = m.findLastIndex((b) => b.role === 'user')
-  if (i < 0 || m[i].react === emoji) return
+  if (i < 0 || m[i].react === emoji || !ackFits(emoji, m[i].text)) return
   set({ messages: m.map((b, j) => (j === i ? { ...b, react: emoji } : b)) })
+}
+
+/** Laughing at something that wasn't a joke reads as mockery: those only go on a message that was funny. */
+const LAUGHS = new Set(['😂', '🤣', '😆', '😅', '😹', '😄', '😁'])
+const FUNNY =
+  /\b(lol|lmao|lmfao|rofl|haha+|hehe+|jk|kidding|joke|joking|funny|hilarious)\b|😂|🤣|😆|😹|😄|😁|😅|😜|😝|🙃/i
+
+export function ackFits(emoji: string, userText: string): boolean {
+  return !LAUGHS.has(emoji) || FUNNY.test(userText)
+}
+
+/** The emoji she put on the user's last few messages, newest last, so she can see when she's repeating herself. */
+export function recentAcks(n = 5): string[] {
+  return get()
+    .messages.filter((b) => b.role === 'user' && b.react)
+    .slice(-n)
+    .map((b) => b.react as string)
 }
