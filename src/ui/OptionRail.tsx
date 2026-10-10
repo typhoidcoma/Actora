@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { runOption, toggleVoice } from '../options/run'
 import type { Option } from '../options/types'
+import { placeInSlots } from '../options/slots'
 import { useOptions } from '../options/useOptions'
 import { useAgent } from '../stores/agent'
 import { optionsStore, useOptionsStore } from '../stores/options'
@@ -30,6 +31,7 @@ export function OptionRail({
   const listening = useOptionsStore((s) => s.listening)
   const interim = useOptionsStore((s) => s.interim)
   const narrow = useMetrics((s) => s.compact)
+  const stableSlots = useStableSlots(options, 4)
   // Inside the chat there's a real message box, so no keyboard/chat buttons here.
   const inChat = contextKey === 'chat'
   // Count what the user actually got to see (settled, not mid-turn), for staleness.
@@ -118,8 +120,11 @@ export function OptionRail({
   // text each) with chat and the menu in a column beside it. Nothing reflows
   // around anything, and the menu isn't inside a clipped box. Typing lives in
   // the menu here (the chat has its own message box).
+  // The four tiles are fixed slots: moving between screens (and Wendy's options
+  // arriving after the instant ones) only cross-fades the words in the tiles
+  // that changed, so the grid never flashes, collapses or reflows.
   if (narrow) {
-    const shown = options.slice(0, 4)
+    const slots = stableSlots
     return (
       <div className={`flex items-stretch gap-2 ${className}`}>
         <div className="grid min-w-0 flex-1 grid-cols-2 grid-rows-[44px_44px] gap-2">
@@ -137,17 +142,9 @@ export function OptionRail({
                 <span className="line-clamp-2">{interim || 'Listening…'}</span>
               </motion.button>
             ) : (
-              shown.map((o, i) => <Tile key={o.id} option={o} index={i} disabled={offline || (busy && !o.act)} />)
-            )}
-            {!listening && loading && shown.length < 4 && (
-              <motion.span
-                key="loading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="glass-pill shimmer rounded-[8px]"
-                aria-hidden
-              />
+              slots.map((o, i) => (
+                <Tile key={`slot-${i}`} option={o} loading={loading} disabled={!o || offline || (busy && !o.act)} />
+              ))
             )}
           </AnimatePresence>
         </div>
@@ -181,22 +178,54 @@ export function OptionRail({
   )
 }
 
-/** A phone option: one cell of the 2×2 grid, up to two lines. */
-function Tile({ option, index, disabled }: { option: Option; index: number; disabled: boolean }) {
+function useStableSlots(options: Option[], n: number): Array<Option | null> {
+  const [state, setState] = useState<{ from: Option[]; slots: Array<Option | null> }>(() => ({
+    from: options,
+    slots: placeInSlots([], options, n),
+  }))
+  if (state.from !== options) {
+    const slots = placeInSlots(state.slots, options, n)
+    setState({ from: options, slots })
+    return slots
+  }
+  return state.slots
+}
+
+/**
+ * A phone option: one fixed cell of the 2×2 grid, up to two lines. The cell
+ * stays put; only its words cross-fade when the option in it changes. An empty
+ * cell is a quiet placeholder (shimmering while Wendy's options are on the way).
+ */
+function Tile({ option, loading, disabled }: { option: Option | null; loading: boolean; disabled: boolean }) {
+  // Always the same element, filled or not, so a slot filling in never remounts.
   return (
     <motion.button
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 380, damping: 28, delay: index * 0.04 } }}
-      exit={{ opacity: 0, transition: { duration: 0.1 } }}
-      whileTap={jelly}
-      {...sheen}
+      initial={false}
+      whileTap={option ? jelly : undefined}
+      {...(option ? sheen : {})}
       disabled={disabled}
-      onClick={() => runOption(option)}
-      className={`glass-pill flex min-w-0 items-center rounded-[8px] px-3 text-left text-[13.5px] leading-[1.2] transition-opacity disabled:opacity-40 ${
-        option.act ? 'font-medium text-strong' : 'text-text'
-      }`}
+      tabIndex={option ? undefined : -1}
+      aria-hidden={option ? undefined : true}
+      aria-label={option?.label}
+      onClick={() => option && runOption(option)}
+      className={`glass-pill flex min-w-0 items-center overflow-hidden rounded-[8px] px-3 text-left text-[13.5px] leading-[1.2] transition-opacity ${
+        !option ? `opacity-50 ${loading ? 'shimmer' : ''}` : 'disabled:opacity-40'
+      } ${option?.act ? 'font-medium text-strong' : 'text-text'}`}
     >
-      <span className="line-clamp-2">{option.label}</span>
+      <AnimatePresence mode="wait" initial={false}>
+        {option && (
+          <motion.span
+            key={option.id}
+            className="line-clamp-2"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
+          >
+            {option.label}
+          </motion.span>
+        )}
+      </AnimatePresence>
     </motion.button>
   )
 }
