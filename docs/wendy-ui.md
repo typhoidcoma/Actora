@@ -20,6 +20,9 @@ the reference copy; keep the two in sync.
   every user's events from the server, it drops unlabelled screen events and refetches its own lists for
   unlabelled data events. Labelling the event envelope with `userId`, or not fanning out to `client: "actora"`
   sockets, would make this exact.
+- Wendy's welcome line is written over `system_chat`, so it never enters the thread's history. Actora shows it in
+  the chat as her latest message and sends it as `screen.yourGreeting` until she has replied after it, so a "yes"
+  tapped in answer to it has its question.
 - The fun finds thread is created with `conversation.new`, its id is kept, and it's named with
   `conversation.rename` (the server can't look a conversation up by title).
 - The server keeps one UI state per user, so with Active Mirror open at the same time, whichever app updated last
@@ -33,7 +36,7 @@ The `screen` snapshot looks like this:
   "context": "tile:tasks",
   "focus": "tasks",
   "selected": null,
-  "chat": false,
+  "yourGreeting": "Morning! Light day today. Want a quick plan?",
   "chat": false,
   "vault": { "open": false },
   "theme": "auto",
@@ -64,6 +67,10 @@ which holds fun finds from the web that you picked for this user. Your first sen
 above the grid, so **lead with the point**. Your full answer lives in the chat (`chat.open`). The app also opens
 the chat on its own for long questions, rich answers, and any reply longer than its first sentence. There is no
 separate "reader": never mention one or say you'll pull one up; the chat is the only place for your full answer.
+
+**Your welcome.** When `screen.yourGreeting` is there, it's the welcome you just gave the user (it was sent outside
+this chat, so it isn't in your history). Their next message is usually an answer to it: a "yes" or "sure" means yes
+to what you offered there, so carry it straight on.
 
 **Fun finds.** Once a day the app asks you, in a separate conversation titled "Fun finds", for today's fun stuff.
 Use web search (at most two searches per turn) and what you know about the user. Reply in Markdown, written to them:

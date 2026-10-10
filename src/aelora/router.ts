@@ -35,7 +35,7 @@ import {
   type ThemeMode,
   type TileId,
 } from '../stores/ui'
-import { handleChatFrame, loadTranscript } from './chat'
+import { greetingInContext, handleChatFrame, loadTranscript } from './chat'
 import {
   isEventFrame,
   PLUTCHIK,
@@ -99,6 +99,7 @@ const ANIMATIONS = [
 /** What the user is looking at, so a persona that reads the ui blob can refer to it. */
 function screen() {
   const u = useUi.getState()
+  const greeting = greetingInContext()
   const e = useEntities.getState()
   // The open list's rows, with ids so she can point at one (card.open / list.open).
   const visible =
@@ -133,6 +134,8 @@ function screen() {
     context: contextKeyOf(u),
     focus: u.focus,
     selected: u.selected,
+    // Her welcome line, sent outside this thread: when the user answers, this is what they're answering.
+    ...(greeting ? { yourGreeting: greeting } : {}),
     chat: u.chatOpen,
     vault: u.vault ? { open: true, query: v.query, category: v.category } : { open: false },
     // The user's Look setting, and what's actually showing now (auto follows the sun).

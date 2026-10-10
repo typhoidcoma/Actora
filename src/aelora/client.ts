@@ -81,6 +81,10 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
 
   // Wendy hears what her colour change became (guardrail notes) right away.
   const offScheme = useScheme.subscribe((s, p) => s.scheme !== p.scheme && sendClientState(sock))
+  // Her welcome landed: she'll know what she asked when the user answers it.
+  const offGreeting = useAgent.subscribe(
+    (s, p) => p.greetingPending && !s.greetingPending && !!s.greeting.text && sendClientState(sock),
+  )
 
   // CONVERSATIONS-CLIENT.md: re-open the active thread on return to the app,
   // which covers a phone that was backgrounded rather than disconnected.
@@ -105,6 +109,7 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
     offStatus()
     offUi()
     offScheme()
+    offGreeting()
     // Deletes still inside their Undo window go now, on this user's socket.
     flushPendingCommits()
     sock.stop()

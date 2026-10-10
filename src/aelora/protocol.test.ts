@@ -149,6 +149,40 @@ describe('chat turn', () => {
     expect(useAgent.getState().turnId).toBe(cid)
   })
 
+  it('her welcome joins the chat, and she knows it when the user answers it', async () => {
+    const { sendGreeting, greetingInContext, loadTranscript } = await import('./chat')
+    const { sendClientState } = await import('./router')
+    loadTranscript([{ seq: 1, role: 'assistant', content: 'Yesterday’s answer.' }] as never)
+    expect(sendGreeting(bus, 'APP EVENT: welcome')).toBe(true)
+    frame({ type: 'chat.start', channelId: 'system:u1' })
+    frame({ type: 'done', channelId: 'system:u1', text: 'Morning! Want a quick plan?' })
+    expect(useAgent.getState().messages.map((m) => m.text)).toEqual([
+      'Yesterday’s answer.',
+      'Morning! Want a quick plan?',
+    ])
+    // A fresh read of the thread (reconnect) keeps it: the server never had it.
+    loadTranscript([{ seq: 1, role: 'assistant', content: 'Yesterday’s answer.' }] as never)
+    expect(useAgent.getState().messages.at(-1)?.greeting).toBe(true)
+    // The user answers: the screen snapshot carries what she asked.
+    sendChat(bus, 'Yes please')
+    sendClientState(bus)
+    const state = bus.sent.at(-1) as unknown as { ui: { screen: { yourGreeting?: string } } }
+    expect(state.ui.screen.yourGreeting).toBe('Morning! Want a quick plan?')
+    // Once she has replied, it's ordinary history and drops out.
+    frame({ type: 'chat.start', conversationId: cid })
+    frame({ type: 'done', conversationId: cid, text: 'Here it is.' })
+    expect(greetingInContext()).toBeNull()
+  })
+
+  it('a newer welcome replaces an unanswered one', async () => {
+    const { sendGreeting } = await import('./chat')
+    for (const text of ['Hi one.', 'Hi two.']) {
+      sendGreeting(bus, 'APP EVENT: welcome')
+      frame({ type: 'done', channelId: 'system:u1', text })
+    }
+    expect(useAgent.getState().messages.map((m) => m.text)).toEqual(['Hi two.'])
+  })
+
   it('refuses a second chat while one is in flight', () => {
     expect(sendChat(bus, 'one')).toBe(true)
     expect(sendChat(bus, 'two')).toBe(false)

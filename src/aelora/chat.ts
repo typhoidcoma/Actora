@@ -169,6 +169,16 @@ function handleSystemFrame(f: ServerFrame): boolean {
       set({
         greeting: { text, streaming: false },
         greetingPending: false,
+        // Into the chat too, so answering it there reads as one conversation
+        // (an earlier, unanswered welcome gives way to the new one).
+        ...(text
+          ? {
+              messages: [
+                ...get().messages.filter((m) => !m.greeting),
+                { id: bubbleId(), role: 'assistant' as const, text, greeting: true as const },
+              ],
+            }
+          : {}),
         ...(s.turnId || s.awaitingTurn ? {} : { phase: 'idle' as const }),
       })
       greetingDone?.(text)
@@ -339,8 +349,23 @@ export function loadTranscript(
   if (oldestHeld !== undefined && firstNew !== undefined && firstNew < oldestHeld) {
     set({ messages: [...bubbles.filter((b) => (b.seq ?? 0) < oldestHeld), ...s.messages], history })
   } else {
-    set({ messages: bubbles, history })
+    // A fresh read of the thread: her welcome isn't in it (system_chat), so it
+    // stays at the end when nothing has been said since.
+    const tail = s.messages.at(-1)
+    set({ messages: tail?.greeting ? [...bubbles, tail] : bubbles, history })
   }
+}
+
+/**
+ * Her welcome, while it's the last thing she said: it isn't in the server's
+ * history, so it rides along in the screen snapshot and her reply to "yes"
+ * knows what was asked.
+ */
+export function greetingInContext(): string | null {
+  const m = get().messages
+  const i = m.findLastIndex((b) => b.greeting)
+  if (i < 0 || m.slice(i + 1).some((b) => b.role === 'assistant')) return null
+  return m[i].text
 }
 
 function failTurn(): void {

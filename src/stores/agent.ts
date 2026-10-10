@@ -11,6 +11,11 @@ export interface ChatBubble {
   seq?: number
   role: 'user' | 'assistant' | 'error'
   text: string
+  /**
+   * Her welcome line, shown in the chat where she said it. It was written over
+   * system_chat, so the server's history doesn't have it (see greetingInContext).
+   */
+  greeting?: true
 }
 
 export interface Reaction {
