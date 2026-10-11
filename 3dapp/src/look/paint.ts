@@ -102,7 +102,8 @@ export function paintGlass(
   ctx.fillRect(0, 0, w, h)
   const top = ctx.createLinearGradient(0, 0, 0, Math.min(h * 0.4, px(0.18)))
   top.addColorStop(0, spec.soft)
-  top.addColorStop(1, 'rgba(0,0,0,0)')
+  // Fade to the same light at zero alpha: fading to transparent *black* greys the middle (the dark band).
+  top.addColorStop(1, withAlpha(spec.soft, 0))
   ctx.fillStyle = top
   ctx.fillRect(0, 0, w, h)
   ctx.restore()
