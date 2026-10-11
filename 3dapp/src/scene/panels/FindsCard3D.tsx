@@ -115,7 +115,7 @@ export function FindsCard3D({ corner, present }: { corner: number; present: bool
     ctx.shadowBlur = 0
 
     // The current find, from the bottom up.
-    const blurb = short ? [] : wrap(f.blurb || f.why, font(500, 0.042), max, 1)
+    const blurb = short ? [] : wrap(f.blurb || f.why, font(600, 0.042), max, 1)
     const title = wrap(f.title, font(700, 0.066), max, short ? 1 : 2, `${-px(0.002)}px`)
     let y = h - pad - blurb.length * px(0.042) * 1.35 - title.length * px(0.066) * 1.08 - px(0.06)
     ctx.font = font(700, 0.032)
@@ -128,7 +128,7 @@ export function FindsCard3D({ corner, present }: { corner: number; present: bool
     ctx.fillText(`${Math.max(0, items.indexOf(f)) + 1} / ${items.length}`, right ? pad : w - pad, y)
     y += px(0.055)
     y = drawLines(ctx, title, x, y, px(0.066) * 1.08, font(700, 0.066), white, align, `${-px(0.002)}px`)
-    drawLines(ctx, blurb, x, y + px(0.008), px(0.042) * 1.35, font(500, 0.042), 'rgba(251,249,244,0.85)', align)
+    drawLines(ctx, blurb, x, y + px(0.008), px(0.042) * 1.35, font(600, 0.042), 'rgba(251,249,244,0.85)', align)
   }
 
   return (

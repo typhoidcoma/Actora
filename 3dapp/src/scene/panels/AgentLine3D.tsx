@@ -65,7 +65,8 @@ export function AgentLine3D() {
   const present = !!text.trim()
   if (present) shown.current = { text, color }
 
-  const f = font(500, SIZE)
+  // 600: the 2D line is 500, but type drawn large and scaled down into the scene thins out.
+  const f = font(600, SIZE)
   const spacing = `${-px(SIZE * 0.015)}px`
   const lines = wrap(shown.current.text, f, px(stage.line.w), 3, spacing)
   const height = lines.length * SIZE * LH + 0.04

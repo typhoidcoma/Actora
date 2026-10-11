@@ -121,7 +121,7 @@ export function PriorityCard3D(p: { item: RankedItem; corner: number; present: b
     const tfont = font(700, tSize)
     const spacing = `${-px(tSize * 0.045)}px`
     const title = wrap(item.title, tfont, max, tCap, spacing)
-    const mfont = font(500, 0.05)
+    const mfont = font(600, 0.05)
     const meta = item.meta ? wrap(item.meta, mfont, max, 1) : []
     const tlh = px(tSize) * 1.0
     const mlh = px(0.05) * 1.35

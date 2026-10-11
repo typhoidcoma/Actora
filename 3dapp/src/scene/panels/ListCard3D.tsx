@@ -88,10 +88,10 @@ export function ListCard3D(p: { tile: TileId; corner: number; present: boolean; 
     drawLines(ctx, [face.value], x, y, px(vSize), vfont, look.strong, align, `${-px(vSize * 0.04)}px`)
     if (face.unit) {
       const ux = right ? x - vw - px(0.02) : x + vw + px(0.02)
-      drawLines(ctx, [face.unit], ux, y + px(vSize) * 0.38, px(0.05), font(500, 0.05), look.muted, align)
+      drawLines(ctx, [face.unit], ux, y + px(vSize) * 0.38, px(0.05), font(600, 0.05), look.muted, align)
     }
     y += px(vSize) * 1.0
-    if (face.line) y = drawLines(ctx, wrap(face.line, font(500, 0.05), w * 0.88 - pad, 1), x, y, px(0.05) * 1.4, font(500, 0.05), look.text, align)
+    if (face.line) y = drawLines(ctx, wrap(face.line, font(600, 0.05), w * 0.88 - pad, 1), x, y, px(0.05) * 1.4, font(600, 0.05), look.text, align)
     if (face.dots) {
       const d = px(0.016)
       for (let i = 0; i < Math.min(14, face.dots.total); i++) {

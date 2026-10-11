@@ -2,14 +2,7 @@
 @import '../../src/styles/index.css';
 @source '../../src';
 
-/* Satoshi, from the 2D app's public/fonts (bundled from there, not copied). */
-@font-face {
-  font-family: 'Satoshi';
-  src: url('../../public/fonts/Satoshi-Variable.woff2') format('woff2');
-  font-weight: 300 900;
-  font-style: normal;
-  font-display: swap;
-}
+/* Satoshi comes from the 2D stylesheet above (its /fonts are served here too). */
 
 /* The scene is the backdrop; the 2D gradient would only flash before the first frame. */
 body {
