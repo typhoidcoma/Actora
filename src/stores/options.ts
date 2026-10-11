@@ -129,6 +129,13 @@ export function mergeOptions(
   // Concrete actions and what Wendy pushed always count; suggestions that went
   // stale sit out, unless that would leave the rail nearly empty.
   const keep = (o: Option) => !!o.act || o.source === 'pushed' || !stale(o)
+  // Her own answers to what she just asked (pushed) are the whole conversation for now:
+  // generated ideas and suggestions wait until it's answered (concrete card actions still show).
+  const answering = pushed.filter((o) => o.say).length >= 2
+  if (answering) {
+    wendy = []
+    says.length = 0
+  }
   const lead = [...pushed, ...wendy].filter(keep)
   const anchors = acts.filter(keep)
   const reserve = Math.min(anchors.length, 2)

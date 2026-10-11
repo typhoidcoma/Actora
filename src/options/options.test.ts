@@ -158,6 +158,14 @@ describe('merge', () => {
     expect(withOffer).toEqual(['plan my day!', 'Done', 'Let Wendy remind me'])
   })
 
+  it("when she offered her own answers, generated ideas don't crowd in (card actions still show)", () => {
+    const local = [actOption('Done', { type: 'complete', id: 'a' }), sayOption('Plan my day')]
+    const wendy = [sayOption('F1 highlights', 'x', 'wendy'), sayOption('SpaceX update', 'y', 'wendy')]
+    const pushed = [sayOption('Yes please', 'Yes please', 'pushed'), sayOption('Not right now', 'Not now', 'pushed')]
+    const out = mergeOptions(local, wendy, pushed, 6).map((o) => o.label)
+    expect(out).toEqual(['Yes please', 'Not right now', 'Done'])
+  })
+
   it('a check-in keeps its "Not now" however many answers she gave', () => {
     const local = [actOption('Done', { type: 'complete', id: 'a' }), actOption('Start', { type: 'startTask', id: 'a' })]
     const pushed = [

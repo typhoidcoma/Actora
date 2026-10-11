@@ -221,9 +221,11 @@ The user never types: these buttons are the only way they talk to Wendy, so they
 Rules:
 - Return JSON only: {"options":[{"label":"...","say":"..."}]}
 - 3 to 5 options. "label": 1-3 words, at most ${MAX_LABEL} characters (a button, not a sentence: "Draft them", "Move to 4pm"), sentence case, no emoji, no trailing period. "say": exactly what the user says to Wendy when they tap it, first person, natural, at most 120 characters.
-- If Wendy's last message asks a question or offers choices, the options must be direct answers to it (include a yes and a no style answer for yes/no questions).
+- If Wendy just asked something (marked QUESTION below), every option is an answer to it, in the user's words: 2 to 4 of them, including a yes and a no style answer for a yes/no question. Nothing else: no other topics, no cards.
 - Otherwise suggest the most useful next things for what is on screen, using the user's real item titles.
-- On the home screen, the app already offers one button for the top priority card. Yours can act on the other cards by name (for example "Prep for Standup" or "Start the report"), but mix in what fits the moment: the time of day, what you know the user cares about, what they were just talking about.
+- On the home screen, the app already offers one button for the top priority card. Yours act on the other cards by name (for example "Prep for Standup" or "Start the report") or follow what they were just talking about.
+- Every option must connect to something real right now: an item on screen, what Wendy said, or what the user was just talking about. Their interests from memory only count when something specific and timely is known (a race on today, a launch this week), and then at most one option. Never a bare topic like "F1 highlights", "SpaceX update" or "Check stocks".
+- Labels start with a verb, so the user knows what tapping does: "Plan Three.js time", not "Three.js coding".
 - Order them by how likely the user is to tap them, most likely first. If Wendy's last message asks something, the direct answers come first.
 - Make them distinct; never two options that do the same thing. Match a relaxed, adult, friendly tone.
 - Every option must be something Wendy can actually do (see the list above). Never suggest booking, buying, calling, texting, timers or anything outside it.
@@ -239,7 +241,12 @@ function buildRequest(key: string, s: Snapshot, existing: Option[]): LlmRequest 
     .map((m) => `${m.role === 'user' ? 'User' : 'Wendy'}: ${m.text.slice(0, 400)}`)
   const last = [...s.agent.messages].reverse().find((m) => m.role === 'assistant')
   const lastUser = [...s.agent.messages].reverse().find((m) => m.role === 'user')?.text
-  const replyingTo = s.agent.line === 'reply' || key === 'chat' ? last?.text : undefined
+  // What she last said to them: her reply, or the welcome / check-in on her line while it's unanswered.
+  const g = s.agent.greeting
+  const onLine = s.agent.line === 'greeting' && g?.text && !g.spent ? g.text : undefined
+  const replyingTo = s.agent.line === 'reply' || key === 'chat' ? last?.text : onLine
+  // A question in it: the options are its answers and nothing else.
+  const asking = !!replyingTo && /\?/.test(replyingTo.slice(-240))
 
   // What the user did with earlier options, so the next set moves on.
   const h = useOptionsStore.getState().history
@@ -253,7 +260,11 @@ function buildRequest(key: string, s: Snapshot, existing: Option[]): LlmRequest 
   const prompt = [
     summary,
     turns.length ? `\nRecent conversation:\n${turns.join('\n')}` : '',
-    replyingTo ? `\nWendy's last message (answer this if it asks something):\n${replyingTo.slice(0, 600)}` : '',
+    replyingTo
+      ? asking
+        ? `\nQUESTION. Wendy just asked the user this; write only answers to it:\n${replyingTo.slice(0, 600)}`
+        : `\nWendy's last message:\n${replyingTo.slice(0, 600)}`
+      : '',
     existing.length ? `\nButtons already shown, do not repeat: ${existing.map((o) => o.label).join(', ')}.` : '',
     tapped.length
       ? `\nRecently tapped (don't offer again unless something changed): ${tapped.slice(-6).join(', ')}.`
@@ -267,7 +278,13 @@ function buildRequest(key: string, s: Snapshot, existing: Option[]): LlmRequest 
     json: true,
     maxTokens: 300,
     // Recall facts about what's actually in play: the topic they're on, else what's on screen.
-    context: { profile: true, memoryQuery: (lastUser ?? focusOf(key, s) ?? 'what matters to me today').slice(0, 200) },
+    context: {
+      profile: true,
+      memoryQuery: ((asking ? replyingTo : null) ?? lastUser ?? focusOf(key, s) ?? 'what matters to me today').slice(
+        0,
+        200,
+      ),
+    },
   }
 }
 
@@ -362,7 +379,9 @@ function snapshot(): Snapshot {
 function signature(key: string): string {
   const a = useAgent.getState()
   const lastId = a.messages.at(-1)?.id ?? '-'
-  return `${key}|${lastId}|${a.line}|${a.notice?.notificationId ?? '-'}`
+  // Her welcome / check-in on the line counts too: a new one (maybe a question) wants its own options.
+  const g = a.line === 'greeting' && !a.greeting.spent ? a.greeting.text.slice(0, 60) : '-'
+  return `${key}|${lastId}|${a.line}|${a.notice?.notificationId ?? '-'}|${g}`
 }
 
 /**
@@ -441,6 +460,8 @@ export function startWendyOptions(): () => void {
     const turnEnded = (p.turnId || p.awaitingTurn) && !s.turnId && !s.awaitingTurn
     if (
       turnEnded ||
+      // Her welcome or a check-in just finished arriving.
+      (p.greetingPending && !s.greetingPending) ||
       s.line !== p.line ||
       s.notice !== p.notice ||
       (s.connection === 'open' && p.connection !== 'open')
