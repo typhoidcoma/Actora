@@ -1,11 +1,21 @@
+/* Satoshi, from the 2D app's public/fonts (bundled from there, not copied). */
+@font-face {
+  font-family: 'Satoshi';
+  src: url('../../public/fonts/Satoshi-Variable.woff2') format('woff2');
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 html,
 body,
 #root {
   margin: 0;
   height: 100%;
-  background: #0d0e1a;
-  color: #e9e9f5;
-  font-family: system-ui, sans-serif;
+  /* --t-bg comes from the shared scheme (initScheme writes it), so the first frame matches the sky. */
+  background: var(--t-bg, #13122a);
+  color: var(--t-text, #e9e9f5);
+  font-family: Satoshi, system-ui, sans-serif;
   overflow: hidden;
 }
 

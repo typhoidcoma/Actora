@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { reconnectAelora, startAelora } from '@actora/aelora/client'
 import { startGreeting } from '@actora/aelora/greeting'
 import { getSupabase, signInWithGoogle } from '@actora/auth/supabase'
+import { startAppearanceSync } from '@actora/stores/appearance'
 import { startCheckins } from '@actora/checkins/checkins'
 import { config } from '@actora/config'
 import { startAgentOptions } from '@actora/options/agentOptions'
@@ -79,6 +80,8 @@ function AuthedApp() {
 }
 
 function Connected({ sb, userId }: { sb: SupabaseClient; userId: string }) {
+  // Day/dusk and the agent's colours follow the account, as in 2D.
+  useEffect(() => startAppearanceSync(sb), [sb])
   useEffect(
     () =>
       startAelora({

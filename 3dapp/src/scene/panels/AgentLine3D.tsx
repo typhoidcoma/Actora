@@ -1,10 +1,16 @@
+import { useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { ringing } from '@actora/aelora/protocol'
 import { useAgent } from '@actora/stores/agent'
+import { useEntities } from '@actora/stores/entities'
+import { useNow } from '@actora/ui/tiles/data'
 import { plainText } from '@actora/ui/markdownText'
-import { TextPanel } from './TextPanel'
+import { useLook } from '../../look/theme'
+import { Glass } from './Glass'
 
 /** What she's saying, above her head: the 3D AgentLine (welcome, reply, reminder or message). */
 export function AgentLine3D() {
+  const look = useLook()
   const a = useAgent(
     useShallow((s) => ({
       name: s.botName,
@@ -19,14 +25,20 @@ export function AgentLine3D() {
       greeting: s.greeting.text,
     })),
   )
+  const reminder = useEntities((s) => (a.notice ? s.notifications[a.notice.notificationId] : undefined))
+  const now = useNow(15_000)
+  const ring = a.line === 'notice' && !!reminder && ringing(reminder, now)
 
   let kicker = a.name
   let text: string
+  let tone: string | undefined = look.ink.agent
   if (a.fatal) {
     kicker = 'Offline'
     text = `Can't reach ${a.name}. Reload to try again.`
+    tone = look.ink.urgent
   } else if (a.line === 'notice' && a.notice) {
-    kicker = 'Reminder'
+    kicker = ring ? 'Reminder · now' : 'Reminder'
+    tone = ring ? look.ink.urgent : look.ink.reminder
     text = [a.notice.title, a.notice.body].filter(Boolean).join('\n')
   } else if (a.line === 'message' && a.message) text = a.message
   else if (a.line === 'reply') {
@@ -36,17 +48,23 @@ export function AgentLine3D() {
     else text = plainText(a.last ?? '')
   } else text = a.greeting
 
-  if (!text.trim()) return null
+  // Keep the last words on the glass while it eases out.
+  const shown = useRef({ kicker, text, tone })
+  const present = !!text.trim()
+  if (present) shown.current = { kicker, text, tone }
+
   return (
-    <TextPanel
-      position={[0, 2.12, 0.1]}
-      width={2.4}
-      height={0.62}
-      kicker={kicker}
-      body={text}
-      bodySize={0.062}
+    <Glass
+      position={[0, 2.18, 0.1]}
+      width={2.5}
+      maxHeight={0.9}
+      kicker={shown.current.kicker}
+      kickerColor={shown.current.tone}
+      body={shown.current.text}
+      bodySize={0.07}
       align="center"
-      tone={a.line === 'notice' ? '#ffb454' : undefined}
+      glow={ring ? look.role.urgent : null}
+      present={present}
     />
   )
 }

@@ -8,6 +8,7 @@ import { AgentLine3D } from './panels/AgentLine3D'
 import { ChatInput3D } from './panels/ChatInput3D'
 import { OptionPills3D } from './panels/OptionPills3D'
 import { Priorities3D } from './panels/Priorities3D'
+import { Post } from './Post'
 
 declare module '@react-three/fiber' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -43,6 +44,7 @@ export function World() {
         }}
       >
         <Rig />
+        <Post />
         <Environment />
         <Character />
         <AgentLine3D />
