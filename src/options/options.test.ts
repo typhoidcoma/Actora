@@ -149,20 +149,20 @@ describe('card-aware home options', () => {
 describe('merge', () => {
   it("leads with Wendy's (pushed, then generated), keeps room for local acts, then local says; dedupes and caps", () => {
     const local = [sayOption('Plan my day'), actOption('Done', { type: 'complete', id: 'a' })]
-    const wendy = [sayOption('plan my day!', 'Plan my day', 'agent'), sayOption('Quick wins', 'x', 'agent')]
+    const fromAgent = [sayOption('plan my day!', 'Plan my day', 'agent'), sayOption('Quick wins', 'x', 'agent')]
     const pushed = [sayOption('From Wendy', 'y', 'pushed')]
-    const out = mergeOptions(local, wendy, pushed, 3).map((o) => o.label)
+    const out = mergeOptions(local, fromAgent, pushed, 3).map((o) => o.label)
     expect(out).toEqual(['From Wendy', 'plan my day!', 'Done'])
     const offer = actOption('Let Wendy remind me', { type: 'enablePush' })
-    const withOffer = mergeOptions([offer, ...local], wendy, [], 3).map((o) => o.label)
+    const withOffer = mergeOptions([offer, ...local], fromAgent, [], 3).map((o) => o.label)
     expect(withOffer).toEqual(['plan my day!', 'Done', 'Let Wendy remind me'])
   })
 
   it("when she offered her own answers, generated ideas don't crowd in (card actions still show)", () => {
     const local = [actOption('Done', { type: 'complete', id: 'a' }), sayOption('Plan my day')]
-    const wendy = [sayOption('F1 highlights', 'x', 'agent'), sayOption('SpaceX update', 'y', 'agent')]
+    const fromAgent = [sayOption('F1 highlights', 'x', 'agent'), sayOption('SpaceX update', 'y', 'agent')]
     const pushed = [sayOption('Yes please', 'Yes please', 'pushed'), sayOption('Not right now', 'Not now', 'pushed')]
-    const out = mergeOptions(local, wendy, pushed, 6).map((o) => o.label)
+    const out = mergeOptions(local, fromAgent, pushed, 6).map((o) => o.label)
     expect(out).toEqual(['Yes please', 'Not right now', 'Done'])
   })
 
@@ -185,10 +185,10 @@ describe('merge', () => {
       actOption('Tomorrow', { type: 'reschedule', id: 'a', due: 'x' }),
       sayOption('Plan my day'),
     ]
-    const wendy = ['Yes, move it', 'Keep it today', 'Break it down', 'Why this?', 'Something else'].map((l) =>
+    const fromAgent = ['Yes, move it', 'Keep it today', 'Break it down', 'Why this?', 'Something else'].map((l) =>
       sayOption(l, l, 'agent'),
     )
-    expect(mergeOptions(local, wendy, []).map((o) => o.label)).toEqual([
+    expect(mergeOptions(local, fromAgent, []).map((o) => o.label)).toEqual([
       'Yes, move it',
       'Keep it today',
       'Break it down',
@@ -271,11 +271,15 @@ describe('freshness', () => {
 
   it('drops stale suggestions but keeps direct actions and never empties the rail', () => {
     const local = [actOption('Done', { type: 'complete', id: 'a' }), sayOption('Plan my day')]
-    const wendy = [sayOption('Old idea', 'x', 'agent'), sayOption('Fresh idea', 'y', 'agent')]
+    const fromAgent = [sayOption('Old idea', 'x', 'agent'), sayOption('Fresh idea', 'y', 'agent')]
     const stale = (o: { label: string }) => o.label === 'Old idea' || o.label === 'Done'
-    expect(mergeOptions(local, wendy, [], 6, stale).map((o) => o.label)).toEqual(['Fresh idea', 'Done', 'Plan my day'])
+    expect(mergeOptions(local, fromAgent, [], 6, stale).map((o) => o.label)).toEqual([
+      'Fresh idea',
+      'Done',
+      'Plan my day',
+    ])
     const allStale = () => true
-    expect(mergeOptions([], wendy, [], 6, allStale).length).toBe(2)
+    expect(mergeOptions([], fromAgent, [], 6, allStale).length).toBe(2)
   })
 
   it("filters out things Wendy can't do", () => {

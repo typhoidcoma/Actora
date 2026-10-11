@@ -8,7 +8,7 @@ const LEAD_MS = 10 * 60_000
 /**
  * A nudge shortly before each event (about 10 minutes), wherever the user is,
  * even when the event isn't one of the top cards: "Standup in 9 min · Prep me".
- * Once per occurrence, all-day events skipped, never while Wendy is mid-turn.
+ * Once per occurrence, all-day events skipped, never while the agent is mid-turn.
  */
 export function startMoments(): () => void {
   const KEY = 'actora.nudged.v1'

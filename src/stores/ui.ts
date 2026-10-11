@@ -27,7 +27,7 @@ interface UiState {
   finds: boolean
   /** The find being looked at inside Discover (its options are on the rail). */
   find: string | null
-  /** The Vault: what Wendy knows about the user (Aelora's vault). Opened from the menu. */
+  /** The Vault: what the agent knows about the user (Aelora's vault). Opened from the menu. */
   vault: boolean
   theme: ThemeMode
   /** The open item panel should start by asking to delete it ("Delete…" from a list row). */
@@ -40,7 +40,7 @@ interface UiState {
   pastChats: boolean
   /** The typing sheet (keyboard button on the rail, "Type instead" in the menu on phones). */
   keyboardOpen: boolean
-  /** Her reply is cut off in the line above the cards (set by WendyLine; the chat opens for it). */
+  /** Her reply is cut off in the line above the cards (set by AgentLine; the chat opens for it). */
   lineOverflow: boolean
 }
 
@@ -92,7 +92,7 @@ export const ui = {
   openChat: () => useUi.setState({ ...CLOSED, chatOpen: true }),
   closeChat: () => useUi.setState({ chatOpen: false }),
   closeAll: () => useUi.setState({ ...CLOSED, keyboardOpen: false, pastChats: false, picking: null }),
-  /** Open an item in its own panel (from a card, or when Wendy points at it). */
+  /** Open an item in its own panel (from a card, or when the agent points at it). */
   open: (item: Selected) => useUi.setState({ ...CLOSED, selected: item }),
   /** Open an item in its panel, already asking whether to delete it. */
   askDelete: (item: Selected) => useUi.setState((s) => ({ ...CLOSED, selected: item, deleting: true, back: s.focus })),
@@ -113,7 +113,7 @@ export const ui = {
   },
   openFinds: () => useUi.setState({ ...CLOSED, finds: true }),
   closeFinds: () => useUi.setState({ finds: false, find: null }),
-  /** Each visit starts unfiltered (Wendy's vault.search filters after opening). */
+  /** Each visit starts unfiltered (the agent's vault.search filters after opening). */
   openVault: () => {
     if (!useUi.getState().vault) vault.clearFilter()
     useUi.setState({ ...CLOSED, vault: true })

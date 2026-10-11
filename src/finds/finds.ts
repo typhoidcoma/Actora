@@ -6,7 +6,7 @@ import { useAgent } from '../stores/agent'
 import { useEntities } from '../stores/entities'
 import { scrubToolLeaks } from '../aelora/scrub'
 
-// Box 4: a few fun, personal finds from the web, once a day. Wendy does a
+// Box 4: a few fun, personal finds from the web, once a day. The agent does a
 // real web search in a dedicated "Fun finds" conversation so the user's main
 // thread stays clean. She replies in normal Markdown (kept as her note) and
 // calls the finds.set ui_action with the items, which become the cards.
@@ -32,7 +32,7 @@ interface FindsState {
   seen: string[]
   /** Streaming text of the current hunt (for the "hunting" shimmer). */
   progress: string
-  /** Wendy's Markdown reply from the hunt that produced these finds (without its headline). */
+  /** The agent's Markdown reply from the hunt that produced these finds (without its headline). */
   note: string
   /** Her personal headline for the finds page (the first-line heading of her reply). */
   headline: string
@@ -301,7 +301,7 @@ function finish(items: Find[] | null, note?: string) {
 }
 
 /**
- * Wendy's finds.set ui_action. During a hunt it waits for her reply to finish
+ * The agent's finds.set ui_action. During a hunt it waits for her reply to finish
  * so the note and the cards land together; any other time (she found fun
  * stuff in the main chat) the cards update straight away.
  */

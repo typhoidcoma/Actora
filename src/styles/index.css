@@ -21,7 +21,7 @@
  * Brand palette (designer, Oct 2026): indigo #3F3E6F, amber #FFBE0B, rose #E3425F,
  * crimson #DE2B52, turquoise #2EDDBA (src/ui/brand.ts).
  * Colours are computed at runtime by the scheme engine (src/color/scheme.ts), which
- * also guards Wendy's colour choices; the values below are its brand output, used
+ * also guards the agent's colour choices; the values below are its brand output, used
  * as first-paint fallbacks. --role-* are fills/glows, --ink-* readable text.
  * Every themed value is a registered custom property so a theme change cross-fades.
  */
@@ -115,8 +115,8 @@
   --ink-reminder: #d12e51;
   --role-goal: #b58500;
   --ink-goal: #916900;
-  --role-wendy: #424172;
-  --ink-wendy: #424172;
+  --role-agent: #424172;
+  --ink-agent: #424172;
   --role-finds: #e3425f;
   --ink-finds: #d12e51;
   --on-accent: #181730;
@@ -157,8 +157,8 @@
   --ink-reminder: #e84663;
   --role-goal: #ffbe0b;
   --ink-goal: #ffbe0b;
-  --role-wendy: #616295;
-  --ink-wendy: #7c7eb3;
+  --role-agent: #616295;
+  --ink-agent: #7c7eb3;
   --role-finds: #e3425f;
   --ink-finds: #e84663;
   --on-accent: #191832;
@@ -216,7 +216,7 @@ button {
   touch-action: manipulation;
 }
 
-/* Display type: big numbers, names, headings and Wendy's voice. Tight and confident. */
+/* Display type: big numbers, names, headings and the agent's voice. Tight and confident. */
 .display {
   font-family: var(--font-display);
   font-weight: 500;
@@ -445,7 +445,7 @@ button {
   }
 }
 
-/* Soft shimmer for Wendy-written chips arriving and the thinking line. */
+/* Soft shimmer for agent-written chips arriving and the thinking line. */
 @keyframes shimmer {
   from {
     background-position: 200% 0;
@@ -501,7 +501,7 @@ button {
   font-size: 12px;
 }
 
-/* Wendy's Markdown */
+/* The agent's Markdown */
 .md {
   font-size: 1rem;
   line-height: 1.55;
@@ -587,7 +587,7 @@ button {
   }
 }
 
-/* Wendy's current step: a highlight sweeping through the words. */
+/* The agent's current step: a highlight sweeping through the words. */
 .text-sweep {
   background: linear-gradient(
       100deg,
@@ -672,7 +672,7 @@ button {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  /* Still: one ring, half-way out, so it reads as Wendy's mark rather than nothing. */
+  /* Still: one ring, half-way out, so it reads as the agent's mark rather than nothing. */
   .ripple-ring {
     animation: none;
     opacity: 0.6;
@@ -698,14 +698,14 @@ button {
   cursor: pointer;
 }
 
-/* Wendy thinking (activity line): a mini orb that breathes, with a halo pulsing out. */
+/* The agent thinking (activity line): a mini orb that breathes, with a halo pulsing out. */
 .think-pulse {
   position: relative;
   display: inline-block;
   border-radius: 9999px;
   background:
     radial-gradient(circle at 34% 30%, rgb(255 255 255 / 0.75), transparent 42%),
-    radial-gradient(circle at 50% 55%, var(--mood-1, var(--role-accent)), var(--mood-2, var(--role-wendy)) 92%);
+    radial-gradient(circle at 50% 55%, var(--mood-1, var(--role-accent)), var(--mood-2, var(--role-agent)) 92%);
   box-shadow: 0 0 10px -1px var(--mood-1, var(--role-accent));
   animation: think-breathe 1.5s ease-in-out infinite;
 }

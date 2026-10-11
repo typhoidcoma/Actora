@@ -3,28 +3,28 @@
 A touch-first web client for the [Aelora](https://github.com/luminora-app/Aelora) agent backend. The app shows one
 screen:
 
-- **Wendy's line** across the top: her welcome, the first sentence of each reply, and reminders.
-- **The grid**: four 4:3 cards around an orb that is Wendy.
+- **The agent's line** across the top: its welcome, the first sentence of each reply, and reminders.
+- **The grid**: four 4:3 cards around an orb that is the agent (Wendy today; its name comes from the server).
   - Three **priority cards**, ranked: the things to tackle next, from any domain.
-  - **Box 4** (bottom-right): fun finds Wendy searched the web for, picked for you, under a headline she writes. Images crossfade behind a big count of fun things you have not seen yet. While something she prepared waits for your OK (an email, an invite), it takes this box instead. Her full answers live in the chat, which opens on its own for big questions and rich answers, or from "Read all" under her line.
+  - **Box 4** (bottom-right): fun finds the agent searched the web for, picked for you, under a headline it writes. Images crossfade behind a big count of fun things you have not seen yet. While something it prepared waits for your OK (an email, an invite), it takes this box instead. Its full answers live in the chat, which opens on its own for big questions and rich answers, or from "Read all" under its line.
 - **The option rail** along the bottom: what you can say or do next.
 
-**Nothing requires typing.** Tap the orb to talk, tap an option, or tap a card for its actions. Wendy can drive every
-part of the UI; `docs/wendy-ui.md` is her playbook. Actora is designed for iPad first, scales down to phones, and
+**Nothing requires typing.** Tap the orb to talk, tap an option, or tap a card for its actions. The agent can drive every
+part of the UI; `docs/agent-ui.md` is its playbook. Actora is designed for iPad first, scales down to phones, and
 installs to the home screen.
 
 ## Priority cards (`src/priority/`)
 
 1. **Local score** (`score.ts`). Each item gets an instant, deterministic score: a live or imminent event, an overdue
    task, a fresh unread reminder, a task due today, a goal falling behind. The top 3 can hold at most two of one kind.
-2. **Wendy re-ranks** (`rank.ts`). She reorders the top 8 through `POST /api/llm`, grounded in your profile, and
+2. **The agent re-ranks** (`rank.ts`). It reorders the top 8 through `POST /api/llm`, grounded in your profile, and
    writes a short "why now" for each card. Debounced, cached by the candidate set, at most once every 2 minutes,
    429-aware.
-3. **`priorities.set`**. Wendy can set the order herself. It holds for 30 minutes.
+3. **`priorities.set`**. The agent can set the order itself. It holds for 30 minutes.
 
 When an item is finished or read, its card drops out at once and the others glide up. If there are fewer than three
 things to tackle, domain summaries fill the gaps. Tapping a card morphs it into its item panel. The full lists open
-from the header buttons, from "See all", or when Wendy opens them.
+from the header buttons, from "See all", or when the agent opens them.
 
 ## Stack
 
@@ -86,7 +86,7 @@ trigger on `main`) picks the Dockerfile up as is.
 
 1. **Aelora:** add it to `AELORA_CORS_ORIGINS` on the Aelora Cloud Run service. The variable _replaces_ the default
    list, so keep the existing origins (and `http://localhost:5173` for local dev). Without it the browser blocks
-   `/api/public-config` (sign-in can't start) and `/api/llm` (Wendy's options and card ranking).
+   `/api/public-config` (sign-in can't start) and `/api/llm` (The agent's options and card ranking).
 2. **Supabase → Authentication → URL Configuration:** add it to _Redirect URLs_ (keep `http://localhost:5173`), so
    Google sign-in can return to the live site.
 
@@ -109,24 +109,24 @@ options for that context, merged in this order:
    back off on 429.
 3. **Options pushed by the agent** through the `options.set` ui_action. These win until you move to another context.
 
-Tapping a _say_ option sends a chat turn, and Wendy answers in the line above the grid. The orb is the microphone: tap
+Tapping a _say_ option sends a chat turn, and the agent answers in the line above the grid. The orb is the microphone: tap
 it to talk, and its pulse follows the words as they come in. Hold it to open the full conversation. On iPad a chat button, a
 keyboard button and the menu sit at the end of the rail; on phones the options are a 2×2 grid with chat and the menu
 beside it (typing is in the menu). Inside the chat there is always a message box with a mic.
 
-### Wendy drives the UI (`src/aelora/router.ts`)
+### The agent drives the UI (`src/aelora/router.ts`)
 
-`client_state` advertises the ui_actions Wendy can call (`AVAILABLE_ACTIONS` in `src/aelora/actions.ts`): screen moves
+`client_state` advertises the ui_actions the agent can call (`AVAILABLE_ACTIONS` in `src/aelora/actions.ts`): screen moves
 (`home.show`, `card.open`, `list.open`, `chat.open`, `finds.*`, `vault.*`), the cards (`priorities.set`), the pills
 (`options.set`), the look (`theme.set`, `colors.set`, `colors.reset`), and offers (`push.offer`, `voice.listen`).
-Alongside them it sends a `ui.screen` snapshot of what is on screen, with real ids. The playbook Wendy follows, with
-every action and when to use it, is [docs/wendy-ui.md](docs/wendy-ui.md).
+Alongside them it sends a `ui.screen` snapshot of what is on screen, with real ids. The playbook the agent follows, with
+every action and when to use it, is [docs/agent-ui.md](docs/agent-ui.md).
 
-### Wendy's line (`src/ui/WendyLine.tsx`, `src/aelora/greeting.ts`)
+### The agent's line (`src/ui/AgentLine.tsx`, `src/aelora/greeting.ts`)
 
 - **Welcome.** The welcome comes over `system_chat`, Aelora's path for app events (no history, mood or fact side
   effects). It is cached and regenerated only after 30 minutes away or when the part of the day changes.
-- **Replies.** Off the chat screen, her replies stream into the line, and older lines fade up and out.
+- **Replies.** Off the chat screen, its replies stream into the line, and older lines fade up and out.
 - **Reminders.** A reminder that arrives while the app is open appears in the line with answer chips, and stays there
   until you acknowledge it.
 
@@ -135,7 +135,7 @@ every action and when to use it, is [docs/wendy-ui.md](docs/wendy-ui.md).
 The setup follows Aelora's `docs/PUSH.md`:
 
 - The service worker is a plain push transport, with no Workbox and no caching.
-- Opting in is a single quiet chip, _Let Wendy remind me_, which only appears after Wendy has spoken.
+- Opting in is a single quiet chip, _Let <name> remind me_, which only appears after the agent has spoken.
   - On iOS in a Safari tab, the chip explains how to add the app to the Home Screen instead.
 - The subscription is re-sent on every reconnect.
 - Tapping a notification on the lock screen opens Inbox with that reminder selected and marks it read.
@@ -146,17 +146,17 @@ The setup follows Aelora's `docs/PUSH.md`:
 - **Palette.** Designer palette (`src/ui/brand.ts`): indigo `#3F3E6F`, amber `#FFBE0B`, rose `#E3425F`, crimson
   `#DE2B52` and turquoise `#2EDDBA`, plus tints for emotion and weather range.
   - All UI colour comes from the **scheme engine** (`src/color/`): OKLCH colour science that turns the brand (or
-    Wendy's `colors.set` request) into CSS variables for both themes. `--role-*` are fills and glows (≥3:1 on the
+    The agent's `colors.set` request) into CSS variables for both themes. `--role-*` are fills and glows (≥3:1 on the
     background); `--ink-*` are their readable text forms (≥4.5:1).
   - Guardrails: gamut mapping by chroma, lightness/chroma bands, near-neutral surfaces, `urgent` always warm and
-    `calm` never, minimum ΔE between kinds and heat levels. Wendy's palette lasts 8 h by default; `colors.reset`
+    `calm` never, minimum ΔE between kinds and heat levels. The agent's palette lasts 8 h by default; `colors.reset`
     restores the brand.
   - Priority heat runs crimson, then amber, then turquoise. Daylight is a pale indigo-white; dusk is deep indigo.
 - **Shape.** Cards are exactly 4:3 with 12px corners.
 - **Themes.**
   - **Daylight** is Hog Bristle and runs while the sun is up at your location (Open-Meteo sunrise/sunset).
   - **Dusk** is Midnight Affair and runs after sunset.
-  - Changes cross-fade through registered CSS custom properties. You can override the theme in the menu, and Wendy can
+  - Changes cross-fade through registered CSS custom properties. You can override the theme in the menu, and the agent can
     with `theme.set`.
 - **Liquid glass.** Backdrop blur and saturation, a specular edge, a finger-tracking sheen, a rim around the notch, and
   a jelly press. The orb's mood colour spills through from behind the grid.
@@ -175,7 +175,7 @@ The setup follows Aelora's `docs/PUSH.md`:
 
 ### Performance
 
-- Geometry lives in `stores/metrics.ts`, which stacks the header, Wendy's line, the grid and the rail. All motion is
+- Geometry lives in `stores/metrics.ts`, which stacks the header, the agent's line, the grid and the rail. All motion is
   transforms between known boxes.
 - One persistent WebGL orb. It pauses when the page is hidden and caps DPR at 2.
 - Supabase and the Markdown renderer are code-split. The initial JS is about 159 KB gzipped.

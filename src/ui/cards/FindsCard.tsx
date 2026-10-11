@@ -1,3 +1,4 @@
+import { useAgent } from '../../stores/agent'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { secureUrl } from '../../secureUrl'
 import { useEffect, useState } from 'react'
@@ -13,10 +14,11 @@ const SCRIM = 'linear-gradient(to top, rgb(30 24 34 / 0.9) 8%, rgb(30 24 34 / 0.
 const ROTATE_MS = 7000
 
 /**
- * Box 4: fun things Wendy found on the web for this user. Their
+ * Box 4: fun things the agent found on the web for this user. Their
  * images crossfade behind a big count of finds not yet seen; tap to open them.
  */
 export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean }) {
+  const name = useAgent((s) => s.botName)
   const { items, status, seen } = useFinds()
   const unseen = unseenCount({ items, seen })
   const reduced = useReducedMotion()
@@ -91,7 +93,7 @@ export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean 
             </div>
             <div className={`${stack ? '' : 'mt-1'} text-[max(13px,calc(var(--grid)*0.026))] font-semibold opacity-90`}>
               {hunting && !items.length
-                ? 'Wendy is hunting…'
+                ? `${name} is hunting…`
                 : !items.length
                   ? 'Find fun things'
                   : unseen
@@ -138,7 +140,7 @@ export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean 
                   ? 'Fun finds need separate conversations, which this server has turned off.'
                   : hunting
                     ? 'Searching the web for things you’ll like.'
-                    : 'Tap and Wendy will find you something fun.'}
+                    : `Tap and ${name} will find you something fun.`}
               </motion.div>
             )}
           </AnimatePresence>

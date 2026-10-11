@@ -14,7 +14,7 @@ type Auth =
   | { status: 'signed-out'; error?: string }
   | { status: 'signed-in'; sb: SupabaseClient; userId: string }
 
-/** First name from the Google profile, for Wendy's greeting. */
+/** First name from the Google profile, for the agent's greeting. */
 function firstName(session: Session): string | null {
   const meta = session.user.user_metadata as { given_name?: string; full_name?: string; name?: string }
   const name = meta.given_name ?? meta.full_name ?? meta.name

@@ -24,7 +24,7 @@ export function startFreshness(): () => void {
     if (idleHome()) return window.location.reload()
     if (waiting) return
     waiting = true
-    // Wait for home and quiet: a panel closing, or Wendy finishing her turn.
+    // Wait for home and quiet: a panel closing, or the agent finishing her turn.
     const check = () => {
       if (!idleHome()) return
       offUi()

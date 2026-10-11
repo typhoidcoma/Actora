@@ -1,4 +1,4 @@
-/** ui_action names we advertise to Wendy (the catalog is documented in router.ts and docs/wendy-ui.md). */
+/** ui_action names we advertise to the agent (the catalog is documented in router.ts and docs/agent-ui.md). */
 export const AVAILABLE_ACTIONS = [
   'home.show',
   'priorities.set',

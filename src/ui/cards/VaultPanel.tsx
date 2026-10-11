@@ -17,14 +17,14 @@ import { ROLE } from '../brand'
 import { morph, press } from '../motion'
 import { Panel } from './Panel'
 
-/** The few categories offered when adding by hand; the rest arrive through Wendy. */
+/** The few categories offered when adding by hand; the rest arrive through the agent. */
 const ADD_AS = ['preference', 'routine', 'relationship', 'identity', 'value', 'intention']
 const label = (id: string) => CATEGORIES.find((c) => c.id === id)?.label ?? 'Context'
 
 /**
- * The Vault: everything Wendy remembers about the user, grouped by kind. The
+ * The Vault: everything the agent remembers about the user, grouped by kind. The
  * user can add one directly or forget one (two taps, so nothing goes by
- * accident); Wendy's own remember/forget tools update it live.
+ * accident); the agent's own remember/forget tools update it live.
  */
 export function VaultPanel() {
   const { entries, status, query, category } = useVault()
@@ -43,7 +43,7 @@ export function VaultPanel() {
   // Fresh every time it opens: she may have learned things since.
   useEffect(() => void loadVault(), [])
   // A category that just emptied (its last memory forgotten) drops back to All.
-  // (Only once loaded, so a category Wendy picked survives the first fetch.)
+  // (Only once loaded, so a category the agent picked survives the first fetch.)
   const emptied = status === 'ready' && !!category && !cats.some((c) => c.id === category)
   useEffect(() => {
     if (emptied) setCategory(null)
@@ -51,7 +51,7 @@ export function VaultPanel() {
 
   const kicker =
     status === 'loading' && !count
-      ? 'Looking through her memory…'
+      ? `Looking through what ${botName} remembers…`
       : filtering
         ? `${matches} of ${count}`
         : count
@@ -59,7 +59,7 @@ export function VaultPanel() {
           : 'Nothing remembered yet'
 
   return (
-    <Panel layoutId="vault" accent={ROLE.wendy} kicker={kicker} title="Vault" onClose={ui.closeVault}>
+    <Panel layoutId="vault" accent={ROLE.agent} kicker={kicker} title="Vault" onClose={ui.closeVault}>
       {/* Search first; adding sits behind + so the list leads. */}
       <div className="flex items-center gap-2">
         <label className="glass-pill flex h-11 min-w-0 flex-1 items-center gap-2 rounded-[8px] px-3">

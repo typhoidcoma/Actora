@@ -74,12 +74,12 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
     })
     if (status !== 'open') abortTurnOnDisconnect()
   })
-  // Keep Wendy's idea of what's on screen in sync with what is actually on screen.
+  // Keep the agent's idea of what's on screen in sync with what is actually on screen.
   const offUi = useUi.subscribe((s, prev) => {
     if (s.focus !== prev.focus || s.chatOpen !== prev.chatOpen || s.selected !== prev.selected) sendClientState(sock)
   })
 
-  // Wendy hears what her colour change became (guardrail notes) right away.
+  // The agent hears what her colour change became (guardrail notes) right away.
   const offScheme = useScheme.subscribe((s, p) => s.scheme !== p.scheme && sendClientState(sock))
   // Her welcome landed: she'll know what she asked when the user answers it.
   const offGreeting = useAgent.subscribe(
@@ -459,9 +459,9 @@ export function captureTask(title: string): Promise<void> {
   return capture(socket, a.connection === 'open', a.userId, title)
 }
 
-// ── The Vault (what Wendy remembers) ──────────────────────────────────────────────
+// ── The Vault (what the agent remembers) ──────────────────────────────────────────────
 
-/** Load everything Wendy remembers (refreshed each time the Vault opens). */
+/** Load everything the agent remembers (refreshed each time the Vault opens). */
 export async function loadVault(): Promise<void> {
   vault.loading()
   const r = await ask<{ type: string; entries?: VaultEntry[] }>({ type: 'vault.list' }, 'vault.list')
@@ -469,7 +469,7 @@ export async function loadVault(): Promise<void> {
   else vault.failed()
 }
 
-/** Save a memory: a fact Wendy uses in conversation, mirrored to the vault (vault.remember). */
+/** Save a memory: a fact the agent uses in conversation, mirrored to the vault (vault.remember). */
 export async function rememberFact(content: string, category?: string): Promise<boolean> {
   const text = content.trim().slice(0, 500)
   if (!text) return false
@@ -478,7 +478,7 @@ export async function rememberFact(content: string, category?: string): Promise<
   return r !== null
 }
 
-/** Undo a "Noted: …": find the memory Wendy just saved by its words and forget it. */
+/** Undo a "Noted: …": find the memory the agent just saved by its words and forget it. */
 export async function forgetByText(text: string): Promise<void> {
   await loadVault()
   const want = text.trim().toLowerCase()

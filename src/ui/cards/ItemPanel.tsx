@@ -12,21 +12,21 @@ import { ago, clockTime, dayLabel, dueLabel } from '../format'
 import { KIND } from './kinds'
 import { Panel } from './Panel'
 
-/** One item, opened from its card (or by Wendy). Its actions are on the rail. */
+/** One item, opened from its card (or by the agent). Its actions are on the rail. */
 export function ItemPanel({ item }: { item: Selected }) {
   const e = useEntities(
     useShallow((s) => ({ tasks: s.tasks, goals: s.goals, events: s.events, notifications: s.notifications })),
   )
   const kind = KIND[item.kind]
   const close = () => ui.leaveItem()
-  // A task's "about": its notes, or (until it has some) a brief Wendy writes for it.
+  // A task's "about": its notes, or (until it has some) a brief the agent writes for it.
   const task = item.kind === 'task' ? (e.tasks[item.id] ?? null) : null
   const taskGoal = task?.goal_id ? (e.goals[task.goal_id]?.title ?? null) : null
   const brief = useTaskBrief(task, taskGoal, !!task?.notes?.trim())
   const botName = useAgent((s) => s.botName)
-  // Why Wendy put this card where it is, in her words (when she ranked it).
+  // Why the agent put this card where it is, in her words (when she ranked it).
   const ranked = usePriorities().find((p) => p.key === `${item.kind}:${item.id}`)
-  const why = ranked?.whyFrom === 'wendy' ? ranked.why : null
+  const why = ranked?.whyFrom === 'agent' ? ranked.why : null
   const seeAll = (
     <button
       onClick={() => ui.reveal(item)}
@@ -49,7 +49,7 @@ export function ItemPanel({ item }: { item: Selected }) {
     const notes = t.notes?.trim()
     body = (
       <>
-        <About text={notes || brief.text} byWendy={!notes} loading={!notes && brief.loading} botName={botName} />
+        <About text={notes || brief.text} byAgent={!notes} loading={!notes && brief.loading} botName={botName} />
         <Facts
           rows={[
             ['Status', t.status.replace('_', ' ')],
@@ -100,7 +100,7 @@ export function ItemPanel({ item }: { item: Selected }) {
         {n.body && <p className="text-[17px] leading-relaxed text-text">{n.body}</p>}
         <Facts
           rows={[
-            ['From', n.origin_type === 'wendy' ? 'Wendy' : n.origin_type],
+            ['From', n.origin_type === 'wendy' ? botName : n.origin_type],
             ['Sent', ago(n.sent_at ?? n.created_at)],
             ['Status', n.read_at ? 'Read' : 'Unread'],
           ]}
@@ -243,15 +243,15 @@ function DeleteButton({
   )
 }
 
-/** What the task is about: its notes, or Wendy's brief (labelled as hers) while it has none. */
+/** What the task is about: its notes, or the agent's brief (labelled as hers) while it has none. */
 function About({
   text,
-  byWendy,
+  byAgent,
   loading,
   botName,
 }: {
   text: string | null
-  byWendy: boolean
+  byAgent: boolean
   loading: boolean
   botName: string
 }) {
@@ -259,7 +259,7 @@ function About({
   return (
     <section className="mb-5">
       <h3 className="mb-1.5 text-[12px] font-semibold tracking-wide text-muted uppercase">
-        {byWendy ? `${botName}'s take` : 'About'}
+        {byAgent ? `${botName}'s take` : 'About'}
       </h3>
       {text ? (
         <p className="selectable text-[16px] leading-relaxed whitespace-pre-line text-strong">

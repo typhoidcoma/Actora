@@ -102,8 +102,9 @@ function Sheet({
   const compact = useMetrics((m) => m.compact)
   const google = useGoogle((g) => g.status)
   const checkins = useCheckins((c) => c.on)
-  const wendyColors = useScheme((s) => s.source === 'wendy')
-  const wendyUntil = useScheme((s) => s.until)
+  const agentColors = useScheme((s) => s.source === 'agent')
+  const agentUntil = useScheme((s) => s.until)
+  const name = useAgent((s) => s.botName)
   const email = useAgent((s) => s.email)
   const theme = useUi((s) => s.theme)
   const push = usePush((s) => s.status)
@@ -170,21 +171,21 @@ function Sheet({
       <Item onClick={() => ui.setTheme(THEME_NEXT[theme])} hint={THEME_LABEL[theme]}>
         Look
       </Item>
-      {/* Wendy's palette sits on top of Look (it restyles day and dusk alike); say so, and offer the way back. */}
-      {wendyColors && (
+      {/* The agent's palette sits on top of Look (it restyles day and dusk alike); say so, and offer the way back. */}
+      {agentColors && (
         <Item
           onClick={go(() => {
             resetColors()
             toast.show('Back to the Actora colours')
           })}
-          hint={wendyUntil ? `Wendy's · until ${clockTime(new Date(wendyUntil).toISOString())}` : "Wendy's"}
+          hint={agentUntil ? `${name}'s · until ${clockTime(new Date(agentUntil).toISOString())}` : `${name}'s`}
         >
           Reset colours
         </Item>
       )}
       <Item onClick={go(() => ui.openVault())}>Vault</Item>
       <Item onClick={go(() => ui.pastChats(true))}>Past chats</Item>
-      {/* Wendy's now-and-then "how's it going?" while the app is open. */}
+      {/* The agent's now-and-then "how's it going?" while the app is open. */}
       <Item onClick={() => setCheckins(!checkins)} hint={checkins ? 'On' : 'Off'}>
         Check-ins
       </Item>
@@ -209,7 +210,7 @@ function Sheet({
         </Item>
       )}
       {push === 'denied' && <Item hint="Blocked in browser settings">Reminders</Item>}
-      {/* Google: Wendy's email and invites need it; connected, a tap syncs the calendar. */}
+      {/* Google: The agent's email and invites need it; connected, a tap syncs the calendar. */}
       {google?.configured && (
         <>
           <Item

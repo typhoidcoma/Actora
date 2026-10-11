@@ -14,13 +14,14 @@ export function KeyboardSheet() {
 }
 
 function Sheet() {
+  const name = useAgent((s) => s.botName)
   const m = useMetrics()
   const chatOpen = useUi((s) => s.chatOpen)
   const busy = useAgent((s) => s.awaitingTurn || s.turnId !== null)
   const offline = useAgent((s) => s.connection !== 'open')
   const [text, setText] = useState('')
   const w = Math.min(m.vw - 24, 680)
-  // Wendy can't take it right now (busy, or no connection): keep the thought as a task instead.
+  // The agent can't take it right now (busy, or no connection): keep the thought as a task instead.
   const captureOnly = busy || offline
 
   const submit = (e?: FormEvent) => {
@@ -50,7 +51,7 @@ function Sheet() {
       <motion.form
         role="dialog"
         aria-modal="true"
-        aria-label="Type to Wendy"
+        aria-label={`Type to ${name}`}
         onSubmit={submit}
         initial={{ opacity: 0, y: 24, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -73,10 +74,10 @@ function Sheet() {
             captureOnly
               ? offline
                 ? 'Offline: jot it down as a task'
-                : "Wendy's busy: jot it down as a task"
-              : 'Say anything to Wendy'
+                : `${name}'s busy: jot it down as a task`
+              : `Say anything to ${name}`
           }
-          aria-label={captureOnly ? 'Save as a task' : 'Message Wendy'}
+          aria-label={captureOnly ? 'Save as a task' : `Message ${name}`}
           enterKeyHint={captureOnly ? 'done' : 'send'}
           className="h-12 min-w-0 flex-1 rounded-full bg-transparent px-4 text-strong placeholder:text-faint focus:outline-none"
         />

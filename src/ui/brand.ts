@@ -1,6 +1,6 @@
 // The brand palette, in one place. Everything colourful in the app derives from
 // these through the scheme engine (src/color/scheme.ts), which also guards any
-// colours Wendy picks at runtime.
+// colours the agent picks at runtime.
 //
 // Designer palette (Oct 2026): indigo, amber, rose, crimson, turquoise.
 // Sampled from the swatch image; replace with the designer's exact hex codes.
@@ -30,7 +30,7 @@ export const EXT = {
  * What each colour means in the UI. Values are CSS variables written by the
  * scheme engine: `--role-*` is the colour itself (fills, glows, washes; ≥3:1 on
  * the background) and `--ink-*` its readable text form (≥4.5:1). Both follow
- * the theme and Wendy's colour choices, and cross-fade when either changes.
+ * the theme and the agent's colour choices, and cross-fade when either changes.
  */
 const role = (name: string) => `var(--role-${name})`
 
@@ -44,12 +44,12 @@ export const ROLE = {
   },
   /** Urgency heat for priority cards: calm → pressing. */
   heat: { calm: role('calm'), mid: role('mid'), urgent: role('urgent') },
-  wendy: role('wendy'),
+  agent: role('agent'),
   finds: role('finds'),
   status: { ok: role('calm'), busy: role('accent'), warn: role('urgent') },
   onImage: '#FBF9F4',
   onImageTag: BRAND.amber,
-  findsFallback: `linear-gradient(135deg, ${role('wendy')}, ${role('finds')} 55%, ${role('mid')})`,
+  findsFallback: `linear-gradient(135deg, ${role('agent')}, ${role('finds')} 55%, ${role('mid')})`,
 } as const
 
 /** The readable text form of a role colour (`var(--role-x)` → `var(--ink-x)`); other colours pass through. */

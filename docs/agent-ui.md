@@ -1,4 +1,4 @@
-# Wendy × Actora: UI playbook
+# Actora UI playbook (for its agent)
 
 The live copy of this playbook is on the Aelora server as an **Actora-only** playbook (not in `_shared`, so other
 apps and personas never see it). The server turns it on when `client_state.ui.client` is `"actora"`. This file is
@@ -13,15 +13,15 @@ the reference copy; keep the two in sync.
   for items that exist, `options.set` needs 2–5 options, colours must be hex, `hours` ≤ 168, and finds need a title
   and an http(s) url.
 - `screen.priorities[].key` carries real ids (`task:<uuid>`, `event:<uuid>`…), `screen.visible` lists the open
-  list's rows with their ids, and `screen.box4.items` the finds with theirs. Wendy only knows ids from that snapshot,
+  list's rows with their ids, and `screen.box4.items` the finds with theirs. The agent only knows ids from that snapshot,
   or from a lookup in the same turn. Actions that name an item that doesn't exist here are ignored.
 - Actora acts only on its own user's events. It refuses a `hello` for a different user than the one signed in,
   and drops any event whose `userId` (or entity `user_id`) is someone else's. On an admin socket, which also gets
   every user's events from the server, it drops unlabelled screen events and refetches its own lists for
   unlabelled data events. Labelling the event envelope with `userId`, or not fanning out to `client: "actora"`
   sockets, would make this exact.
-- Wendy's welcome line is written over `system_chat`, so it never enters the thread's history. Actora shows it in
-  the chat as her latest message and sends it as `screen.yourGreeting` until she has replied after it, so a "yes"
+- The agent's welcome line is written over `system_chat`, so it never enters the thread's history. Actora shows it in
+  the chat as its latest message and sends it as `screen.yourGreeting` until it has replied after it, so a "yes"
   tapped in answer to it has its question.
 - The fun finds thread is created with `conversation.new`, its id is kept, and it's named with
   `conversation.rename` (the server can't look a conversation up by title).
@@ -129,7 +129,7 @@ current value):
 - `seed` + `harmony` (`analogous`, `complementary`, `triadic` or `split`): the fastest way to a coherent palette
   from one colour. The seed becomes the accent and tints the surfaces.
 - Roles: `accent` (buttons, links), `urgent`, `mid`, `calm` (the urgency heat on cards), `task`, `event`,
-  `reminder`, `goal` (item kinds), `wendy` (your chat), `finds` (box 4).
+  `reminder`, `goal` (item kinds), `agent` (you: your chat and orb; `wendy` still works), `finds` (box 4).
 - `neutral`: the hue the background and glass lean towards (it stays near-grey).
 - `ambient`: 2–6 colours for the drifting background (replaces the weather sky). `orb`: 1–3 colours for you at rest.
 - `hours`: how long it lasts (default 8, max 168). Then it returns to the brand palette.

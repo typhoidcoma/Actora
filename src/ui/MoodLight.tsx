@@ -6,7 +6,7 @@ import { css, moodIntensity, orbColors } from './palette'
 
 /**
  * The orb's light, spilling onto the glass from behind the grid. The tiles'
- * backdrop blur picks it up, so their inner corners glow in Wendy's mood.
+ * backdrop blur picks it up, so their inner corners glow in the agent's mood.
  * Also publishes --mood-1/--mood-2 for any other surface that wants them.
  */
 export function MoodLight() {

@@ -18,7 +18,7 @@ export interface ChatBubble {
    * system_chat, so the server's history doesn't have it (see greetingInContext).
    */
   greeting?: true
-  /** An emoji Wendy put on the user's message (message.react): her "got it" at a glance. */
+  /** An emoji the agent put on the user's message (message.react): her "got it" at a glance. */
   react?: string
 }
 
@@ -31,7 +31,7 @@ export interface Reaction {
   at: number
 }
 
-/** A proactive notification Wendy is "saying" in the line. */
+/** A proactive notification the agent is "saying" in the line. */
 interface Notice {
   notificationId: string
   title: string
@@ -39,10 +39,10 @@ interface Notice {
 }
 
 /**
- * What the Wendy line (her voice above the grid) is showing:
+ * What the the agent line (her voice above the grid) is showing:
  * the welcome greeting, her latest reply, a notification, or a one-off message.
  */
-/** One thing Wendy did during a turn (a tool call), for the activity line. */
+/** One thing the agent did during a turn (a tool call), for the activity line. */
 export interface Step {
   id: string
   name: string
@@ -105,11 +105,30 @@ export interface AgentState {
   message: string | null
 }
 
+const NAME_KEY = 'actora.agentName.v1'
+/** The connected agent's name, as the server last gave it (remembered, so it never flashes a placeholder). */
+function rememberedName(): string {
+  try {
+    return localStorage.getItem(NAME_KEY) || 'Assistant'
+  } catch {
+    return 'Assistant'
+  }
+}
+export function rememberAgentName(name: string): void {
+  try {
+    localStorage.setItem(NAME_KEY, name)
+  } catch {
+    /* private mode */
+  }
+}
+/** The agent's name, for text outside React (toasts, prompts). */
+export const agentName = (): string => useAgent.getState().botName
+
 export const useAgent = create<AgentState>(() => ({
   connection: 'idle',
   phase: 'offline',
   toolName: null,
-  botName: 'Wendy',
+  botName: rememberedName(),
   email: null,
   userId: null,
   isAdmin: false,

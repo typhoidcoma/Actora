@@ -3,7 +3,7 @@ import { secureUrl } from '../secureUrl'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
-// Wendy's replies are Markdown with links, emphasis, lists, tables and
+// The agent's replies are Markdown with links, emphasis, lists, tables and
 // third-party preview images (FRONTEND.md → "Rendering her replies").
 // react-markdown never renders raw HTML, so no sanitiser is needed.
 const components: Components = {

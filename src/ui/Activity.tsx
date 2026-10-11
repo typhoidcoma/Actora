@@ -5,7 +5,7 @@ import { useAgent } from '../stores/agent'
 import { useNow } from './tiles/data'
 
 /**
- * What Wendy is doing right now, narrated: the current step large with a
+ * What the agent is doing right now, narrated: the current step large with a
  * shimmer and its detail ("best ramen near me", "theverge.com"), and the
  * steps she's finished trailing beneath as small ticks. With no tool running
  * it reads "Thinking", then "Thinking it through"… as time passes.
@@ -108,7 +108,7 @@ const PATHS: Record<StepIcon, string> = {
 
 function ActivityIcon({ icon, size }: { icon: StepIcon; size: number }) {
   const reduced = useReducedMotion()
-  // Thinking: a mini Wendy, a glowing bead in her mood colours that breathes
+  // Thinking: a mini the agent, a glowing bead in her mood colours that breathes
   // while a soft halo pulses out from it (think-pulse in index.css).
   if (icon === 'think')
     return <span aria-hidden className="think-pulse shrink-0" style={{ width: size * 0.78, height: size * 0.78 }} />

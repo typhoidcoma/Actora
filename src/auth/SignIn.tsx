@@ -8,6 +8,7 @@ import { useThemeSync } from '../ui/Theme'
 import { signInWithGoogle } from './supabase'
 
 export function SignIn({ error: initialError }: { error?: string | null }) {
+  const name = useAgent((s) => s.botName)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(initialError ?? null)
 
@@ -47,7 +48,7 @@ export function SignIn({ error: initialError }: { error?: string | null }) {
         >
           <h1 className="display text-6xl leading-none text-strong">Actora</h1>
           <p className="max-w-xs text-[15px] text-muted">
-            Your day, at a touch. Sign in and Wendy takes it from there.
+            Your day, at a touch. Sign in and {name} takes it from there.
           </p>
         </motion.div>
 

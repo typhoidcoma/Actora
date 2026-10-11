@@ -3,7 +3,7 @@ import { create } from 'zustand'
 /**
  * Quick feedback for something the user just did ("Done: Wire the shader ·
  * Undo"), or that just failed. A small stack (newest at the bottom), shown
- * above the rail on every screen (phone panels included, where Wendy's line is
+ * above the rail on every screen (phone panels included, where the agent's line is
  * hidden). Each toast keeps its own timer, so a new one never takes away an
  * earlier one's Undo while its window is still open.
  */

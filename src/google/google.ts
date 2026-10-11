@@ -5,7 +5,7 @@ import { toast } from '../stores/toast'
 
 /**
  * The user's Google connection (one account for Calendar and Gmail), through
- * Aelora's /api/google/calendar/* routes (docs/HTTP-API.md). Wendy's email and
+ * Aelora's /api/google/calendar/* routes (docs/HTTP-API.md). The agent's email and
  * invite tools can't run without it, so it lives in the menu, and a tool that
  * fails for want of it offers to connect.
  */
@@ -34,7 +34,7 @@ export function googleHint(s: GoogleStatus | null): string {
   return s.google_email ?? 'Connected'
 }
 
-/** Reconnecting is needed for Wendy to do email (older grants were calendar-only). */
+/** Reconnecting is needed for the agent to do email (older grants were calendar-only). */
 export const googleNeedsAction = (s: GoogleStatus | null) =>
   !!s && s.configured && (!s.connected || !!s.needs_reauth || !s.gmail_compose)
 

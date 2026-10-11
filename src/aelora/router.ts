@@ -18,7 +18,7 @@ import { flushCaptures } from '../stores/captures'
 import { sessions } from '../stores/session'
 import { actOption, sayOption } from '../options/types'
 import { notifyInBackground, resubscribe } from '../push/push'
-import { agent, useAgent, type Reaction } from '../stores/agent'
+import { agent, agentName, rememberAgentName, useAgent, type Reaction } from '../stores/agent'
 import { entities, useEntities } from '../stores/entities'
 import { scoreItems } from '../priority/score'
 import { optionsStore } from '../stores/options'
@@ -58,8 +58,8 @@ import { actionArgs, AVAILABLE_ACTIONS, strayAction } from './actions'
 import { eventVerdict } from './owner'
 
 /**
- * ui_action names we accept; advertised in client_state so Wendy can drive the
- * whole screen (WEBSOCKET.md → client-advertised catalogs). Playbook: docs/wendy-ui.md.
+ * ui_action names we accept; advertised in client_state so the agent can drive the
+ * whole screen (WEBSOCKET.md → client-advertised catalogs). Playbook: docs/agent-ui.md.
  *   priorities.set {items: [{kind, id, why?}]}             rank the three cards (30 min)
  *   home.show                                              close everything: back to the cards
  *   card.open / item.focus {kind, id} · card.close         one item in its own panel
@@ -121,7 +121,7 @@ function screen() {
   const p = usePriorityStore.getState()
   const priorities = mergePriorities(
     scoreItems(e, Date.now()),
-    p.wendy,
+    p.agent,
     p.pushed && p.pushed.until > Date.now() ? p.pushed.entries : null,
   ).map((i) => ({ key: i.key, title: i.title, why: i.why }))
   const f = useFinds.getState()
@@ -423,7 +423,7 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
       const status = usePush.getState().status
       if (status === 'off')
         optionsStore.push(contextKeyOf(useUi.getState()), [
-          actOption('Let Wendy remind me', { type: 'enablePush' }),
+          actOption(`Let ${agentName()} remind me`, { type: 'enablePush' }),
           actOption('Not now', { type: 'snoozePush' }),
         ])
       else if (status === 'needs-install')
@@ -433,7 +433,7 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
   }
 }
 
-/** A delivered reminder arrived while the app is open: Wendy says it in her line. */
+/** A delivered reminder arrived while the app is open: The agent says it in her line. */
 function announce(n: Notification): void {
   const now = Date.now()
   const due = n.sent_at || !n.scheduled_for || Date.parse(n.scheduled_for) <= now
@@ -499,7 +499,7 @@ function routeEvent(bus: FrameBus, event: string, data: Record<string, unknown> 
       sessions.apply(data.session)
       return
     case 'pending_action':
-      // Something Wendy prepared that waits for the user's OK (an email, an invite…).
+      // Something the agent prepared that waits for the user's OK (an email, an invite…).
       pending.apply(data)
       return
     case 'vault':
@@ -556,7 +556,7 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
     if (verdict === 'drop') return
     if (verdict === 'refetch') return refetchOwn(bus, f.event)
   }
-  // Wendy sometimes calls a ui_action by name as if it were its own tool
+  // The agent sometimes calls a ui_action by name as if it were its own tool
   // (colors_set{…}); the server refuses it as unknown, so run it here instead.
   // Only for a turn of ours: the user's own, or the finds hunt.
   const turn = typeof f.conversationId === 'string' ? f.conversationId : null
@@ -595,9 +595,10 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
       } else if (useUi.getState().vault) {
         void import('./client').then((m) => m.loadVault())
       }
+      if (typeof f.botName === 'string' && f.botName.trim()) rememberAgentName(f.botName.trim())
       useAgent.setState({
         userId,
-        botName: typeof f.botName === 'string' ? f.botName : 'Wendy',
+        botName: typeof f.botName === 'string' && f.botName.trim() ? f.botName.trim() : useAgent.getState().botName,
         email: typeof f.email === 'string' ? f.email : null,
         isAdmin: f.isAdmin === true,
         ...(f.mood && typeof f.mood === 'object' ? { mood: f.mood as MoodState } : {}),

@@ -2,7 +2,7 @@
 // ("perform_reaction{anchor:…,intensity:low}perfect. i've blocked…"). The
 // server should catch that; until it does, never show it.
 
-/** Wendy's tools on Aelora (WEBSOCKET.md → tool catalog). */
+/** The agent's tools on Aelora (WEBSOCKET.md → tool catalog). */
 import { ACCEPTED_ACTIONS } from './actions'
 
 const KNOWN_ACTIONS = new Set<string>(ACCEPTED_ACTIONS)
@@ -91,7 +91,7 @@ const SAY_OPEN = /\[[^\]\n]*(?:\](?:\((?:\s*s(?:a(?:y(?::[^)\n]*)?)?)?)?)?)?$/
 // (or an answer link) does nothing when tapped, so it never shows as a link.
 const APP_LINK = /(?<!!)\[([^\]\n]{1,120})\]\(\s*(?!https?:|mailto:|tel:|say:)[^)\n]*\)/g
 
-/** The answers Wendy wrote as say: links, in order, deduped. */
+/** The answers the agent wrote as say: links, in order, deduped. */
 export function sayLinks(text: string): Array<{ label: string; say: string }> {
   const out: Array<{ label: string; say: string }> = []
   for (const m of text.matchAll(SAY_LINK)) {

@@ -5,7 +5,7 @@ export function stableMarkdown(text: string): string {
   return text
 }
 
-/** Wendy's Markdown flattened to one calm line of prose for the header line. */
+/** The agent's Markdown flattened to one calm line of prose for the header line. */
 export function plainText(md: string): string {
   return md
     .replace(/!\[[^\]]*]\([^)]*\)/g, '')
@@ -18,7 +18,7 @@ export function plainText(md: string): string {
     .trim()
 }
 
-/** The first sentence of a reply, for Wendy's one-line voice above the grid. */
+/** The first sentence of a reply, for the agent's one-line voice above the grid. */
 export function firstSentence(text: string, max = 160): string {
   const m = /^(.+?[.!?])(\s|$)/.exec(text)
   const s = (m ? m[1] : text).trim()

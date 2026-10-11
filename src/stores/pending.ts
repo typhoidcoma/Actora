@@ -4,7 +4,7 @@ import { sayOption, type Option } from '../options/types'
 import { toast } from './toast'
 
 /**
- * Things Wendy has prepared that wait for the user's OK: an email draft, an
+ * Things the agent has prepared that wait for the user's OK: an email draft, an
  * invite, a filter… (Aelora's gated tools → `pending_action` events). The server
  * only carries one out when the user approves in a later message, so the
  * buttons here send that message; they never act directly.
@@ -25,7 +25,7 @@ interface PendingState {
 
 export const usePending = create<PendingState>(() => ({ items: {} }))
 
-/** The newest thing Wendy prepared that waits for the user's OK (or none). */
+/** The newest thing the agent prepared that waits for the user's OK (or none). */
 export function usePendingAction(): PendingAction | undefined {
   return usePending(useShallow((s) => waiting(s.items)[0]))
 }
@@ -102,7 +102,7 @@ export const pending = {
 /**
  * The answer pills for the newest waiting action. Each one is a message from
  * the user (the server requires approval in a later turn), naming the action so
- * Wendy confirms the right one.
+ * The agent confirms the right one.
  */
 export function approvalOptions(p: PendingAction | undefined): Option[] {
   if (!p) return []

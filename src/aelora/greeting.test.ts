@@ -37,7 +37,7 @@ describe('greeting', () => {
       {
         ...f,
         arrival: { kind: 'back', away: 5 * HOUR },
-        lastChat: { user: 'Help me prep for the interview', wendy: 'Start with your three stories.', ago: 5 * HOUR },
+        lastChat: { user: 'Help me prep for the interview', agent: 'Start with your three stories.', ago: 5 * HOUR },
       },
       ANGLES[2],
       [],
@@ -50,14 +50,14 @@ describe('greeting', () => {
   })
 
   it('an old chat is context, not something to pick up', () => {
-    const d = greetingDirective({ ...f, lastChat: { user: 'hi', wendy: 'hey', ago: 10 * 24 * HOUR } }, ANGLES[3], [])
+    const d = greetingDirective({ ...f, lastChat: { user: 'hi', agent: 'hey', ago: 10 * 24 * HOUR } }, ANGLES[3], [])
     expect(d).toContain(`Angle for this greeting: ${ANGLES[3]}`)
     expect(d).toContain('(10 days ago)')
   })
 
   it('a reload carries on, with no hello', () => {
     const d = greetingDirective(
-      { ...f, arrival: { kind: 'reload' }, lastChat: { user: 'yes', wendy: 'Blocking 2–4 for it.', ago: 60_000 } },
+      { ...f, arrival: { kind: 'reload' }, lastChat: { user: 'yes', agent: 'Blocking 2–4 for it.', ago: 60_000 } },
       ANGLES[0],
       [],
     )

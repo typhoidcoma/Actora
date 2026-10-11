@@ -1,10 +1,11 @@
+import { agentName } from '../stores/agent'
 import { useAgent } from '../stores/agent'
 import { delivered } from './protocol'
 import { useEntities } from '../stores/entities'
 import { useSky } from '../weather/sky'
 import { greet } from './client'
 
-// Wendy's welcome line, written fresh by Wendy every time the user arrives:
+// The agent's welcome line, written fresh by the agent every time the user arrives:
 // on each app open, and again when they come back after a while. Nothing is
 // cached or templated; the line stays empty (the orb thinks) until her words
 // stream in. Generated over system_chat (Aelora's path for app-event prompts:
@@ -44,7 +45,7 @@ export interface Facts {
   /** How they got here: a reload, a return after a while, or a first visit. */
   arrival: Arrival
   /** The last exchange in their main chat, if there is one (ago in ms; NaN if unknown). */
-  lastChat: { user: string | null; wendy: string | null; ago: number } | null
+  lastChat: { user: string | null; agent: string | null; ago: number } | null
 }
 
 /** "12 minutes", "3 hours", "a day", "5 days". */
@@ -67,11 +68,11 @@ function lastChat(now: number): Facts['lastChat'] {
   const m = useAgent.getState().messages.filter((b) => !b.greeting && b.role !== 'error')
   if (!m.length) return null
   const user = m.findLast((b) => b.role === 'user')
-  const wendy = m.findLast((b) => b.role === 'assistant')
+  const reply = m.findLast((b) => b.role === 'assistant')
   const at = Date.parse(m.at(-1)?.at ?? '')
   return {
     user: user ? clip(user.text, 180) : null,
-    wendy: wendy ? clip(wendy.text, 240) : null,
+    agent: reply ? clip(reply.text, 240) : null,
     ago: Number.isFinite(at) ? Math.max(0, now - at) : Number.NaN,
   }
 }
@@ -111,7 +112,7 @@ function facts(arrival: Arrival, now = Date.now()): Facts {
 
 /**
  * Directions for the opener, not words: when there's nothing to pick up, each
- * greeting gets a different angle so two in a row never feel the same. Wendy
+ * greeting gets a different angle so two in a row never feel the same. The agent
  * writes every word herself.
  */
 export const ANGLES = [
@@ -138,8 +139,8 @@ export function greetingDirective(f: Facts, angle: string, recent: string[]): st
   } else {
     lines.push(
       f.arrival.kind === 'back'
-        ? `APP EVENT: the user is back in the Actora app after ${awayWords(f.arrival.away)} away. Welcome them back as Wendy.`
-        : 'APP EVENT: the user just opened the Actora app. Welcome them as Wendy.',
+        ? `APP EVENT: the user is back in the Actora app after ${awayWords(f.arrival.away)} away. Welcome them back as ${agentName()}.`
+        : `APP EVENT: the user just opened the Actora app. Welcome them as ${agentName()}.`,
       'One or two short sentences, at most 30 words. Plain text only: no markdown, no lists, no emoji. At most one question.',
       pickUp
         ? 'Pick up where your chat left off (below) when it was unfinished or worth a follow-up: ask how it went, or offer the next step. If it was wrapped up, open fresh instead.'
@@ -147,9 +148,9 @@ export function greetingDirective(f: Facts, angle: string, recent: string[]): st
       'Sound like someone who knows them and remembers your last conversation, never a generic assistant. Mention at most one practical thing, and only if it really matters.',
     )
   }
-  if (c && (c.user || c.wendy)) {
+  if (c && (c.user || c.agent)) {
     const ago = Number.isFinite(c.ago) ? ` (${awayWords(c.ago)} ago)` : ''
-    const said = [c.user ? `they said "${c.user}"` : '', c.wendy ? `you said "${c.wendy}"` : '']
+    const said = [c.user ? `they said "${c.user}"` : '', c.agent ? `you said "${c.agent}"` : '']
     lines.push(`Where your main chat left off${ago}: ${said.filter(Boolean).join('; ')}.`)
   } else lines.push('You have no chat with them yet.')
   lines.push(`Context: ${f.weekday} ${f.part}.${f.weather ? ` Weather: ${f.weather}.` : ''}`)

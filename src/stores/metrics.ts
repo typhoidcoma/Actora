@@ -23,13 +23,13 @@ interface Metrics {
   compact: boolean
   short: boolean
   /**
-   * Portrait phones: the orb sits small at the top, Wendy's line under it, and
+   * Portrait phones: the orb sits small at the top, the agent's line under it, and
    * the four cards stack in one column by importance (scrolling if needed).
    */
   stack: boolean
   /** Card height in the stack (0 when not stacked). */
   cellH: number
-  /** Wendy's line, between the header and the grid. */
+  /** The agent's line, between the header and the grid. */
   line: { x: number; y: number; w: number; h: number }
   /** Option rail, docked to the bottom edge. `top` is where its band starts (the grid's bottom): pills centre in it. */
   rail: { x: number; y: number; w: number; h: number; padBottom: number; top: number }
@@ -67,8 +67,8 @@ function measure(): Metrics {
   const compact = vw < 640
   const reserveX = Math.max(safe.left, safe.right) + 16
 
-  // Vertical stack: header · Wendy's line · grid · option rail.
-  // No top bar: Wendy's line starts just under the safe area.
+  // Vertical stack: header · the agent's line · grid · option rail.
+  // No top bar: The agent's line starts just under the safe area.
   const headerH = safe.top + (short ? 10 : 18)
   const baseLineH = Math.round(short ? 46 : clamp(vh * 0.1, 72, 116))
   // Room for two rows of option chips (phones: the icons sit beside the first row).
@@ -87,14 +87,14 @@ function measure(): Metrics {
   const orb = Math.round(grid * (cellW < 260 ? 0.25 : 0.32))
   const radius = Math.round(clamp(grid * 0.012, 6, 9))
   const gridX = Math.round((vw - gridW) / 2)
-  // Spare height: phones give some to Wendy's line (their cards are small);
+  // Spare height: phones give some to the agent's line (their cards are small);
   // then the line + grid block sits at the optical centre.
   const spare = Math.max(0, availH - gridH)
   const lineGrow = compact ? Math.round(Math.min(spare * 0.5, 140)) : 0
   const lineH = baseLineH + lineGrow
   // Optical centre: the pills and the dark finds card weigh the bottom down, so
   // the block sits a little above true centre (38/62 of any spare space), and the
-  // grid lifts a touch into the roomy band around Wendy's line.
+  // grid lifts a touch into the roomy band around the agent's line.
   const stackTop = Math.round(headerH + (spare - lineGrow) * 0.38)
   const lift = compact ? 0 : Math.round(clamp(vh * 0.022, 8, 20))
   const gridY = stackTop + lineH + 6 - lift
@@ -103,7 +103,7 @@ function measure(): Metrics {
   // Her line owns the whole band above the cards; text is centred in it.
   const line = { x: Math.round((vw - lineW) / 2), y: safe.top, w: lineW, h: Math.max(lineH, gridY - safe.top) }
 
-  // The chat is where Wendy's words live in full: as big as the screen allows,
+  // The chat is where the agent's words live in full: as big as the screen allows,
   // still a sheet on tablets (a margin all round); on phones it fills the screen
   // edge to edge, its header clear of the status bar.
   const sheetW = compact ? vw : Math.round(Math.min(vw - 32, 1000))

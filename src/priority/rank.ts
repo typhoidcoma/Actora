@@ -1,3 +1,4 @@
+import { agentName } from '../stores/agent'
 import { LlmError, llm, type LlmRequest } from '../aelora/http'
 import { config } from '../config'
 import { useAgent } from '../stores/agent'
@@ -6,7 +7,7 @@ import { priorityStore, type RankEntry } from '../stores/priority'
 import { useSky } from '../weather/sky'
 import { scoreItems, type PriorityItem } from './score'
 
-// Wendy re-ranks the top candidates and writes a short "why now" for each,
+// The agent re-ranks the top candidates and writes a short "why now" for each,
 // via Aelora's stateless POST /api/llm (grounded in the user's profile).
 
 const CANDIDATES = 8
@@ -44,7 +45,8 @@ export function parseRanking(text: string, known: Set<string>): RankEntry[] {
   return out
 }
 
-const SYSTEM = `You are Wendy, a warm personal assistant. Pick the three things the user should tackle first, in order, from the candidates.
+const system =
+  () => `You are ${agentName()}, a warm personal assistant. Pick the three things the user should tackle first, in order, from the candidates.
 Weigh real urgency (time, overdue, waiting on them) over busywork, and favour a sensible mix.
 Return JSON only: {"top":[{"key":"<candidate key>","why":"<why now, at most ${MAX_WHY} characters, your voice, no emoji>"}]}
 Use only the given keys.`
@@ -53,7 +55,7 @@ function buildRankRequest(candidates: PriorityItem[], now = new Date()): LlmRequ
   const sky = useSky.getState()
   const lines = candidates.map((c) => `- key: ${c.key} | ${c.kind} | "${c.title}" | ${c.meta} | ${c.why}`)
   return {
-    system: SYSTEM,
+    system: system(),
     prompt: [
       `${RANK_MARKER} (${now.toLocaleString([], { weekday: 'long', hour: 'numeric', minute: '2-digit' })}${
         sky.source === 'live' && sky.temp !== null ? `, ${Math.round(sky.temp)}°${sky.unit} ${sky.kind}` : ''
@@ -66,7 +68,7 @@ function buildRankRequest(candidates: PriorityItem[], now = new Date()): LlmRequ
   }
 }
 
-/** Watches the data; when the candidate set changes, asks Wendy to re-rank (throttled, cached, 429-aware). */
+/** Watches the data; when the candidate set changes, asks the agent to re-rank (throttled, cached, 429-aware). */
 export function startRanking(): () => void {
   let timer: ReturnType<typeof setTimeout> | undefined
   let inflight: AbortController | null = null
@@ -78,13 +80,13 @@ export function startRanking(): () => void {
   const run = async () => {
     if (useAgent.getState().connection !== 'open') return
     const candidates = scoreItems(useEntities.getState(), Date.now()).slice(0, CANDIDATES)
-    if (candidates.length < 2) return priorityStore.setWendy(null)
+    if (candidates.length < 2) return priorityStore.setAgent(null)
     const sig = candidates.map((c) => c.key).join('|')
     if (sig === lastSig) return
     const hit = cache.get(sig)
     if (hit) {
       lastSig = sig
-      return priorityStore.setWendy(hit)
+      return priorityStore.setAgent(hit)
     }
     const now = Date.now()
     const wait = Math.max(lastRun + MIN_INTERVAL_MS, pausedUntil) - now
@@ -107,7 +109,7 @@ export function startRanking(): () => void {
       const ranking = parseRanking(text, new Set(candidates.map((c) => c.key)))
       if (ranking.length) {
         cache.set(sig, ranking)
-        priorityStore.setWendy(ranking)
+        priorityStore.setAgent(ranking)
       }
     } catch (e) {
       if (ctrl.signal.aborted) return
@@ -130,6 +132,6 @@ export function startRanking(): () => void {
     inflight?.abort()
     offE()
     offA()
-    priorityStore.setWendy(null)
+    priorityStore.setAgent(null)
   }
 }

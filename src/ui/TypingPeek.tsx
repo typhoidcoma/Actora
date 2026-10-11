@@ -10,9 +10,9 @@ import { press } from './motion'
 
 /**
  * Phones: a panel covers the whole screen, and her line steps back for it. If
- * Wendy is still working or typing there (the chat closed on her, or she opened
+ * The agent is still working or typing there (the chat closed on her, or she opened
  * the panel herself), her latest words show at the top; once she's done it
- * stays as "Wendy replied" until the chat opens or the panel closes. Tap it to
+ * stays as "the agent replied" until the chat opens or the panel closes. Tap it to
  * open the chat.
  */
 export function TypingPeek() {

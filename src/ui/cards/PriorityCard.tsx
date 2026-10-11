@@ -14,7 +14,7 @@ import { KIND, urgencyColor } from './kinds'
 
 /**
  * One thing to tackle: its kind up top, the title big, a factual meta line.
- * (No "why now" text: it only restated the title; Wendy's ranking is the order.) Mirrored for
+ * (No "why now" text: it only restated the title; the agent's ranking is the order.) Mirrored for
  * the right-hand column; bottom-row cards read upward so nothing sits under the
  * orb's notch.
  */

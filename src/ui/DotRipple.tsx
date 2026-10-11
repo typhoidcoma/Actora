@@ -1,6 +1,6 @@
 /**
  * A ripple made of tiny circles: rings of dots that expand outward from the
- * centre and fade, one after another, like rings on water. Used for Wendy's
+ * centre and fade, one after another, like rings on water. Used for the agent's
  * thinking line and around the orb. Pure CSS (ripple-ring in index.css), so it
  * runs even inside AnimatePresence(initial=false), and stays still under
  * reduced motion.

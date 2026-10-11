@@ -2,7 +2,7 @@ import { useAgent } from '../stores/agent'
 import { useOptionsStore } from '../stores/options'
 import { panelOpen, ui, useUi } from '../stores/ui'
 
-/** A conversation with Wendy (the chat) left alone this long goes home. */
+/** A conversation with the agent (the chat) left alone this long goes home. */
 const CHAT_IDLE_MS = 30_000
 /** Any other panel (lists, items, finds, the Vault) left alone this long goes home. */
 const PANEL_IDLE_MS = 6_000
@@ -20,10 +20,10 @@ const inConversation = () => {
 
 /**
  * Eases back to home when nothing is happening, so the app always looks ready
- * for Wendy to be proactive: 30 s after a conversation goes quiet, 6 s for
+ * for the agent to be proactive: 30 s after a conversation goes quiet, 6 s for
  * other panels, either stretched to give what's on screen time to be read.
  * Taps, keys, scrolling (inside panels too), moving the pointer
- * and selecting text all count as activity. Never while Wendy is working or
+ * and selecting text all count as activity. Never while the agent is working or
  * talking, the mic is listening, the keyboard is up, or text is selected:
  * the clock restarts once those end.
  */
@@ -67,13 +67,10 @@ export function startIdleHome(chatMs = CHAT_IDLE_MS, panelMs = PANEL_IDLE_MS): (
   const arm = () => {
     clearTimeout(timer)
     if (!away()) return
-    timer = setTimeout(
-      () => {
-        if (busy()) return arm()
-        if (away()) ui.closeAll()
-      },
-      waitMs(),
-    )
+    timer = setTimeout(() => {
+      if (busy()) return arm()
+      if (away()) ui.closeAll()
+    }, waitMs())
   }
 
   // Pointer movement fires constantly; re-arming at most every 300 ms is plenty.
@@ -91,7 +88,7 @@ export function startIdleHome(chatMs = CHAT_IDLE_MS, panelMs = PANEL_IDLE_MS): (
   // Panels scroll inside themselves; capture catches those scrolls too.
   window.addEventListener('scroll', onMove, { passive: true, capture: true })
   document.addEventListener('selectionchange', onMove)
-  // Opening something (by tap or by Wendy) starts the clock; finishing a turn restarts it.
+  // Opening something (by tap or by the agent) starts the clock; finishing a turn restarts it.
   const offUi = useUi.subscribe((s, p) => s !== p && arm())
   const offAgent = useAgent.subscribe((s, p) => {
     if ((p.turnId || p.awaitingTurn) && !s.turnId && !s.awaitingTurn) arm()

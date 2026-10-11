@@ -1,5 +1,5 @@
 /**
- * The app is served over https, so an http:// image or link Wendy found (an
+ * The app is served over https, so an http:// image or link the agent found (an
  * og:image, a page) is asked for over https instead: the browser would upgrade
  * it anyway, with a Mixed Content warning. Anything else passes through as is.
  */

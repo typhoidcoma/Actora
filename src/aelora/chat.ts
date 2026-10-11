@@ -16,7 +16,7 @@ import type { Step } from '../stores/agent'
 let stepSeq = 0
 
 /** A tool call began; or, if it's already showing (tool.progress and mindmap both report it), fill in its detail. */
-/** Tools that are Wendy's own housekeeping (avatar beats, reading app state), not work for the user. */
+/** Tools that are the agent's own housekeeping (avatar beats, reading app state), not work for the user. */
 const BACKSTAGE = new Set(['perform_reaction', 'get_app_state'])
 
 function startStep(steps: Step[], name: string, detail: string | null): Step[] {
@@ -52,7 +52,7 @@ function endStep(steps: Step[], name: string, failed: boolean): Step[] {
 // Frames are matched to the turn by conversationId, so a concurrent system_chat
 // (which carries only channelId) never leaks into the bubble.
 //
-// system_chat is used for Wendy's welcome line: same stream shape, but its
+// system_chat is used for the agent's welcome line: same stream shape, but its
 // frames carry only channelId "system:<userId>" and no conversationId.
 
 const TURN_TIMEOUT_MS = 120_000 // the server has no turn timeout of its own
@@ -71,7 +71,7 @@ let greetingTimer: ReturnType<typeof setTimeout> | undefined
 const isSystem = (f: ServerFrame) =>
   typeof f.conversationId !== 'string' && typeof f.channelId === 'string' && f.channelId.startsWith('system:')
 
-/** Answers Wendy wrote as say: links go on the pills, as if she'd called options.set. */
+/** Answers the agent wrote as say: links go on the pills, as if she'd called options.set. */
 function offerSayLinks(raw: string) {
   // Answer links, or an options.set she wrote out instead of calling.
   const links = [...sayLinks(raw), ...textOptions(raw)]
@@ -122,7 +122,7 @@ export function sendChat(bus: FrameBus, text: string): boolean {
 }
 
 /**
- * Ask Wendy for a welcome line over system_chat (no history, mood or fact
+ * Ask the agent for a welcome line over system_chat (no history, mood or fact
  * side effects). The directive is an app event, never a user turn.
  */
 export function sendGreeting(
@@ -261,7 +261,7 @@ export function handleChatFrame(f: ServerFrame): boolean {
         set({ phase: 'thinking', toolName: null, steps: endStep(s.steps, name, f.phase === 'failed' && !stray) })
         // Failed for want of Google (email, invites): offer to connect it right there.
         if (f.phase === 'failed' && isGoogleError(`${String(f.error ?? '')} ${String(f.result ?? '')}`)) {
-          toast.error('Wendy needs your Google account for that.', {
+          toast.error(`${s.botName} needs your Google account for that.`, {
             action: { label: 'Connect', run: () => void connectGoogle() },
             ms: 9000,
           })
@@ -433,7 +433,7 @@ const LEADING_EMOJI =
   /^\s*(\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F|\u20E3|\u200D\p{Extended_Pictographic}\uFE0F?)*)\s*/u
 
 /**
- * message.react: Wendy puts an emoji on the user's latest message, her "got it"
+ * message.react: The agent puts an emoji on the user's latest message, her "got it"
  * at a glance (at her own discretion). Anything that isn't a single emoji is
  * ignored.
  */

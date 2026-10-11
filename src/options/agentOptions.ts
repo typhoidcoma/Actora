@@ -101,7 +101,7 @@ function screenSummary(key: string, s: Snapshot): string {
     const p = usePriorityStore.getState()
     const top = mergePriorities(
       scoreItems(s.entities, s.now),
-      p.wendy,
+      p.agent,
       p.pushed && p.pushed.until > s.now ? p.pushed.entries : null,
     )
     lines.push(
@@ -214,12 +214,12 @@ const canDo = (name: string) => `What ${name} can actually do when the user taps
 - Tasks: add, list, complete, edit, delete, reschedule. Goals: add, review progress, edit, complete.
 - Calendar: list events, create events, move or delete events (events with other guests need the user's confirmation).
 - Reminders: schedule a reminder at a time, list them, mark read, cancel.
-- Memory: remember a fact about the user, recall what she knows, search past conversations.
+- Memory: remember a fact about the user, recall what ${name} knows, search past conversations.
 - Web search with images and links (news, ideas, recommendations, facts), and the user's uploaded documents.
 - Email, only if the user has connected Google: search and read mail, draft replies (the user confirms before anything is sent).
 - Talk: advice, planning, breaking work into steps, reflection, encouragement.
 - In the app: open lists (tasks, calendar, goals, inbox), open an item, show fun finds.
-She cannot book, buy, order, pay, call, text or message people, play media, set device alarms or timers, navigate, or control other apps.`
+${name} cannot book, buy, order, pay, call, text or message people, play media, set device alarms or timers, navigate, or control other apps.`
 
 const system = (
   name: string,
@@ -377,7 +377,7 @@ function snapshot(): Snapshot {
     now,
     cards: mergePriorities(
       scoreItems(entities, now),
-      p.wendy,
+      p.agent,
       p.pushed && p.pushed.until > now ? p.pushed.entries : null,
     ),
   }

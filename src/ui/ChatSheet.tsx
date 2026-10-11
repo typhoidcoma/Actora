@@ -1,3 +1,4 @@
+import { agentName } from '../stores/agent'
 import { AnimatePresence, motion, useDragControls, type PanInfo } from 'motion/react'
 import { CopyButton } from './CopyButton'
 import { useEffect, useLayoutEffect, useRef } from 'react'
@@ -64,7 +65,7 @@ function Sheet() {
           borderRadius: m.sheet.radius,
         }}
         role="dialog"
-        aria-label="Chat with Wendy"
+        aria-label={`Chat with ${agentName()}`}
       >
         <motion.div
           className="flex min-h-0 flex-1 flex-col"
@@ -255,13 +256,13 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
         className={`chat-user selectable relative max-w-[80%] self-end rounded-[6px] rounded-br-[3px] bg-accent/25 px-4 py-2.5 text-[15px] text-strong ${bubble.react ? 'mb-3' : ''}`}
       >
         {bubble.text}
-        {/* Wendy's "got it" (message.react): pops onto the corner of what the user said. */}
+        {/* The agent's "got it" (message.react): pops onto the corner of what the user said. */}
         <AnimatePresence>
           {bubble.react && (
             <motion.span
               key={bubble.react}
               role="img"
-              aria-label={`Wendy reacted ${bubble.react}`}
+              aria-label={`${agentName()} reacted ${bubble.react}`}
               initial={{ scale: 0.3, opacity: 0, rotate: -12 }}
               animate={{ scale: 1, opacity: 1, rotate: 0 }}
               transition={{ type: 'spring', stiffness: 420, damping: 16 }}

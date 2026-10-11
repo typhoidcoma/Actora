@@ -1,4 +1,4 @@
-// Speech-to-text for talking to Wendy (tap the orb). Uses the browser's
+// Speech-to-text for talking to the agent (tap the orb). Uses the browser's
 // built-in recognizer: SpeechRecognition / webkitSpeechRecognition in Chrome,
 // Edge and Safari (Chrome and Edge send audio to their online speech service;
 // Safari can run on-device). Firefox has none: we say so and offer the keyboard.

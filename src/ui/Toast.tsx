@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect } from 'react'
 import { useAgent } from '../stores/agent'
+import { agentName } from '../stores/agent'
 import { panelOpen, useUi } from '../stores/ui'
 import { useMetrics } from '../stores/metrics'
 import { usePeek } from '../stores/peek'
@@ -8,7 +9,7 @@ import { toast, useToast } from '../stores/toast'
 import { press } from './motion'
 
 /**
- * On phones an open panel hides Wendy's line, which is where app notes and a
+ * On phones an open panel hides the agent's line, which is where app notes and a
  * lost connection are said. While that's the case, say them here instead.
  */
 function usePhoneNotes() {
@@ -24,8 +25,8 @@ function usePhoneNotes() {
             if (hidden() && useAgent.getState().connection !== 'open')
               toast.error(
                 useAgent.getState().connection === 'fatal'
-                  ? "Can't reach Wendy. Reload to try again."
-                  : "Can't reach Wendy yet. Still trying…",
+                  ? `Can't reach ${agentName()}. Reload to try again.`
+                  : `Can't reach ${agentName()} yet. Still trying…`,
                 { ms: 8000 },
               )
           }, 4000)

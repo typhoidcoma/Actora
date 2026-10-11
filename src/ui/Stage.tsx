@@ -1,3 +1,4 @@
+import { agentName } from '../stores/agent'
 import { AnimatePresence, LayoutGroup, motion, MotionConfig } from 'motion/react'
 import { useEffect } from 'react'
 import { markNotificationRead } from '../aelora/client'
@@ -28,7 +29,7 @@ import { PastChats } from './PastChats'
 import { OrbDock, OrbSocket } from './OrbDock'
 import { startAutoChat } from './autoChat'
 import { useThemeSync } from './Theme'
-import { WendyLine } from './WendyLine'
+import { AgentLine } from './AgentLine'
 
 export function Backdrop({ grain = true }: { grain?: boolean }) {
   return (
@@ -74,7 +75,7 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
     void initPush()
     return setNotificationOpener(openNotification)
   }, [])
-  // Moving somewhere new returns Wendy's line from a finished reply to her greeting.
+  // Moving somewhere new returns the agent's line from a finished reply to her greeting.
   // A reminder stays until it's acknowledged ("Got it" or read in the inbox).
   useEffect(
     () =>
@@ -122,7 +123,7 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
       <AnimatePresence>
         {!chatOpen && (
           <motion.div key="line" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <WendyLine />
+            <AgentLine />
           </motion.div>
         )}
       </AnimatePresence>
@@ -176,7 +177,9 @@ function FatalCard() {
         style={{ borderRadius: 12 }}
       >
         <div className="display mb-2 text-3xl text-strong">Session ended</div>
-        <p className="mb-6 text-sm text-muted">The connection to Wendy was closed. Reload to start a new session.</p>
+        <p className="mb-6 text-sm text-muted">
+          The connection to {agentName()} was closed. Reload to start a new session.
+        </p>
         <button
           onClick={() => window.location.reload()}
           className="h-12 w-full rounded-full bg-accent font-medium text-on-accent"

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 /**
- * A focus session (Aelora's sessions): started from a "Focus" pill or by Wendy's
+ * A focus session (Aelora's sessions): started from a "Focus" pill or by the agent's
  * start_session tool, shown as a timer chip until it's ended. The anchor is
  * what the user is focusing on.
  */

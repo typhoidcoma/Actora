@@ -1,4 +1,4 @@
-// What Wendy is doing, in words: tool calls from tool.progress / mindmap
+// What the agent is doing, in words: tool calls from tool.progress / mindmap
 // frames turned into a friendly "doing" line (and a "done" one for the trail).
 // Tool names vary by deploy, so this matches on patterns, not an exact list.
 

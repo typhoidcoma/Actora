@@ -1,3 +1,4 @@
+import { useAgent } from '../../stores/agent'
 import { kindOf, usePendingAction, type PendingAction } from '../../stores/pending'
 import { ui } from '../../stores/ui'
 import type { Corner } from '../tiles/Face'
@@ -5,7 +6,7 @@ import { ROLE } from '../brand'
 import { CardShell } from './CardShell'
 
 /**
- * Box 4 while something waits for the user's OK: what it is and Wendy's
+ * Box 4 while something waits for the user's OK: what it is and the agent's
  * summary (recipients, subject, the opening line). The answers are the pills
  * on the rail (Send / Change it / Discard); tapping the card opens the chat to
  * talk it over.
@@ -37,6 +38,7 @@ export function PendingBody({
   compact?: boolean
   corner?: Corner
 }) {
+  const name = useAgent((s) => s.botName)
   const k = kindOf(p.kind)
   // Like the other cards: read away from the orb's notch (bottom row anchors low, right column aligns right).
   const right = corner === 1 || corner === 3
@@ -53,7 +55,7 @@ export function PendingBody({
         {k.label}
       </div>
       <p className={`selectable text-[14px] leading-snug text-text ${compact ? 'line-clamp-3' : 'line-clamp-4'}`}>
-        {p.summary || 'Wendy has it ready.'}
+        {p.summary || `${name} has it ready.`}
       </p>
     </div>
   )

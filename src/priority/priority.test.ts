@@ -117,14 +117,14 @@ describe('ranking', () => {
       [{ key: 'task:a' }],
     )
     expect(merged.map((m) => m.key)).toEqual(['task:a', 'notification:c', 'event:b'])
-    expect(merged[1]).toMatchObject({ why: 'Ping back', whyFrom: 'wendy' })
+    expect(merged[1]).toMatchObject({ why: 'Ping back', whyFrom: 'agent' })
     expect(merged[0].whyFrom).toBe('local')
   })
 })
 
 describe('Wendy actions', () => {
   beforeEach(() => {
-    usePriorityStore.setState({ wendy: null, pushed: null })
+    usePriorityStore.setState({ agent: null, pushed: null })
     useUi.setState({ focus: null, chatOpen: false, selected: null, theme: 'auto', keyboardOpen: false })
   })
 

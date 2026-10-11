@@ -12,7 +12,7 @@ export interface PriorityItem {
   title: string
   /** Short factual line: "in 12 min · Studio", "due today · 25m". */
   meta: string
-  /** Why it matters now (local wording; Wendy may replace it). */
+  /** Why it matters now (local wording; the agent may replace it). */
   why: string
   /** 0–100. */
   score: number

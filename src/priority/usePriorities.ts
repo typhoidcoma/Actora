@@ -17,11 +17,11 @@ function useCandidates(): PriorityItem[] {
 /** The three cards to show, in order. */
 export function usePriorities(): RankedItem[] {
   const local = useCandidates()
-  const wendy = usePriorityStore((s) => s.wendy)
+  const ranked = usePriorityStore((s) => s.agent)
   const pushed = usePriorityStore((s) => s.pushed)
   const now = useNow(60_000)
   return useMemo(
-    () => mergePriorities(local, wendy, pushed && pushed.until > now ? pushed.entries : null),
-    [local, wendy, pushed, now],
+    () => mergePriorities(local, ranked, pushed && pushed.until > now ? pushed.entries : null),
+    [local, ranked, pushed, now],
   )
 }

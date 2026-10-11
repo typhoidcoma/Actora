@@ -5,7 +5,7 @@ import { useScheme } from '../stores/scheme'
 
 type ResolvedTheme = 'day' | 'dusk'
 
-/** Current theme: Wendy's or the user's override, else the sun at the user's location. */
+/** Current theme: The agent's or the user's override, else the sun at the user's location. */
 export function useTheme(): ResolvedTheme {
   const mode = useUi((s) => s.theme)
   const sky = useSky()

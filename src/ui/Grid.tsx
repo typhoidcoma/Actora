@@ -27,7 +27,7 @@ interface ListDef {
   Detail: ComponentType
 }
 
-/** Full domain lists: opened from the header, an item's "See all", a summary card, or Wendy. */
+/** Full domain lists: opened from the header, an item's "See all", a summary card, or the agent. */
 const LISTS: Record<TileId, ListDef> = {
   tasks: { label: 'Tasks', accent: TASKS_ACCENT, Face: TasksFace, Detail: TasksDetail },
   calendar: { label: 'Calendar', accent: CALENDAR_ACCENT, Face: CalendarFace, Detail: CalendarDetail },
@@ -41,10 +41,10 @@ const FILL_ORDER: TileId[] = ['calendar', 'tasks', 'inbox', 'goals']
 type Slot =
   | { type: 'item'; key: string; item: RankedItem; rank: number }
   | { type: 'list'; key: string; tile: TileId }
-  | { type: 'wendy'; key: 'wendy' }
+  | { type: 'finds'; key: 'finds' }
 
 /**
- * Three ranked priority cards (any domain) plus Wendy's answer in the bottom
+ * Three ranked priority cards (any domain) plus the agent's answer in the bottom
  * right. If there are fewer than three things to tackle, calm domain summaries
  * fill the gaps. Cards glide to their new slot when the ranking changes.
  */
@@ -59,7 +59,7 @@ function useSlots(): Slot[] {
       if (!taken && (pass === 1 || !shown.has(tile))) slots.push({ type: 'list', key: `list:${tile}`, tile })
     }
   }
-  return [...slots.slice(0, 3), { type: 'wendy', key: 'wendy' }]
+  return [...slots.slice(0, 3), { type: 'finds', key: 'finds' }]
 }
 
 export function Grid() {
@@ -73,7 +73,7 @@ export function Grid() {
   const pendingAction = usePendingAction()
 
   const itemPanel = !focus && selected ? selected : null
-  const openKey = finds ? 'wendy' : itemPanel ? `${itemPanel.kind}:${itemPanel.id}` : focus ? `list:${focus}` : null
+  const openKey = finds ? 'finds' : itemPanel ? `${itemPanel.kind}:${itemPanel.id}` : focus ? `list:${focus}` : null
   const panelOpen = openKey !== null || memories
 
   return (
@@ -98,11 +98,11 @@ export function Grid() {
           // The open card unmounts so its layoutId can morph into the panel.
           if (slot.key === openKey) return <div key={slot.key} />
           // Something waiting for the user's OK takes box 4 until it's answered.
-          if (slot.type === 'wendy')
+          if (slot.type === 'finds')
             return pendingAction ? (
               <PendingCard key="pending" corner={corner} hidden={panelOpen} />
             ) : (
-              <FindsCard key="wendy" corner={corner} hidden={panelOpen} />
+              <FindsCard key="finds" corner={corner} hidden={panelOpen} />
             )
           if (slot.type === 'item') {
             return (

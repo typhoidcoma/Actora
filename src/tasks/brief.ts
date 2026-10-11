@@ -1,9 +1,10 @@
+import { agentName } from '../stores/agent'
 import { useEffect, useState } from 'react'
 import { config } from '../config'
 import { llm, type LlmRequest } from '../aelora/http'
 import type { Task } from '../aelora/protocol'
 
-// A task with no notes is just a title. When one opens, Wendy writes a short
+// A task with no notes is just a title. When one opens, the agent writes a short
 // brief for it (what it's about, why it matters now, the first step) from what
 // she knows about the user. Cached per task, so it's written once, not on every
 // open; a renamed or re-dated task gets a fresh one.
@@ -12,7 +13,8 @@ export const BRIEF_MARKER = 'BRIEF THIS TASK'
 const KEY = 'actora.brief.v1'
 const KEEP = 80
 
-const SYSTEM = `You are Wendy, the user's personal agent, writing the "about" section for one of their tasks.
+const system =
+  () => `You are ${agentName()}, the user's personal agent, writing the "about" section for one of their tasks.
 Write 2-3 short sentences, directly to the user: what this task is about (use what you know about them and their goals), why it matters now, and the concrete first step.
 Plain text only: no greeting, no markdown, no lists, no headings. Don't invent specifics you don't know; when unsure, say what it likely involves.`
 
@@ -46,7 +48,7 @@ export function cachedBrief(t: Task): string | null {
 
 export function briefRequest(t: Task, goalTitle: string | null, now = new Date()): LlmRequest {
   return {
-    system: SYSTEM,
+    system: system(),
     prompt: [
       `${BRIEF_MARKER} (${now.toLocaleString([], { weekday: 'long', month: 'short', day: 'numeric' })}):`,
       `Title: "${t.title}"`,

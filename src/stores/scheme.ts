@@ -2,12 +2,12 @@ import { create } from 'zustand'
 import { buildScheme, MOOD_VARS, type Scheme, type SchemeInput, SCHEME_VARS, schemeCss } from '../color/scheme'
 
 /**
- * The live colour scheme: the brand by default, or Wendy's (guarded) choice.
- * Wendy's scheme persists across reloads until it expires (default 8 h, so a
+ * The live colour scheme: the brand by default, or the agent's (guarded) choice.
+ * The agent's scheme persists across reloads until it expires (default 8 h, so a
  * mood palette doesn't outlive the mood) or she / the user resets it.
  */
 interface SchemeState {
-  source: 'brand' | 'wendy'
+  source: 'brand' | 'agent'
   input: SchemeInput | null
   until: number | null
   scheme: Scheme
@@ -29,7 +29,7 @@ let expiry: ReturnType<typeof setTimeout> | undefined
 
 function save(s: SchemeState) {
   try {
-    if (s.source === 'wendy') localStorage.setItem(KEY, JSON.stringify({ input: s.input, until: s.until }))
+    if (s.source === 'agent') localStorage.setItem(KEY, JSON.stringify({ input: s.input, until: s.until }))
     else localStorage.removeItem(KEY)
   } catch {
     /* private mode: the scheme just won't survive a reload */
@@ -41,12 +41,12 @@ function schedule(until: number | null) {
   if (until) expiry = setTimeout(resetColors, Math.max(0, until - Date.now()))
 }
 
-/** Wendy's `colors.set`. Returns what the guardrails changed, for her to hear back. */
+/** The agent's `colors.set`. Returns what the guardrails changed, for her to hear back. */
 export function setColors(input: SchemeInput, hours?: number): string[] {
   const merged = { ...(useScheme.getState().input ?? {}), ...input }
   const scheme = buildScheme(merged)
   const h = typeof hours === 'number' && hours > 0 ? Math.min(hours, MAX_HOURS) : DEFAULT_HOURS
-  const next: SchemeState = { source: 'wendy', input: merged, until: Date.now() + h * 3_600_000, scheme }
+  const next: SchemeState = { source: 'agent', input: merged, until: Date.now() + h * 3_600_000, scheme }
   useScheme.setState(next)
   save(next)
   schedule(next.until)
@@ -56,7 +56,7 @@ export function setColors(input: SchemeInput, hours?: number): string[] {
 /** A palette saved on the account (another device or an earlier visit), until its own expiry. */
 export function restoreColors(input: SchemeInput, until: number): void {
   if (until <= Date.now()) return resetColors()
-  const next: SchemeState = { source: 'wendy', input, until, scheme: buildScheme(input) }
+  const next: SchemeState = { source: 'agent', input, until, scheme: buildScheme(input) }
   useScheme.setState(next)
   save(next)
   schedule(until)
@@ -85,13 +85,13 @@ function register() {
   }
 }
 
-/** Starts the scheme: restores Wendy's saved palette, writes CSS, keeps it in sync. */
+/** Starts the scheme: restores the agent's saved palette, writes CSS, keeps it in sync. */
 export function initScheme(): void {
   register()
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) ?? 'null') as { input: SchemeInput; until: number } | null
     if (saved && saved.until > Date.now()) {
-      useScheme.setState({ source: 'wendy', input: saved.input, until: saved.until, scheme: buildScheme(saved.input) })
+      useScheme.setState({ source: 'agent', input: saved.input, until: saved.until, scheme: buildScheme(saved.input) })
       schedule(saved.until)
     }
   } catch {

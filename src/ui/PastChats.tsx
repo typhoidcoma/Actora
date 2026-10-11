@@ -7,7 +7,7 @@ import { ui, useUi } from '../stores/ui'
 import { ago } from './format'
 import { morph, press } from './motion'
 
-/** Menu → Past chats: earlier conversations with Wendy, newest first; open one, delete one, or start fresh. */
+/** Menu → Past chats: earlier conversations with the agent, newest first; open one, delete one, or start fresh. */
 export function PastChats() {
   const open = useUi((s) => s.pastChats)
   return <AnimatePresence>{open && <Sheet key="past" />}</AnimatePresence>

@@ -9,13 +9,13 @@ import { actOption, sayOption } from '../options/types'
 import { awayWords } from '../aelora/greeting'
 
 /**
- * Wendy checks in now and then while the user is around: "Just checking how
+ * The agent checks in now and then while the user is around: "Just checking how
  * the deck is going, anything I can take off your plate?". Only from the app,
  * because only the app knows they're actually here: on the home screen, not
  * touched for a couple of minutes but active in the last half hour, nothing
  * else going on. Random gaps (60–120 min), at most a few a day, never in quiet
  * hours or soon after a conversation. "Not now", or two ignored in a row,
- * doubles the gap. The user (or Wendy, via checkins.set) can turn it off.
+ * doubles the gap. The user (or the agent, via checkins.set) can turn it off.
  *
  * It goes over the welcome's path (system_chat), so it shows as her line,
  * joins the chat, and rides along as screen.yourGreeting when answered.
@@ -94,7 +94,7 @@ const update = (patch: Partial<CheckinState>) => {
   save()
 }
 
-/** Menu switch, and Wendy's checkins.set. */
+/** Menu switch, and the agent's checkins.set. */
 export function setCheckins(on: boolean): void {
   update({ on, ...(on ? { backoff: 1, ignored: 0 } : {}) })
 }
@@ -143,7 +143,7 @@ export const nextGap = (backoff: number, r = Math.random()) => (MIN_GAP + r * (M
 
 export interface CheckinFacts {
   focus: { minutes: number; on: string | null } | null
-  lastChat: { user: string | null; wendy: string | null; ago: number } | null
+  lastChat: { user: string | null; agent: string | null; ago: number } | null
   endedEvent: { title: string; ago: number } | null
   overdue: string[]
   topTask: string | null
@@ -153,7 +153,7 @@ export interface CheckinFacts {
 
 export function checkinDirective(f: CheckinFacts): string {
   const lines = [
-    "APP EVENT: a casual check-in. The user has the Actora app open and is around, but hasn't said anything for a while. Check in on them as Wendy, like a friend who's on their side, not a notification.",
+    "APP EVENT: a casual check-in. The user has the Actora app open and is around, but hasn't said anything for a while. Check in on them as ${agentName()}, like a friend who's on their side, not a notification.",
     'One or two short sentences, at most 28 words. Plain text, no emoji. Ask about ONE thing (the most worthwhile below), and offer a hand with it. Never list things, never nag about being productive.',
     'Then give 2–3 tap answers as links, written the way the user would say them: [Going well](say:It is going well) [Help me with it](say:Can you help me with it?).',
   ]
@@ -161,9 +161,9 @@ export function checkinDirective(f: CheckinFacts): string {
   if (f.focus)
     things.push(`They're ${f.focus.minutes} minutes into a focus session${f.focus.on ? ` on "${f.focus.on}"` : ''}.`)
   if (f.endedEvent) things.push(`"${f.endedEvent.title}" ended ${awayWords(f.endedEvent.ago)} ago: ask how it went.`)
-  if (f.lastChat && (f.lastChat.user || f.lastChat.wendy) && f.lastChat.ago < 12 * 3600_000)
+  if (f.lastChat && (f.lastChat.user || f.lastChat.agent) && f.lastChat.ago < 12 * 3600_000)
     things.push(
-      `Your chat ${awayWords(f.lastChat.ago)} ago:${f.lastChat.user ? ` they said "${f.lastChat.user}".` : ''}${f.lastChat.wendy ? ` You said "${f.lastChat.wendy}".` : ''} Follow up if it was left open.`,
+      `Your chat ${awayWords(f.lastChat.ago)} ago:${f.lastChat.user ? ` they said "${f.lastChat.user}".` : ''}${f.lastChat.agent ? ` You said "${f.lastChat.agent}".` : ''} Follow up if it was left open.`,
     )
   if (f.overdue.length) things.push(`Overdue: ${f.overdue.map((t) => `"${t}"`).join(', ')}.`)
   if (f.topTask) things.push(`Their top task: "${f.topTask}".`)
@@ -206,7 +206,7 @@ function facts(now: number, recent: string[]): CheckinFacts {
               const u = msgs.findLast((b) => b.role === 'user')
               return u ? clip(u.text, 160) : null
             })(),
-            wendy: (() => {
+            agent: (() => {
               const w = msgs.findLast((b) => b.role === 'assistant')
               return w ? clip(w.text, 200) : null
             })(),

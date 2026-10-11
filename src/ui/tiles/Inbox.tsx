@@ -71,7 +71,7 @@ export function InboxDetail() {
   )
 }
 
-/** A reminder set for later: when it'll come, and a way to call it off (Wendy cancels it). */
+/** A reminder set for later: when it'll come, and a way to call it off (the agent cancels it). */
 function UpcomingRow({ note: n, index, now }: { note: Notification; index: number; now: number }) {
   const at = new Date(n.scheduled_for!)
   const when = `${at.toDateString() === new Date(now).toDateString() ? '' : `${at.toLocaleDateString([], { weekday: 'short' })} `}${clockTime(n.scheduled_for!)}`

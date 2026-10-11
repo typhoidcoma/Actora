@@ -13,7 +13,7 @@ import { useMetrics } from '../stores/metrics'
 
 /**
  * The user's voice: what they can say or do next, always. Context-aware chips
- * (instant local ones, refined by Wendy). The orb is the microphone; the
+ * (instant local ones, refined by the agent). The orb is the microphone; the
  * keyboard is tucked at the end. Nothing in the app requires typing.
  */
 export function OptionRail({
@@ -120,7 +120,7 @@ export function OptionRail({
   // text each) with chat and the menu in a column beside it. Nothing reflows
   // around anything, and the menu isn't inside a clipped box. Typing lives in
   // the menu here (the chat has its own message box).
-  // The four tiles are fixed slots: moving between screens (and Wendy's options
+  // The four tiles are fixed slots: moving between screens (and the agent's options
   // arriving after the instant ones) only cross-fades the words in the tiles
   // that changed, so the grid never flashes, collapses or reflows.
   if (narrow) {
@@ -194,7 +194,7 @@ function useStableSlots(options: Option[], n: number): Array<Option | null> {
 /**
  * A phone option: one fixed cell of the 2×2 grid, up to two lines. The cell
  * stays put; only its words cross-fade when the option in it changes. An empty
- * cell is a quiet placeholder (shimmering while Wendy's options are on the way).
+ * cell is a quiet placeholder (shimmering while the agent's options are on the way).
  */
 function Tile({ option, loading, disabled }: { option: Option | null; loading: boolean; disabled: boolean }) {
   // Always the same element, filled or not, so a slot filling in never remounts.

@@ -4,7 +4,7 @@ import { resetColors, restoreColors, useScheme } from './scheme'
 import { useUi, type ThemeMode } from './ui'
 
 /**
- * How the app looks (day/dusk/auto, and Wendy's colours) follows the user, not
+ * How the app looks (day/dusk/auto, and the agent's colours) follows the user, not
  * the browser: saved to their Supabase user_metadata, which the signed-in user
  * can write and every device reads at sign-in. The theme is also kept locally
  * so the first paint is already right.
@@ -15,7 +15,7 @@ const MODES = new Set<ThemeMode>(['auto', 'day', 'dusk'])
 
 interface Saved {
   theme?: ThemeMode
-  /** Wendy's palette and when it expires; null means the brand palette. */
+  /** The agent's palette and when it expires; null means the brand palette. */
   colors?: { input: SchemeInput; until: number } | null
   at?: number
 }
@@ -65,7 +65,7 @@ export function startAppearanceSync(sb: SupabaseClient): () => void {
     const s = useScheme.getState()
     return {
       theme: useUi.getState().theme,
-      colors: s.source === 'wendy' && s.input && s.until ? { input: s.input, until: s.until } : null,
+      colors: s.source === 'agent' && s.input && s.until ? { input: s.input, until: s.until } : null,
       at: Date.now(),
     }
   }
@@ -92,7 +92,7 @@ export function startAppearanceSync(sb: SupabaseClient): () => void {
       if (uid && readOwner() !== uid) {
         if (readOwner()) {
           useUi.setState({ theme: 'auto' })
-          if (useScheme.getState().source === 'wendy') resetColors()
+          if (useScheme.getState().source === 'agent') resetColors()
         }
         writeOwner(uid)
       }
@@ -101,7 +101,7 @@ export function startAppearanceSync(sb: SupabaseClient): () => void {
       if (saved.theme && MODES.has(saved.theme)) useUi.setState({ theme: saved.theme })
       if (saved.colors && saved.colors.until > Date.now()) restoreColors(saved.colors.input, saved.colors.until)
       else if (saved.colors === null || (saved.colors && saved.colors.until <= Date.now())) {
-        if (useScheme.getState().source === 'wendy') resetColors()
+        if (useScheme.getState().source === 'agent') resetColors()
       }
     })
     .then(

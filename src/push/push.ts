@@ -1,3 +1,4 @@
+import { agentName } from '../stores/agent'
 import { agent } from '../stores/agent'
 import { usePush, type PushStatus } from '../stores/push'
 import { ask, send } from '../aelora/client'
@@ -149,7 +150,7 @@ export async function enablePush(): Promise<boolean> {
     }
     sub ??= await subscribeHard(key)
     const reply = await ask(subscribeMessage(sub, navigator.userAgent), 'push.subscribed')
-    if (!reply) return fail("Couldn't register this device with Wendy. Try again in a moment.")
+    if (!reply) return fail(`Couldn't register this device with ${agentName()}. Try again in a moment.`)
   } catch (e) {
     console.warn('[push] subscribe failed', e)
     return fail(await explain(e))

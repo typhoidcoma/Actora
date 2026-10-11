@@ -22,6 +22,7 @@ const PANEL_ORB = 56
  * a slow Lissajous path and breathes, so it never looks frozen.
  */
 export function OrbDock() {
+  const name = useAgent((s) => s.botName)
   const m = useMetrics()
   const focus = useUi(panelOpen)
   const chatOpen = useUi((s) => s.chatOpen)
@@ -132,7 +133,7 @@ export function OrbDock() {
         <MicHint on={hover && !listening && phase !== 'offline'} />
       </motion.div>
       <button
-        aria-label={listening ? 'Stop listening' : 'Talk to Wendy'}
+        aria-label={listening ? 'Stop listening' : `Talk to ${name}`}
         aria-pressed={listening}
         title="Tap to talk · hold for chat"
         className="pointer-events-auto absolute inset-[20%] rounded-full outline-none focus-visible:ring-2 focus-visible:ring-accent/60"

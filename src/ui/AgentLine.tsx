@@ -8,7 +8,7 @@ import { Activity } from './Activity'
 import { firstSentence, hasMore, liveTail, plainText } from './markdownText'
 
 /**
- * Wendy's voice above the grid: her welcome, her replies to what you tapped,
+ * The agent's voice above the grid: her welcome, her replies to what you tapped,
  * reminders she's passing on. Text sits at the bottom of the box, so as a reply
  * grows, older lines drift up and fade out under the top mask.
  */
@@ -21,7 +21,7 @@ const FADE_AFTER_MS = 10_000
 const revealed = new Set<string>()
 const fadedAway = new Set<string>()
 
-export function WendyLine() {
+export function AgentLine() {
   const m = useMetrics()
   const stalled = useStalled()
   // On phones every panel takes the full screen, so the line steps back while one is open.
@@ -38,6 +38,7 @@ export function WendyLine() {
       last: s.messages.at(-1),
       notice: s.notice,
       message: s.message,
+      name: s.botName,
     })),
   )
 
@@ -51,8 +52,8 @@ export function WendyLine() {
   } => {
     // Without the top bar this line is the only place a dead connection can show.
     if (stalled === 'fatal')
-      return { key: 'conn-fatal', kicker: 'Offline', text: "Can't reach Wendy. Reload to try again." }
-    if (stalled) return { key: 'conn-stalled', kicker: 'Connecting', text: "Can't reach Wendy yet. Still trying…" }
+      return { key: 'conn-fatal', kicker: 'Offline', text: `Can't reach ${a.name}. Reload to try again.` }
+    if (stalled) return { key: 'conn-stalled', kicker: 'Connecting', text: `Can't reach ${a.name} yet. Still trying…` }
     if (a.line === 'notice' && a.notice) {
       return {
         key: `n:${a.notice.notificationId}`,
@@ -60,7 +61,7 @@ export function WendyLine() {
         text: [a.notice.title, a.notice.body].filter(Boolean).join(' — '),
       }
     }
-    // App notes (reminders switched on, saved to tasks…) are labelled as the app's, not put in Wendy's mouth.
+    // App notes (reminders switched on, saved to tasks…) are labelled as the app's, not put in the agent's mouth.
     if (a.line === 'message' && a.message) return { key: `m:${a.message}`, kicker: 'Actora', text: a.message }
     if (a.line === 'reply') {
       if (a.turnBusy && !a.streaming) return { key: 'thinking', text: '' }
@@ -283,7 +284,7 @@ function Words({ text }: { text: string }) {
   )
 }
 
-/** Not connected for a few seconds (or given up): Wendy can't hear taps, so say so. */
+/** Not connected for a few seconds (or given up): The agent can't hear taps, so say so. */
 function useStalled(): false | 'stalled' | 'fatal' {
   const connection = useAgent((s) => s.connection)
   const [late, setLate] = useState(false)

@@ -1,3 +1,4 @@
+import { useAgent } from '../../stores/agent'
 import { motion } from 'motion/react'
 import { secureUrl } from '../../secureUrl'
 import { useEffect, useRef } from 'react'
@@ -11,10 +12,12 @@ import { LazyMarkdown } from '../LazyMarkdown'
 
 /** Box 4 expanded: today's fun finds as rich cards. Each counts as seen once it's actually looked at. */
 export function FindsPanel() {
+  const name = useAgent((s) => s.botName)
   const { items, status, seen, note, headline } = useFinds()
   const unseen = unseenCount({ items, seen })
   const selected = useUi((s) => s.find)
-  const kicker = status === 'hunting' ? 'Wendy is hunting for more…' : unseen ? `${unseen} new today` : 'All seen today'
+  const kicker =
+    status === 'hunting' ? `${name} is hunting for more…` : unseen ? `${unseen} new today` : 'All seen today'
 
   return (
     <Panel
@@ -58,6 +61,7 @@ function FindItem({
   selected: boolean
   isNew: boolean
 }) {
+  const name = useAgent((s) => s.botName)
   const ref = useRef<HTMLLIElement>(null)
 
   // Counts as seen once most of it has been on screen for a moment.
@@ -110,7 +114,7 @@ function FindItem({
             className="mt-2 rounded-[6px] px-3 py-2"
             style={{ background: `color-mix(in srgb, ${ROLE.finds} 12%, transparent)` }}
           >
-            <div className="text-[12px] font-bold text-accent">Wendy says</div>
+            <div className="text-[12px] font-bold text-accent">{name} says</div>
             <div className="text-[14px] font-medium text-strong">{f.why}</div>
           </div>
         )}

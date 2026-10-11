@@ -5,7 +5,7 @@ import type { Sky, SkyKind } from './sky'
  * Ambient colours per sky, built from the brand palette (src/ui/brand.ts):
  * indigo, amber, rose, crimson and turquoise, with their tints for range.
  * `day` sits on the pale background; `dusk` glows on deep indigo.
- * Wendy can replace these with her own (guarded) set via `colors.set`.
+ * The agent can replace these with her own (guarded) set via `colors.set`.
  */
 const SKIES: Record<SkyKind, { day: string[]; dusk: string[] }> = {
   clear: {

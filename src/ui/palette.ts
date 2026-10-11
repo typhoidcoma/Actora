@@ -10,7 +10,7 @@ const rgb = (hex: string): RGB => parseHex(hex) ?? [0.5, 0.5, 0.5]
 
 /**
  * Orb colours per Plutchik emotion, as roles of the live scheme (brand or
- * Wendy's), so her moods always belong to whatever palette is on screen.
+ * The agent's), so her moods always belong to whatever palette is on screen.
  * Each entry: [role, lightness shift, chroma scale]; results are kept in a
  * glow-friendly band (L 0.5–0.95, C ≤ 0.2) so no mood turns muddy or neon.
  * Cross-family triads (amber + turquoise) are intentional: the swirl blends them.
@@ -28,9 +28,9 @@ const EMOTIONS: Record<PrimaryEmotion, [Tone, Tone, Tone]> = {
     ['accent', 0.22, 0.25],
   ],
   fear: [
-    ['wendy', 0.1, 1],
+    ['agent', 0.1, 1],
     ['event', 0.24, 0.7],
-    ['wendy', -0.04, 0.8],
+    ['agent', -0.04, 0.8],
   ],
   surprise: [
     ['finds', 0.06, 1],
@@ -39,7 +39,7 @@ const EMOTIONS: Record<PrimaryEmotion, [Tone, Tone, Tone]> = {
   ],
   sadness: [
     ['event', 0.12, 0.8],
-    ['wendy', 0.26, 0.35],
+    ['agent', 0.26, 0.35],
     ['event', 0.2, 0.6],
   ],
   disgust: [
@@ -72,10 +72,10 @@ function triads(scheme: Scheme) {
   const t = Object.fromEntries(
     (Object.keys(EMOTIONS) as PrimaryEmotion[]).map((e) => [e, EMOTIONS[e].map((x) => tone(b, x))]),
   ) as Record<PrimaryEmotion, string[]>
-  // At rest: the accent, a soft tint of Wendy's own colour, and a near-white highlight.
+  // At rest: the accent, a soft tint of the agent's own colour, and a near-white highlight.
   const neutral = scheme.orb ?? [
     tone(b, ['accent', 0, 1]),
-    tone(b, ['wendy', 0.28, 0.6]),
+    tone(b, ['agent', 0.28, 0.6]),
     tone(b, ['accent', 0.3, 0.15]),
   ]
   cache = { scheme, triads: t, neutral }

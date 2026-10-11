@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
+import { agentName } from '../../stores/agent'
 import type { ReactNode } from 'react'
 import { useAgent } from '../../stores/agent'
 
@@ -20,7 +21,7 @@ export function Section({ title, count, children }: { title: string; count?: num
  */
 export function Loading() {
   const offline = useAgent((s) => s.connection !== 'open' && s.connection !== 'connecting')
-  if (offline) return <Empty text="Can't load this right now. It'll fill in once Wendy's back." />
+  if (offline) return <Empty text={`Can't load this right now. It'll fill in once ${agentName()}'s back.`} />
   return (
     <div className="space-y-3 py-4" aria-label="Loading">
       {[0.92, 0.7, 0.82, 0.6].map((w, i) => (

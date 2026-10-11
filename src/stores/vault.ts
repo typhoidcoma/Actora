@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 /**
- * What Wendy remembers about the user (Aelora's vault: the unified memory
+ * What the agent remembers about the user (Aelora's vault: the unified memory
  * facts + vault store). Loaded when the Vault opens; kept live by
  * `vault:*` broadcasts, including the ones her own remember/forget tools send.
  */
@@ -34,7 +34,7 @@ export const CATEGORIES: Array<{ id: string; label: string }> = [
 interface VaultState {
   entries: Record<string, VaultEntry>
   status: 'idle' | 'loading' | 'ready' | 'error'
-  /** The panel's search and category chip (here so Wendy can set them too). */
+  /** The panel's search and category chip (here so the agent can set them too). */
   query: string
   category: string | null
 }

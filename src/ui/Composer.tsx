@@ -9,10 +9,11 @@ import { jelly } from './motion'
 /**
  * The chat's own message box: always there while the conversation is open, so
  * typing is one tap away (the pills above stay the quick way to answer). The
- * mic talks instead. While Wendy is busy or offline, what's typed is kept as a
+ * mic talks instead. While the agent is busy or offline, what's typed is kept as a
  * task rather than lost.
  */
 export function Composer() {
+  const name = useAgent((s) => s.botName)
   const [text, setText] = useState('')
   const busy = useAgent((s) => s.awaitingTurn || s.turnId !== null)
   const offline = useAgent((s) => s.connection !== 'open')
@@ -36,10 +37,10 @@ export function Composer() {
           captureOnly
             ? offline
               ? 'Offline: jot it down as a task'
-              : "Wendy's answering. Jot it down as a task"
-            : 'Message Wendy'
+              : `${name}'s answering. Jot it down as a task`
+            : `Message ${name}`
         }
-        aria-label={captureOnly ? 'Save as a task' : 'Message Wendy'}
+        aria-label={captureOnly ? 'Save as a task' : `Message ${name}`}
         enterKeyHint={captureOnly ? 'done' : 'send'}
         className="glass-pill h-12 min-w-0 flex-1 rounded-full px-5 text-[16px] text-strong placeholder:text-faint focus:outline-none"
       />

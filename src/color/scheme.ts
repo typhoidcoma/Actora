@@ -2,7 +2,7 @@ import { BRAND } from '../ui/brand'
 import { clamp, contrast, deltaE, ensureContrast, hexToOklch, hueDiff, type Oklch, oklchToHex, rgba } from './oklch'
 
 /**
- * The colour scheme engine. Brand colours and anything Wendy asks for go in;
+ * The colour scheme engine. Brand colours and anything the agent asks for go in;
  * a complete, accessible scheme for both themes comes out. Guardrails, all
  * in OKLCH so a correction keeps the colour recognisable:
  *
@@ -16,10 +16,10 @@ import { clamp, contrast, deltaE, ensureContrast, hexToOklch, hueDiff, type Oklc
  * 5. Contrast (WCAG 2): roles ≥ 3:1 on the background, ink ≥ 4.5:1, text
  *    ≥ 7:1, muted ≥ 4.5:1; button text picks whichever of light/dark wins.
  *
- * Anything adjusted is reported in `notes`, so Wendy learns what happened.
+ * Anything adjusted is reported in `notes`, so the agent learns what happened.
  */
 
-export const ROLES = ['accent', 'urgent', 'mid', 'calm', 'task', 'event', 'reminder', 'goal', 'wendy', 'finds'] as const
+export const ROLES = ['accent', 'urgent', 'mid', 'calm', 'task', 'event', 'reminder', 'goal', 'agent', 'finds'] as const
 export type Role = (typeof ROLES)[number]
 type Theme = 'day' | 'dusk'
 type Harmony = 'analogous' | 'complementary' | 'triadic' | 'split'
@@ -78,7 +78,7 @@ const BRAND_INPUT: Required<Omit<SchemeInput, 'seed' | 'harmony' | 'ambient' | '
   event: BRAND.indigo,
   reminder: BRAND.rose,
   goal: BRAND.amber,
-  wendy: BRAND.indigo,
+  agent: BRAND.indigo,
   finds: BRAND.rose,
   neutral: BRAND.indigo,
 }
@@ -117,10 +117,13 @@ function fromSeed(seed: Oklch, harmony: Harmony): Partial<Record<Role | 'neutral
           ? [150, 210]
           : [-40, 40]
   const s = hex(seed)
-  return { accent: s, task: s, wendy: s, neutral: s, event: at(a), calm: at(a), goal: at(b), mid: at(b) }
+  return { accent: s, task: s, agent: s, neutral: s, event: at(a), calm: at(a), goal: at(b), mid: at(b) }
 }
 
-export function buildScheme(input: SchemeInput = {}): Scheme {
+export function buildScheme(raw: SchemeInput = {}): Scheme {
+  // The agent's own colour was called "wendy" before the app was agent-agnostic: still read.
+  const legacy = (raw as { wendy?: string }).wendy
+  const input: SchemeInput = legacy && !raw.agent ? { ...raw, agent: legacy } : raw
   const notes: string[] = []
   const seed = input.seed ? hexToOklch(String(input.seed)) : null
   if (input.seed && !seed) notes.push(`seed "${input.seed}" isn't a hex colour; ignored`)
@@ -310,7 +313,7 @@ export function schemeCss(s: Scheme): string {
 /** Mood light (written by MoodLight): animatable so a change of mood fades instead of jumping. */
 export const MOOD_VARS = ['--mood-1', '--mood-2']
 
-/** A compact summary for Wendy's screen snapshot. */
-export function describeScheme(s: Scheme, source: 'brand' | 'wendy') {
+/** A compact summary for the agent's screen snapshot. */
+export function describeScheme(s: Scheme, source: 'brand' | 'agent') {
   return { source, roles: s.base, neutral: s.neutral, ambient: !!s.day.ambient, orb: s.orb, notes: s.notes }
 }

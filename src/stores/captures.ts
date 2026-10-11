@@ -1,10 +1,11 @@
 import type { FrameBus } from '../aelora/socket'
+import { agentName } from './agent'
 import { request } from '../aelora/request'
 import { entities, useEntities } from './entities'
 import { toast } from './toast'
 import type { Task } from '../aelora/protocol'
 
-// Quick capture: a thought typed while Wendy is busy or the app is offline is
+// Quick capture: a thought typed while the agent is busy or the app is offline is
 // never lost. Online it becomes a task at once; offline it waits here (and in
 // localStorage, in case the tab closes) and is added on that user's next
 // connect. Each thought is kept with whose it is, so on a shared device it
@@ -69,7 +70,7 @@ export async function capture(
   if (!owner) return void toast.error("Couldn't save that. Try again once you're signed in.")
   memory = [...memory, { owner, title: text, at: Date.now() }]
   write(memory)
-  toast.show(`Saved "${text}". It'll be added when Wendy's back.`)
+  toast.show(`Saved "${text}". It'll be added when ${agentName()}'s back.`)
 }
 
 /**
