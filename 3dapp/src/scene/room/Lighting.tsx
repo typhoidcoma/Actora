@@ -93,23 +93,24 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
     }
   }, [scene, fog])
 
-  // Reflections: the room captured into an environment map. A single capture after
-  // a theme change swapped the whole room's reflections at once (the jump), so while
-  // the lights ease to the new look (~2.5 s) it's re-captured in small steps and
-  // follows them. Keyed on a stable string; the old map goes only after the new one is in.
-  const envKey = `${look.day}|${look.skyKind}|${look.sky.join(',')}`
+  // Reflections: the room captured into an environment map ONCE, with the sun off,
+  // so it holds the room's own neutral light and doesn't depend on the time of day
+  // (the sun and lights carry that live). A capture renders the room six times
+  // with shadows: re-capturing during a theme change ran at ~6 fps.
   const pmrem = useMemo(() => new THREE.PMREMGenerator(renderer), [renderer])
   useEffect(() => () => pmrem.dispose(), [pmrem])
   useEffect(() => {
-    const capture = () => {
+    const t = setTimeout(() => {
+      const s = sun.current
+      const was = s?.intensity ?? 0
+      if (s) s.intensity = 0
       const prev = scene.environment
       scene.environment = pmrem.fromScene(scene, 0.035, 0.1, 60, { position: new THREE.Vector3(0, 1.6, 2.5) }).texture
-      scene.environmentIntensity = 0.6
       prev?.dispose()
-    }
-    const timers = Array.from({ length: 10 }, (_, i) => setTimeout(capture, 250 + i * 300))
-    return () => timers.forEach(clearTimeout)
-  }, [pmrem, scene, envKey])
+      if (s) s.intensity = was
+    }, 1200)
+    return () => clearTimeout(t)
+  }, [pmrem, scene])
 
   const first = useRef(true)
   useFrame(({ clock }, dt) => {
@@ -124,6 +125,8 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
       sun.current.color.lerp(s.color, k)
       sun.current.intensity = damp(sun.current.intensity, s.intensity, 1.6, dt)
     }
+    // Reflections of the room's own light: brighter by day, quieter at dusk.
+    scene.environmentIntensity = damp(scene.environmentIntensity, look.day ? 0.7 : 0.35, 1.6, dt)
     // Fill: neutral warm-white bounce, not the weather's colours (they cast odd tints on the room).
     if (hemi.current) hemi.current.intensity = damp(hemi.current.intensity, look.day ? 0.6 : 0.3, 1.6, dt)
     fog.color.lerp(to.fog, k)
