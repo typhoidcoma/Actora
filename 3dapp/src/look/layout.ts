@@ -19,8 +19,8 @@ export interface Stage {
   pose: (corner: number) => Placed & { right: boolean; bottom: boolean }
   /** Her line. `grow: 'up'` anchors its last line at `position` (a caption over her head). */
   line: Placed & { w: number; size: number; grow: 'up' | 'down' }
-  chips: Placed & { w: number }
-  input: Placed & { w: number }
+  /** Where the top centre of the 2D rail (and the message box under it) is pinned. */
+  rail: { position: Vec3 }
   /** Where she stands. */
   her: Vec3
   /** Wide: what the camera must fit, and where it looks. */
@@ -30,7 +30,6 @@ export interface Stage {
 }
 
 const RADIUS = 0.05
-export const CHIP_H = 0.115
 export const FOV = 38
 const T = Math.tan(((FOV / 2) * Math.PI) / 180)
 
@@ -39,7 +38,7 @@ const T = Math.tan(((FOV / 2) * Math.PI) / 180)
  * shoulders in its top third (not her whole body); the phone stack stands
  * between her and the camera and covers the rest of her.
  */
-export const PORTRAIT = {
+const PORTRAIT = {
   her: [0, 0, 0] as Vec3,
   camera: { position: [0, 1.45, 2.6] as Vec3, target: [0, 1.0, 0] as Vec3 },
   /** How far in front of the camera the phone stack stands (in front of her). */
@@ -50,11 +49,11 @@ export const PORTRAIT = {
  * The 2D stage, in the room around her.
  * Wide: she's at the origin, left of centre, her line a caption over her head, the
  * four cards as a 2×2 block to her right, the rail below.
- * Narrow (the 2D phone layout): her head and shoulders at the top, then her line, the
- * four cards, the chips and the input stacked in front of her, each placed by its
- * share of the screen and facing the camera.
+ * Narrow (the 2D phone layout): her head and shoulders at the top, then her line and
+ * the four cards stacked in front of her, each placed by its share of the screen and
+ * facing the camera, and the rail at the foot.
  */
-export function stageFor(aspect: number): Stage {
+function stageFor(aspect: number): Stage {
   if (aspect >= 0.8) {
     // She's the subject: the camera is in close (she fills most of the height) and
     // set so she stands left of centre with room to move. The four cards sit
@@ -79,9 +78,8 @@ export function stageFor(aspect: number): Stage {
         return { position: [cols[right ? 1 : 0], rows[bottom ? 1 : 0], 0], rotation: [0, -0.16, 0], scale: cardScale, right, bottom }
       },
       line: { position: [0, 1.82, 0.08], rotation: [0, 0, 0], scale: 1, w: 1.45, size: 0.048, grow: 'up' },
-      // The top of the 2D rail (and the message box under it) is pinned here, centred on screen.
-      chips: { position: [centerX, 0.42, 0.55], rotation: [-0.12, 0, 0], scale: 1, w: 3.4 },
-      input: { position: [0, -0.08, 0.8], rotation: [-0.14, 0, 0], scale: 1, w: 2.2 },
+      // Centred on screen, at her shins.
+      rail: { position: [centerX, 0.42, 0.55] },
       her: [0, 0, 0],
       // Room under the cards for the 2D rail (up to two rows) and the message box.
       // Headroom above her for her line and her thinking (the Activity, which grows upward).
@@ -118,9 +116,7 @@ export function stageFor(aspect: number): Stage {
     card: { w, h, radius: RADIUS },
     pose: (c) => ({ position: at(0.5, first + cardH / 2 + c * (cardH + gap)), rotation: facing, scale: s, right: false, bottom: false }),
     line: { position: at(0.5, first - 0.05), rotation: facing, scale: s, w: 2.5, size: 0.1, grow: 'down' },
-    // Chips and the input read larger than the cards' type would make them, as the 2D phone rail does.
-    chips: { position: at(0.5, chipsAt), rotation: facing, scale: s * 1.9, w: 2.5 / 1.9 },
-    input: { position: at(0.5, 0.975), rotation: facing, scale: s * 1.6, w: 2.4 / 1.6 },
+    rail: { position: at(0.5, chipsAt) },
     her: PORTRAIT.her,
     frame: { w: 2.7, h: 5.9, center: ct },
     camera: PORTRAIT.camera,

@@ -68,8 +68,9 @@ function useHostMetrics(w: number, h: number, portrait: boolean) {
 }
 
 /**
- * What's DOM. At home: the chat and menu buttons riding the end of the chip
- * row. In focus: the 2D app's own panel for whatever is open, portalled into
+ * What's DOM. At home: the 2D rail (option pills, chat, menu) and the message
+ * box, pinned in the room by an Anchor, and her thinking (Activity) over her head.
+ * In focus: the 2D app's own panel for whatever is open, portalled into
  * the element the scene stands up as the focus panel (FocusPanel3D), with its
  * options in a strip at its foot. And the screen-level sheets (keyboard, past
  * chats, date picker, toasts).

@@ -8,6 +8,36 @@ A WebGPU-only 3D client of Actora built around an animated character: three.js `
 
 Don't import from `../src/ui/**` beyond its pure helpers (`markdownText`, `format`, `tiles/data`). The rest is DOM, Tailwind and motion code.
 
+## How it's built
+
+- **The room** (`src/scene/room`): a procedural atrium in plain 70% white. The
+  window wall is on the left, with the column, three steps up to a raised floor,
+  and a mezzanine.
+- **The light is the theming** (`Lighting.tsx`):
+  - "Follows the sun" moves a real sun through the windows from today's sunrise
+    to sunset. A chosen Day or Dusk uses a fixed sun.
+  - Her mood tints the warm cove and the wall wash.
+  - A ringing reminder makes the cove breathe red.
+  - Reflections are captured once, from the room's own light.
+- **Post** (`Post.tsx`): ambient occlusion (the UI layer excluded), bloom, and
+  depth of field that blends in when a panel opens.
+- **Home** (`look/layout.ts`):
+  - She stands left of centre with her line as a caption over her head.
+  - The four cards are drawn in WebGPU (`panels/`) as one 2×2 block to her
+    right, in the same glass as the pills: the room behind them blurred, under a
+    face painted on a canvas (`look/paint.ts`).
+  - The 2D rail and the message box are real DOM, pinned in the room by an
+    `Anchor`. So is her thinking (the 2D `Activity`).
+  - Phones stack everything below her head and shoulders, with the camera held still.
+- **Focus mode** (`FocusPanel3D.tsx`, `dom/Overlay.tsx`): when something opens,
+  the camera comes in close on her.
+  - The 2D app's own panel (chat, item, list, finds, vault) stands in the scene
+    beside her through CSS3D, over WebGPU-drawn glass.
+  - Its layout comes from the 2D `useMetrics`, re-pointed at that panel.
+- **The character** (`Character.tsx`, `bridge/agentAnim.ts`): agent phase to
+  clip, `avatar.react` to additive emotes, and a head nod with the token stream.
+  She turns to face you.
+
 ## Run
 
 ```sh

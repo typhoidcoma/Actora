@@ -32,7 +32,6 @@ export interface Look {
   ink: Record<Role, string>
   /** The weather's four ambient colours (the 2D blobs), as CSS. */
   sky: string[]
-  skyKind: string
 }
 
 /**
@@ -58,6 +57,5 @@ export function useLook(): Look {
     role: applied.role,
     ink: applied.ink,
     sky: [0, 1, 2, 3].map((slot) => blobColor(sky, slot, day, applied.ambient)),
-    skyKind: sky.kind,
   }
 }

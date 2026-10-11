@@ -2,7 +2,7 @@ import * as THREE from 'three/webgpu'
 import { uniform } from 'three/tsl'
 
 /** The room is one plain 70% white for now (no textures); the light does the work. */
-export const ROOM_WHITE = '#b3b3b3'
+const ROOM_WHITE = '#b3b3b3'
 
 const plain = (roughness: number) => new THREE.MeshStandardMaterial({ color: ROOM_WHITE, roughness, metalness: 0 })
 
@@ -13,9 +13,8 @@ export interface RoomMaterials {
   step: THREE.MeshStandardMaterial
   wood: THREE.MeshStandardMaterial
   metal: THREE.MeshStandardMaterial
-  /** Light strips: colour × strength, brighter than white so the bloom carries them. */
+  /** The cove light strip: colour × strength, brighter than white so the bloom carries it. */
   cove: Strip
-  accent: Strip
 }
 
 export interface Strip {
@@ -44,6 +43,5 @@ export function roomMaterials(): RoomMaterials {
     // The window mullions and the railing stay dark so the window wall still reads.
     metal: new THREE.MeshStandardMaterial({ color: '#2a2724', roughness: 0.45, metalness: 0.6 }),
     cove: strip(),
-    accent: strip(),
   }
 }

@@ -31,8 +31,6 @@ export interface PaneProps {
   delay?: number
   /** uv in canvas space (0,0 top-left). */
   onPress?: (uv: { x: number; y: number }) => void
-  /** Where it enters from, relative to its spot (default: just below it). */
-  from?: [number, number, number]
   /** Uniform scale of the whole panel (the phone stack is drawn at canonical size, then fitted). */
   size?: number
 }
@@ -66,7 +64,7 @@ export function roundedRect(w: number, h: number, r: number): THREE.ShapeGeometr
  * the type). No body, so no edge. The 2D motion: scale in with a little
  * overshoot, ease out, glide to a new spot, lift on hover; an alarm breathes.
  */
-export function Pane({ width, height, radius = 0.06, position, rotation, paint, deps, bare, ring, present = true, onGone, delay = 0, onPress, from, size = 1 }: PaneProps) {
+export function Pane({ width, height, radius = 0.06, position, rotation, paint, deps, bare, ring, present = true, onGone, delay = 0, onPress, size = 1 }: PaneProps) {
   const look = useLook()
   const fonts = useFonts((s) => s.ready)
   const pw = Math.round(width * PPU)
@@ -165,7 +163,7 @@ export function Pane({ width, height, radius = 0.06, position, rotation, paint, 
     if (!g) return
     const a = anim.current
     if (!a.placed) {
-      g.position.set(position[0] + (from?.[0] ?? 0), position[1] + (from?.[1] ?? 0), position[2] + (from?.[2] ?? 0))
+      g.position.set(...position)
       a.placed = true
     }
     if (present && a.wait > 0) {

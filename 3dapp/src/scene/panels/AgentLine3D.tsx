@@ -19,7 +19,7 @@ function firstSentence(text: string): string {
   return (m ? m[0] : text).trim()
 }
 
-/** Her voice above the grid: bare text, no glass, like the 2D AgentLine. */
+/** Her voice: bare text (no panel) as a caption over her head, like the 2D AgentLine. */
 export function AgentLine3D() {
   const look = useLook()
   const stage = useStage()

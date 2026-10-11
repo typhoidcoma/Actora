@@ -63,9 +63,8 @@ function useAlarm(): boolean {
  * - time of day (the theme) moves the sun through the window wall: its angle,
  *   colour and the length of the mullion shadows across the floor;
  * - her mood colours the cove and the wash grazing the back wall;
- * - the scheme's accent lights the step nosings (colors.set recolours the room);
  * - a reminder going off makes the cove breathe in the urgent colour.
- * The polished floor's reflections are re-captured from the room when the look changes.
+ * The floor's reflections are captured once, from the room's own light (the sun off).
  */
 export function Lighting({ mat }: { mat: RoomMaterials }) {
   const look = useLook()
@@ -103,13 +102,11 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
       sunColor: new THREE.Color(),
       fog: new THREE.Color(),
       mood: new THREE.Color(),
-      accent: new THREE.Color(),
       urgent: new THREE.Color(),
     }),
     [],
   )
   useEffect(() => {
-    parseCss(look.role.accent, to.accent)
     parseCss(look.role.urgent, to.urgent)
     parseCss(look.bg, to.fog)
   }, [look, to])
@@ -185,9 +182,6 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
       w.intensity = damp(w.intensity, (look.day ? 10 : 24) * (0.7 + glow * 0.3), 1.6, dt)
     }
 
-    // The scheme's accent on the step nosings.
-    mat.accent.color.value.lerp(to.accent, k)
-    mat.accent.strength.value = damp(mat.accent.strength.value, look.day ? 0.55 : 1.3, 2, dt)
   })
 
   return (
