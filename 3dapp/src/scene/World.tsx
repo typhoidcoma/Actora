@@ -2,6 +2,7 @@ import { Canvas, extend, useFrame, type ThreeToJSXElements } from '@react-three/
 import * as THREE from 'three/webgpu'
 import { useFocused } from '../look/focus'
 import { FOV, focusLayout, useStage } from '../look/layout'
+import { UI_LAYER } from '../look/layers'
 import { damp } from '../look/motion'
 import { Character } from './Character'
 import { Environment } from './Environment'
@@ -89,6 +90,11 @@ export function World() {
         // A tap on the scene itself (not a card or the panel) puts the open thing away.
         onPointerMissed={() => ui.closeAll()}
         camera={{ position: [0, 1.2, 5], fov: FOV }}
+        onCreated={({ camera, raycaster }) => {
+          // The camera and the pointer see the UI layer; the AO depth pass doesn't (Post).
+          camera.layers.enable(UI_LAYER)
+          raycaster.layers.enable(UI_LAYER)
+        }}
         gl={async (props) => {
           const renderer = new THREE.WebGPURenderer({ ...(props as object), antialias: true })
           await renderer.init()

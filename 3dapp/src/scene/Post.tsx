@@ -15,6 +15,7 @@ export function Post() {
   const gl = useThree((s) => s.gl) as unknown as THREE.WebGPURenderer
   const scene = useThree((s) => s.scene)
   const camera = useThree((s) => s.camera)
+  const aoCamera = useMemo(() => new THREE.PerspectiveCamera(), [])
 
   const pipeline = useMemo(() => {
     gl.toneMapping = THREE.NeutralToneMapping
@@ -22,7 +23,9 @@ export function Post() {
     const pipeline = new THREE.RenderPipeline(gl)
 
     // Single-sampled: GTAO gathers from a plain depth texture, not a multisampled one.
-    const pre = depthPass(scene, camera, { samples: 0 })
+    // It sees the room and her only (aoCamera has no UI layer), so floating cards
+    // don't occlude what's behind them.
+    const pre = depthPass(scene, aoCamera, { samples: 0 })
     // No normal pass: GTAO rebuilds normals from depth when given none (saves a
     // second full render of the glass); the typings just don't admit null.
     const occlusion = ao(pre.getTextureNode('depth'), null as never, camera)
@@ -37,9 +40,14 @@ export function Post() {
     const glow = bloom(color, 0.45, 0.4, 1.05)
     pipeline.outputNode = color.add(glow)
     return pipeline
-  }, [gl, scene, camera])
+  }, [gl, scene, camera, aoCamera])
 
   useEffect(() => () => pipeline.dispose(), [pipeline])
-  useFrame(() => pipeline.render(), 1)
+  useFrame(() => {
+    // The AO depth pass follows the real camera exactly, minus the UI layer.
+    aoCamera.copy(camera as THREE.PerspectiveCamera, false)
+    aoCamera.layers.set(0)
+    pipeline.render()
+  }, 1)
   return null
 }

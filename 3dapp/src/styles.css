@@ -59,10 +59,13 @@ body {
 }
 
 /*
- * The focus panel stands in the room (CSS 3D, where backdrop-filter is dropped
- * anyway): a solid surface like the room's other panels, not glass.
+ * The focus panel stands in the room through CSS 3D, where browsers drop
+ * backdrop-filter: the glass under it is drawn by WebGPU (FocusPanel3D), so the
+ * 2D panel keeps its sheen, hairline and type but not its own fill or blur.
  */
 .focus-host .glass,
 .focus-host .glass-thick {
-  --fill: var(--t-bg);
+  --fill: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }

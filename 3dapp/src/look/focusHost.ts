@@ -7,6 +7,6 @@ import { create } from 'zustand'
  */
 export const useFocusHost = create<{ el: HTMLElement | null; w: number; h: number }>(() => ({ el: null, w: 0, h: 0 }))
 
-/** Room kept at the panel's foot for its options (the 2D rail), so they're never cut off. */
-export const FOCUS_RAIL = 68
+/** Room kept at the panel's foot for its options (the 2D rail wraps to two rows), so they're never cut off. */
+export const FOCUS_RAIL = 118
 export const FOCUS_RADIUS = 18

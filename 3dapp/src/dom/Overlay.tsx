@@ -131,7 +131,7 @@ function FocusContent({ focused }: { focused: boolean }) {
         </AnimatePresence>
       </div>
       {focused && !chatOpen && (
-        <div className="absolute flex items-center overflow-hidden" style={{ left: m.rail.x, top: m.rail.y + 8, width: m.rail.w, height: m.rail.h - 8 }}>
+        <div className="absolute flex items-center" style={{ left: m.rail.x, top: m.rail.y + 6, width: m.rail.w, height: m.rail.h - 6 }}>
           <OptionRail contextKey={key} trailing={<MenuButton onSignOut={onSignOut} />} />
         </div>
       )}

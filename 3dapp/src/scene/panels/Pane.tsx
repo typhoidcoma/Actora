@@ -5,6 +5,7 @@ import { float, mix, texture as tslTexture, uniform, vec4, viewportSharedTexture
 import { hashBlur } from 'three/addons/tsl/display/hashBlur.js'
 import { useFonts } from '../../look/fonts'
 import { backOut, damp } from '../../look/motion'
+import { UI_LAYER } from '../../look/layers'
 import { PPU } from '../../look/paint'
 import { parseCss, useLook } from '../../look/theme'
 
@@ -36,7 +37,7 @@ export interface PaneProps {
   size?: number
 }
 
-function roundedRect(w: number, h: number, r: number): THREE.ShapeGeometry {
+export function roundedRect(w: number, h: number, r: number): THREE.ShapeGeometry {
   const s = new THREE.Shape()
   const x = -w / 2
   const y = -h / 2
@@ -193,7 +194,7 @@ export function Pane({ width, height, radius = 0.06, position, rotation, paint, 
 
   return (
     <group ref={group} rotation={rotation} visible={false}>
-      <mesh geometry={geometry} material={material} renderOrder={2} {...handlers} />
+      <mesh geometry={geometry} material={material} renderOrder={2} layers={UI_LAYER} {...handlers} />
     </group>
   )
 }

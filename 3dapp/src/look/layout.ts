@@ -54,24 +54,27 @@ export const PORTRAIT = {
  */
 export function stageFor(aspect: number): Stage {
   if (aspect >= 0.8) {
-    const w = 1.5
-    const h = 1.02
-    const rows = [1.78, 0.68]
+    // Smaller cards, closer to her, and a camera that comes in a little: she's the subject.
+    const w = 1.3
+    const h = 0.88
+    const rows = [1.62, 0.84]
+    // Cards are painted at their canonical size and shown smaller (type and all).
+    const cardScale = 0.84
     return {
       portrait: false,
       card: { w, h, radius: RADIUS },
       pose: (c) => {
         const right = c % 2 === 1
         const bottom = c >= 2
-        return { position: [right ? 1.66 : -1.66, rows[bottom ? 1 : 0], 0], rotation: [0, right ? -0.1 : 0.1, 0], scale: 1, right, bottom }
+        return { position: [right ? 1.3 : -1.3, rows[bottom ? 1 : 0], 0], rotation: [0, right ? -0.1 : 0.1, 0], scale: cardScale, right, bottom }
       },
-      line: { position: [0, 2.56, 0.05], rotation: [0, 0, 0], scale: 1, w: 3.8, size: 0.085 },
+      line: { position: [0, 2.3, 0.05], rotation: [0, 0, 0], scale: 1, w: 3.8, size: 0.07 },
       // The top of the 2D rail (and the message box under it) is pinned here.
-      chips: { position: [0, 0.1, 0.55], rotation: [-0.12, 0, 0], scale: 1, w: 3.8 },
+      chips: { position: [0, 0.3, 0.55], rotation: [-0.12, 0, 0], scale: 1, w: 3.4 },
       input: { position: [0, -0.08, 0.8], rotation: [-0.14, 0, 0], scale: 1, w: 2.2 },
       her: [0, 0, 0],
       // Room under the cards for the 2D rail (up to two rows) and the message box.
-      frame: { w: 5.1, h: 3.5, center: [0, 1.0, 0] },
+      frame: { w: 4.4, h: 3.0, center: [0, 1.06, 0] },
     }
   }
 
@@ -150,6 +153,10 @@ export function focusLayout(aspect: number): FocusLayout {
   const rect = portrait ? { x0: 0.03, y0: 0.32, x1: 0.97, y1: 0.985 } : { x0: 0.45, y0: 0.06, x1: 0.95, y1: 0.94 }
   const cx = (rect.x0 + rect.x1) / 2
   const cy = (rect.y0 + rect.y1) / 2
+  // On a phone the panel covers her body, so it stands in front of her (nearer the
+  // camera, scaled to cover the same part of the screen); wide, it stands beside her.
+  const ahead = portrait ? 0.8 : 0
+  const k = (dist - ahead) / dist
   return {
     portrait,
     rect,
@@ -157,9 +164,9 @@ export function focusLayout(aspect: number): FocusLayout {
     dist,
     view: { w: viewW, h: viewH },
     panel: {
-      position: [target[0] + (cx - 0.5) * viewW, target[1] - (cy - 0.5) * viewH, target[2]],
-      w: (rect.x1 - rect.x0) * viewW,
-      h: (rect.y1 - rect.y0) * viewH,
+      position: [target[0] + (cx - 0.5) * viewW * k, target[1] - (cy - 0.5) * viewH * k, target[2] + ahead],
+      w: (rect.x1 - rect.x0) * viewW * k,
+      h: (rect.y1 - rect.y0) * viewH * k,
     },
   }
 }

@@ -5,18 +5,26 @@ import { CSS3DObject, CSS3DRenderer } from 'three/addons/renderers/CSS3DRenderer
 import { useFocused } from '../look/focus'
 import { FOCUS_RADIUS, useFocusHost } from '../look/focusHost'
 import { focusLayout } from '../look/layout'
+import { UI_LAYER } from '../look/layers'
 import { damp } from '../look/motion'
+import { parseCss, useLook } from '../look/theme'
+import { float, mix, uniform, vec4, viewportSharedTexture } from 'three/tsl'
+import { hashBlur } from 'three/addons/tsl/display/hashBlur.js'
+import { roundedRect } from './panels/Pane'
 
 /**
  * The focus panel as a thing in the world. The 2D app's content (chat, item,
  * list, finds, vault) lives in a DOM element placed in the scene with CSS 3D
  * transforms that follow the camera, so it has perspective, parallax and turns
- * toward her. It flies in from her right and out again, content and glass together.
+ * toward her. Behind it WebGPU draws the glass the cards and pills are made of
+ * (the room, blurred, under the 2D reading-surface tint), since browsers drop
+ * backdrop-filter in 3D; the 2D panel's own fill is cleared (styles.css). It
+ * flies in from her right and out again, content and glass together.
  */
 export function FocusPanel3D() {
   const focused = useFocused()
   const { size, camera, gl } = useThree()
-  // (castShadow on the body below: the panel shades the floor like the cards do.)
+  const look = useLook()
   const f = focusLayout(size.width / size.height)
 
   // The DOM size: the panel's on-screen size when it faces the camera, so text is crisp.
@@ -52,6 +60,26 @@ export function FocusPanel3D() {
   }, [css, size, pxW, pxH])
 
   const group = useRef<THREE.Group>(null)
+  // The glass: same pose and size as the DOM panel.
+  const glassGeo = useMemo(() => roundedRect(f.panel.w, f.panel.h, FOCUS_RADIUS * unit), [f.panel.w, f.panel.h, unit])
+  useEffect(() => () => glassGeo.dispose(), [glassGeo])
+  const u = useMemo(() => ({ tint: uniform(new THREE.Color()), amount: uniform(0.84), appear: uniform(0) }), [])
+  const glass = useMemo(() => {
+    const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, fog: false })
+    const behind = hashBlur(viewportSharedTexture(), float(0.03), { repeats: float(28) })
+    m.colorNode = vec4(mix(behind.rgb, u.tint, u.amount), 1)
+    m.opacityNode = u.appear
+    return m
+  }, [u])
+  useEffect(() => () => glass.dispose(), [glass])
+  useEffect(() => {
+    // --t-glass-thick: the 2D reading-surface glass, a little more see-through here
+    // so the room still reads through it like the cards.
+    const { color, alpha } = parseCss(look.glassThick)
+    u.tint.value.copy(color)
+    u.amount.value = Math.min(0.9, alpha * 0.9)
+  }, [look.glassThick, u])
+
   const anim = useRef({ t: 0 })
   const turn = f.portrait ? 0 : -0.14
   useFrame((_, dt) => {
@@ -69,6 +97,7 @@ export function FocusPanel3D() {
     )
     g.rotation.set(f.portrait ? away * 0.5 : 0, turn - away * 0.7, 0)
     g.visible = k > 0
+    u.appear.value = Math.min(1, k * 1.25)
 
     css.obj.position.copy(g.position)
     css.obj.quaternion.copy(g.quaternion)
@@ -82,6 +111,7 @@ export function FocusPanel3D() {
 
   return (
     <group ref={group} visible={false}>
+      <mesh geometry={glassGeo} material={glass} layers={UI_LAYER} renderOrder={3} />
     </group>
   )
 }
