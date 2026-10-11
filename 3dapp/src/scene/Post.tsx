@@ -21,7 +21,8 @@ export function Post() {
     gl.toneMappingExposure = 1
     const pipeline = new THREE.RenderPipeline(gl)
 
-    const pre = depthPass(scene, camera)
+    // Single-sampled: GTAO gathers from a plain depth texture, not a multisampled one.
+    const pre = depthPass(scene, camera, { samples: 0 })
     // No normal pass: GTAO rebuilds normals from depth when given none (saves a
     // second full render of the glass); the typings just don't admit null.
     const occlusion = ao(pre.getTextureNode('depth'), null as never, camera)
@@ -33,7 +34,7 @@ export function Post() {
     scenePass.contextNode = builtinAOContext(occlusion.getTextureNode().sample(screenUV).r)
     const color = scenePass.getTextureNode('output')
 
-    const glow = bloom(color, 0.75, 0.45, 1)
+    const glow = bloom(color, 0.45, 0.4, 1.05)
     pipeline.outputNode = color.add(glow)
     return pipeline
   }, [gl, scene, camera])

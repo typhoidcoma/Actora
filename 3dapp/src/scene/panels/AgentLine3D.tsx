@@ -5,12 +5,24 @@ import { useAgent } from '@actora/stores/agent'
 import { useEntities } from '@actora/stores/entities'
 import { useNow } from '@actora/ui/tiles/data'
 import { plainText } from '@actora/ui/markdownText'
+import { useStage } from '../../look/layout'
+import { drawLines, font, px, wrap } from '../../look/paint'
 import { useLook } from '../../look/theme'
-import { Glass } from './Glass'
+import { Pane } from './Pane'
 
-/** What she's saying, above her head: the 3D AgentLine (welcome, reply, reminder or message). */
+const LH = 1.3
+
+/** Her first sentence, as the 2D line carries it (the full answer lives in the chat). */
+function firstSentence(text: string): string {
+  const m = /^[\s\S]*?[.!?…](?=\s|$)/.exec(text)
+  return (m ? m[0] : text).trim()
+}
+
+/** Her voice above the grid: bare text, no glass, like the 2D AgentLine. */
 export function AgentLine3D() {
   const look = useLook()
+  const stage = useStage()
+  const SIZE = stage.line.size
   const a = useAgent(
     useShallow((s) => ({
       name: s.botName,
@@ -29,41 +41,40 @@ export function AgentLine3D() {
   const now = useNow(15_000)
   const ring = a.line === 'notice' && !!reminder && ringing(reminder, now)
 
-  let kicker = a.name
   let text: string
-  let tone: string | undefined = look.ink.agent
+  let color = look.strong
   if (a.fatal) {
-    kicker = 'Offline'
     text = `Can't reach ${a.name}. Reload to try again.`
-    tone = look.ink.urgent
+    color = look.ink.urgent
   } else if (a.line === 'notice' && a.notice) {
-    kicker = ring ? 'Reminder · now' : 'Reminder'
-    tone = ring ? look.ink.urgent : look.ink.reminder
-    text = [a.notice.title, a.notice.body].filter(Boolean).join('\n')
+    text = a.notice.body ? `${a.notice.title}: ${a.notice.body}` : a.notice.title
+    if (ring) color = look.ink.urgent
   } else if (a.line === 'message' && a.message) text = a.message
   else if (a.line === 'reply') {
-    if (a.streaming) text = plainText(a.streaming)
+    if (a.streaming) text = firstSentence(plainText(a.streaming))
     else if (a.phase === 'tool' && a.step?.status === 'running') text = `${a.step.doing}…`
     else if (a.phase === 'thinking') text = '…'
-    else text = plainText(a.last ?? '')
+    else text = firstSentence(plainText(a.last ?? ''))
   } else text = a.greeting
 
-  // Keep the last words on the glass while it eases out.
-  const shown = useRef({ kicker, text, tone })
+  // Keep the last words while the line eases out.
+  const shown = useRef({ text, color })
   const present = !!text.trim()
-  if (present) shown.current = { kicker, text, tone }
+  if (present) shown.current = { text, color }
+
+  const f = font(500, SIZE)
+  const spacing = `${-px(SIZE * 0.015)}px`
+  const lines = wrap(shown.current.text, f, px(stage.line.w), 3, spacing)
+  const height = lines.length * SIZE * LH + 0.04
 
   return (
-    <Glass
-      position={[0, 2.18, 0.1]}
-      width={2.5}
-      maxHeight={0.9}
-      kicker={shown.current.kicker}
-      kickerColor={shown.current.tone}
-      body={shown.current.text}
-      bodySize={0.07}
-      align="center"
-      glow={ring ? look.role.urgent : null}
+    <Pane
+      bare
+      width={stage.line.w}
+      height={height}
+      position={[0, stage.line.y - height / 2 + SIZE * LH * 0.5, 0.05]}
+      paint={(ctx, w) => drawLines(ctx, lines, w / 2, px(0.02), px(SIZE * LH), f, shown.current.color, 'center', spacing)}
+      deps={[lines.join('\n'), shown.current.color]}
       present={present}
     />
   )

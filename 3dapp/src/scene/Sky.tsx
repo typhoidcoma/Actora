@@ -1,18 +1,24 @@
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three/webgpu'
-import { dot, mix, normalize, positionLocal, smoothstep, uniform, vec3 } from 'three/tsl'
+import { dot, exp, mix, normalize, positionLocal, smoothstep, uniform, vec3 } from 'three/tsl'
 import { watchSky } from '@actora/weather/sky'
 import { damp } from '../look/motion'
+import { useStage } from '../look/layout'
 import { parseCss, useLook } from '../look/theme'
 
-/** Where each blob drifts on the dome: centre (azimuth, elevation, radians), sway, period (s). */
+/**
+ * Where each blob drifts on the dome: centre (azimuth, elevation, radians, toward
+ * the corners of the view like the 2D quadrants), sway, period (s).
+ */
 const DRIFT = [
-  { az: -0.75, el: 0.35, sway: 0.35, period: 46 },
-  { az: 0.7, el: 0.15, sway: 0.4, period: 38 },
-  { az: -0.1, el: -0.15, sway: 0.3, period: 54 },
-  { az: 0.25, el: 0.6, sway: 0.25, period: 31 },
+  { az: -0.66, el: 0.34, sway: 0.1, period: 46 },
+  { az: 0.66, el: 0.3, sway: 0.12, period: 38 },
+  { az: -0.6, el: -0.36, sway: 0.1, period: 54 },
+  { az: 0.6, el: -0.34, sway: 0.1, period: 31 },
 ]
+/** Falloff of each blob: soft as the 2D pre-blurred circles (about a third strength 30° out). */
+const SOFT = 13
 
 /**
  * The 2D app's ambient weather field, as the world around her: the same four
@@ -21,6 +27,7 @@ const DRIFT = [
  */
 export function Sky() {
   const look = useLook()
+  const { portrait } = useStage()
   useEffect(() => watchSky(), [])
 
   const u = useMemo(() => {
@@ -38,7 +45,7 @@ export function Sky() {
     const dir = normalize(positionLocal)
     // Background, darkening toward the horizon's underside like the 2D bg → bg2 wash.
     let color = mix(u.low, u.bg, smoothstep(-0.35, 0.25, dir.y))
-    for (const b of u.blobs) color = mix(color, b.color, smoothstep(0.42, 1, dot(dir, b.dir)).mul(b.alpha))
+    for (const b of u.blobs) color = mix(color, b.color, exp(dot(dir, b.dir).sub(1).mul(SOFT)).mul(b.alpha))
     const m = new THREE.MeshBasicNodeMaterial({ side: THREE.BackSide, depthWrite: false, fog: false })
     m.colorNode = vec3(color)
     return m
@@ -53,7 +60,7 @@ export function Sky() {
       low: parseCss(look.bg2).color.clone(),
       blobs: look.sky.map((css) => {
         const { color, alpha } = parseCss(css)
-        return { color: color.clone(), alpha: Math.min(1, alpha * (look.day ? 1.1 : 1.25)) }
+        return { color: color.clone(), alpha: Math.min(1, alpha * (look.day ? 1 : 0.6)) }
       }),
     }
   }, [look])
@@ -71,7 +78,8 @@ export function Sky() {
       b.alpha.value = damp(b.alpha.value, t.blobs[i].alpha, 2.2, dt)
       const d = DRIFT[i]
       const phase = (clock.elapsedTime / d.period) * Math.PI * 2
-      const az = d.az + Math.sin(phase) * d.sway
+      // A portrait view is narrow: pull the blobs in toward its sides.
+      const az = (d.az + Math.sin(phase) * d.sway) * (portrait ? 0.4 : 1)
       const el = d.el + Math.cos(phase * 0.7) * d.sway * 0.5
       b.dir.value.set(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el))
     })

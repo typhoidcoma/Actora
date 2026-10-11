@@ -24,6 +24,7 @@ export function Environment() {
     const pmrem = new THREE.PMREMGenerator(gl)
     const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
     scene.environment = env
+    scene.environmentIntensity = 0.55
     return () => {
       scene.environment = null
       env.dispose()
@@ -79,7 +80,7 @@ export function Environment() {
     }
     if (rim.current) {
       rim.current.color.lerp(targets.mood, k)
-      rim.current.intensity = damp(rim.current.intensity, 10 + glow * 30, 2, dt)
+      rim.current.intensity = damp(rim.current.intensity, 4 + glow * 10, 2, dt)
     }
     pool.color.value.lerp(targets.mood2, k)
     pool.strength.value = damp(pool.strength.value, (look.day ? 0.35 : 0.55) * glow, 2, dt)
@@ -88,10 +89,10 @@ export function Environment() {
   return (
     <>
       <Sky />
-      <hemisphereLight ref={hemi} intensity={look.day ? 1.2 : 0.7} />
+      <hemisphereLight ref={hemi} intensity={look.day ? 0.55 : 0.45} />
       <directionalLight
         position={[2.5, 4.5, 3]}
-        intensity={look.day ? 2.4 : 1.4}
+        intensity={look.day ? 1.7 : 1.2}
         color={look.day ? '#fff6ea' : '#d9d6ff'}
         castShadow
         shadow-mapSize={[2048, 2048]}
@@ -106,7 +107,7 @@ export function Environment() {
       {/* Floor: invisible but for her shadow and the pool of mood light. */}
       <mesh rotation-x={-Math.PI / 2} receiveShadow>
         <circleGeometry args={[5, 64]} />
-        <shadowMaterial transparent opacity={look.day ? 0.18 : 0.35} />
+        <shadowMaterial transparent depthWrite={false} opacity={look.day ? 0.16 : 0.35} />
       </mesh>
       <mesh rotation-x={-Math.PI / 2} position-y={0.002} material={pool.m}>
         <planeGeometry args={[3.2, 3.2]} />
