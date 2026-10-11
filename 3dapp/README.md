@@ -15,10 +15,10 @@ npm install            # at the repo root too: ../src's own deps (supabase, …)
 cd 3dapp
 npm install
 npm run placeholder    # optional: rigged stand-in character (three.js Xbot)
-npm run dev            # http://localhost:5174, in Chrome/Edge/Safari with WebGPU
+npm run dev            # http://localhost:5173, in Chrome/Edge/Safari with WebGPU
 ```
 
-With no `.env`, it runs against the in-browser mock backend. Real sign-in on port 5174 needs `http://localhost:5174` added to Supabase's redirect URLs and to Aelora's `AELORA_CORS_ORIGINS`.
+It uses the same port (5173) and the same root `.env` as the 2D app, so sign-in and the backend work exactly as they do there, or the mock if that is what `.env` says. Run one app at a time. To load a different model, set `VITE_CHARACTER_URL` in the root `.env`.
 
 ## The character
 
