@@ -73,25 +73,35 @@ export function Pane({ width, height, radius = 0.06, position, rotation, paint, 
   const ph = Math.round(height * PPU)
 
   // WebGPU textures can't change size: a new canvas and texture per pixel size.
+  // Two faces: the one showing, and the one before it, which it cross-fades from
+  // when the theme changes (the 2D app cross-fades its colours over 1.2 s).
   const face = useMemo(() => {
-    const canvas = document.createElement('canvas')
-    canvas.width = pw
-    canvas.height = ph
-    const t = new THREE.CanvasTexture(canvas)
-    t.colorSpace = THREE.SRGBColorSpace
-    t.anisotropy = 8
-    t.generateMipmaps = true
-    t.minFilter = THREE.LinearMipmapLinearFilter
-    return { canvas, texture: t }
+    const make = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = pw
+      canvas.height = ph
+      // A canvas with no context yet can't be uploaded ("CopyExternalImageToTexture:
+      // fails extracting valid resource"): give it one, even if it's never drawn.
+      canvas.getContext('2d')
+      const texture = new THREE.CanvasTexture(canvas)
+      texture.colorSpace = THREE.SRGBColorSpace
+      texture.anisotropy = 8
+      texture.generateMipmaps = true
+      texture.minFilter = THREE.LinearMipmapLinearFilter
+      return { canvas, texture }
+    }
+    const cur = make()
+    const prev = make()
+    return { canvas: cur.canvas, texture: cur.texture, prevCanvas: prev.canvas, prevTexture: prev.texture }
   }, [pw, ph])
   const geometry = useMemo(() => roundedRect(width, height, radius), [width, height, radius])
-  const u = useMemo(() => ({ appear: uniform(0), tint: uniform(new THREE.Color()), tintAmount: uniform(0) }), [])
+  const u = useMemo(() => ({ appear: uniform(0), tint: uniform(new THREE.Color()), tintAmount: uniform(0), blend: uniform(1) }), [])
 
   // Unlit, so the type reads the same in sun or shade. Glass panes show the room
   // behind them, blurred; the bare line is just its type.
   const material = useMemo(() => {
     const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, fog: false })
-    const f = tslTexture(face.texture)
+    const f = mix(tslTexture(face.prevTexture), tslTexture(face.texture), u.blend)
     if (bare) {
       m.colorNode = f.rgb
       m.opacityNode = f.a.mul(u.appear)
@@ -108,15 +118,27 @@ export function Pane({ width, height, radius = 0.06, position, rotation, paint, 
   useEffect(
     () => () => {
       face.texture.dispose()
+      face.prevTexture.dispose()
       geometry.dispose()
       material.dispose()
     },
     [face, geometry, material],
   )
 
-  // Paint whenever the content, the look or the fonts change.
+  // Paint whenever the content, the look or the fonts change. A change of theme
+  // keeps the old face and fades to the new one; content changes are immediate.
+  const lookKey = `${look.day}|${look.glass}|${look.strong}|${look.text}|${look.role.accent}`
+  const lastLook = useRef(lookKey)
   useEffect(() => {
     const ctx = face.canvas.getContext('2d')!
+    if (lastLook.current !== lookKey) {
+      const prev = face.prevCanvas.getContext('2d')!
+      prev.clearRect(0, 0, pw, ph)
+      prev.drawImage(face.canvas, 0, 0)
+      face.prevTexture.needsUpdate = true
+      u.blend.value = 0
+      lastLook.current = lookKey
+    }
     ctx.clearRect(0, 0, pw, ph)
     ctx.save()
     paint(ctx, pw, ph)
@@ -167,6 +189,7 @@ export function Pane({ width, height, radius = 0.06, position, rotation, paint, 
     g.position.y = damp(g.position.y, position[1] - (1 - a.t) * 0.05, 8, dt)
     g.position.z = damp(g.position.z, position[2] + a.hover * 0.04, 8, dt)
     u.appear.value = present ? Math.min(1, a.t * 1.6) : a.t
+    if (u.blend.value < 1) u.blend.value = Math.min(1, u.blend.value + dt / 1.2)
 
     if (ringColor) {
       const pulse = 0.5 + 0.5 * Math.sin(clock.elapsedTime * 5.2)

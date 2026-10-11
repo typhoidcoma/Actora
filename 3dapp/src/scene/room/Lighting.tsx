@@ -15,10 +15,12 @@ import { ROOM } from './Room'
 /** Where the sun comes from (toward the light), by theme: high and white by day, low and gold at dusk. */
 const SUN = {
   day: { dir: new THREE.Vector3(-1, 0.95, 0.4).normalize(), color: new THREE.Color('#fff3e0'), intensity: 3.4 },
-  dusk: { dir: new THREE.Vector3(-1, 0.3, 0.22).normalize(), color: new THREE.Color('#ffb067'), intensity: 3.1 },
+  dusk: { dir: new THREE.Vector3(-1, 0.3, 0.22).normalize(), color: new THREE.Color('#ffc38a'), intensity: 2.6 },
 }
 const SUN_TARGET = new THREE.Vector3(1, 0, -1.5)
 const WASH_X = [-1.6, 0.4, 2.4]
+/** Interior architectural light: warm white, about 3000 K. */
+const WARM = new THREE.Color('#ffd9ae')
 
 /** Is a reminder going off right now (the room breathes in the urgent colour)? */
 function useAlarm(): boolean {
@@ -43,6 +45,12 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
 
   const sun = useRef<THREE.DirectionalLight>(null)
   const hemi = useRef<THREE.HemisphereLight>(null)
+  const key = useRef<THREE.SpotLight>(null)
+  const keyTarget = useMemo(() => {
+    const o = new THREE.Object3D()
+    o.position.set(0, 1.25, 0)
+    return o
+  }, [])
   const washes = useRef<Array<THREE.SpotLight | null>>([])
   const target = useMemo(() => {
     const o = new THREE.Object3D()
@@ -63,8 +71,7 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
     () => ({
       dir: new THREE.Vector3(),
       sunColor: new THREE.Color(),
-      sky: new THREE.Color(),
-      ground: new THREE.Color(),
+      fog: new THREE.Color(),
       mood: new THREE.Color(),
       accent: new THREE.Color(),
       urgent: new THREE.Color(),
@@ -72,37 +79,36 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
     [],
   )
   useEffect(() => {
-    parseCss(look.sky[0], to.sky)
-    parseCss('#b9a68e', to.ground)
     parseCss(look.role.accent, to.accent)
     parseCss(look.role.urgent, to.urgent)
+    parseCss(look.bg, to.fog)
   }, [look, to])
 
-  // Fog the far end a touch in the theme's air.
+  // Fog the far end a touch in the theme's air (eased in the frame loop, never snapped).
   const fog = useMemo(() => new THREE.Fog('#000', 16, 46), [])
   useEffect(() => {
     scene.fog = fog
-    parseCss(look.bg, fog.color)
     return () => {
       scene.fog = null
     }
-  }, [scene, fog, look.bg])
+  }, [scene, fog])
 
-  // Reflections: capture the room into an environment map once the look settles.
-  // Keyed on a stable string (look.sky is a fresh array every render: keying on it
-  // re-captured constantly), and the old map is only released after the new one
-  // is in place, so there's never a frame without reflections (the flicker).
+  // Reflections: the room captured into an environment map. A single capture after
+  // a theme change swapped the whole room's reflections at once (the jump), so while
+  // the lights ease to the new look (~2.5 s) it's re-captured in small steps and
+  // follows them. Keyed on a stable string; the old map goes only after the new one is in.
   const envKey = `${look.day}|${look.skyKind}|${look.sky.join(',')}`
   const pmrem = useMemo(() => new THREE.PMREMGenerator(renderer), [renderer])
   useEffect(() => () => pmrem.dispose(), [pmrem])
   useEffect(() => {
-    const t = setTimeout(() => {
+    const capture = () => {
       const prev = scene.environment
       scene.environment = pmrem.fromScene(scene, 0.035, 0.1, 60, { position: new THREE.Vector3(0, 1.6, 2.5) }).texture
-      scene.environmentIntensity = 0.75
+      scene.environmentIntensity = 0.6
       prev?.dispose()
-    }, 1600)
-    return () => clearTimeout(t)
+    }
+    const timers = Array.from({ length: 10 }, (_, i) => setTimeout(capture, 250 + i * 300))
+    return () => timers.forEach(clearTimeout)
   }, [pmrem, scene, envKey])
 
   const first = useRef(true)
@@ -118,31 +124,30 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
       sun.current.color.lerp(s.color, k)
       sun.current.intensity = damp(sun.current.intensity, s.intensity, 1.6, dt)
     }
-    if (hemi.current) {
-      hemi.current.color.lerp(to.sky, k)
-      hemi.current.groundColor.lerp(to.ground, k)
-      hemi.current.intensity = damp(hemi.current.intensity, look.day ? 0.55 : 0.22, 1.6, dt)
-    }
+    // Fill: neutral warm-white bounce, not the weather's colours (they cast odd tints on the room).
+    if (hemi.current) hemi.current.intensity = damp(hemi.current.intensity, look.day ? 0.6 : 0.3, 1.6, dt)
+    fog.color.lerp(to.fog, k)
+    if (key.current) key.current.intensity = damp(key.current.intensity, look.day ? 5 : 11, 1.6, dt)
 
     // Her mood: the cove and the wall wash.
     const { mood, emotion, phase } = useAgent.getState()
     const offline = phase === 'offline'
     const [c1] = orbColors(mood, emotion, useScheme.getState().scheme)
     to.mood.setRGB(c1[0], c1[1], c1[2], THREE.SRGBColorSpace)
-    // Keep the room warm: her colour tints a warm white rather than replacing it.
-    to.mood.lerp(new THREE.Color('#ffd7a3'), 0.45)
+    // Architectural light is warm white (about 3000 K); her mood only tints it.
+    to.mood.lerp(WARM, 0.78)
     const glow = offline ? 0.15 : 0.45 + moodIntensity(mood, emotion) * 0.55
     const pulse = 0.5 + 0.5 * Math.sin(clock.elapsedTime * 4.2)
 
     const coveColor = alarm ? to.urgent : to.mood
     mat.cove.color.value.lerp(coveColor, alarm ? 1 - Math.exp(-dt * 8) : k)
-    const coveTarget = (look.day ? 1.6 : 3.2) * glow * (alarm ? 0.8 + pulse * 0.7 : 1)
+    const coveTarget = (look.day ? 1.2 : 2.4) * (0.7 + glow * 0.3) * (alarm ? 0.8 + pulse * 0.7 : 1)
     mat.cove.strength.value = damp(mat.cove.strength.value, coveTarget, alarm ? 12 : 2, dt)
 
     for (const w of washes.current) {
       if (!w) continue
       w.color.lerp(to.mood, k)
-      w.intensity = damp(w.intensity, (look.day ? 14 : 30) * glow, 2, dt)
+      w.intensity = damp(w.intensity, (look.day ? 10 : 24) * (0.7 + glow * 0.3), 1.6, dt)
     }
 
     // The scheme's accent on the step nosings.
@@ -172,7 +177,10 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
         shadow-camera-near={1}
         shadow-camera-far={45}
       />
-      <hemisphereLight ref={hemi} intensity={0.4} />
+      <hemisphereLight ref={hemi} args={['#fff3e4', '#cdbfae', 0.4]} />
+      {/* A soft warm key on her from above the camera, so she reads in any light. */}
+      <primitive object={keyTarget} />
+      <spotLight ref={key} target={keyTarget} position={[0.9, 4.2, 3.6]} angle={0.42} penumbra={1} decay={1.4} distance={14} color="#ffe3c2" intensity={6} />
       {WASH_X.map((x, i) => (
         <spotLight
           key={x}

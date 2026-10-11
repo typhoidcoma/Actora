@@ -72,13 +72,14 @@ export function FocusPanel3D() {
     return m
   }, [u])
   useEffect(() => () => glass.dispose(), [glass])
+  // --t-glass-thick: the 2D reading-surface glass, a little more see-through here so
+  // the room still reads through it like the cards. Eased, so a theme change fades.
+  const tintTo = useMemo(() => ({ color: new THREE.Color(), amount: 0.84 }), [])
   useEffect(() => {
-    // --t-glass-thick: the 2D reading-surface glass, a little more see-through here
-    // so the room still reads through it like the cards.
     const { color, alpha } = parseCss(look.glassThick)
-    u.tint.value.copy(color)
-    u.amount.value = Math.min(0.9, alpha * 0.9)
-  }, [look.glassThick, u])
+    tintTo.color.copy(color)
+    tintTo.amount = Math.min(0.9, alpha * 0.9)
+  }, [look.glassThick, tintTo])
 
   const anim = useRef({ t: 0 })
   const turn = f.portrait ? 0 : -0.14
@@ -98,6 +99,8 @@ export function FocusPanel3D() {
     g.rotation.set(f.portrait ? away * 0.5 : 0, turn - away * 0.7, 0)
     g.visible = k > 0
     u.appear.value = Math.min(1, k * 1.25)
+    u.tint.value.lerp(tintTo.color, 1 - Math.exp(-dt * 2.5))
+    u.amount.value = damp(u.amount.value, tintTo.amount, 2.5, dt)
 
     css.obj.position.copy(g.position)
     css.obj.quaternion.copy(g.quaternion)

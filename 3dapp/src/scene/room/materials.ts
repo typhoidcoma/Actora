@@ -1,8 +1,8 @@
 import * as THREE from 'three/webgpu'
 import { uniform } from 'three/tsl'
 
-/** The room is one plain 90% white for now (no textures); the light does the work. */
-export const ROOM_WHITE = '#e6e6e6'
+/** The room is one plain 70% white for now (no textures); the light does the work. */
+export const ROOM_WHITE = '#b3b3b3'
 
 const plain = (roughness: number) => new THREE.MeshStandardMaterial({ color: ROOM_WHITE, roughness, metalness: 0 })
 
