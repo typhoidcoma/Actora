@@ -1,14 +1,15 @@
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three/webgpu'
-import { texture as tslTexture, uniform } from 'three/tsl'
+import { float, mix, texture as tslTexture, uniform, vec4, viewportSharedTexture } from 'three/tsl'
+import { hashBlur } from 'three/addons/tsl/display/hashBlur.js'
 import { useFonts } from '../../look/fonts'
 import { backOut, damp } from '../../look/motion'
 import { PPU } from '../../look/paint'
 import { parseCss, useLook } from '../../look/theme'
 
-/** How thick a panel is: enough to catch light on its edge and cast a real shadow. */
-const DEPTH = 0.022
+/** How far the glass blurs the room behind it, in screen UV (the 2D pills' backdrop blur). */
+const BLUR = 0.02
 
 export interface PaneProps {
   width: number
@@ -57,32 +58,12 @@ function roundedRect(w: number, h: number, r: number): THREE.ShapeGeometry {
   return g
 }
 
-/** The panel's body: the same rounded rectangle, extruded, its front face just behind the painted face. */
-function slab(w: number, h: number, r: number): THREE.ExtrudeGeometry {
-  const s = new THREE.Shape()
-  const x = -w / 2
-  const y = -h / 2
-  r = Math.min(r, w / 2, h / 2)
-  s.moveTo(x + r, y)
-  s.lineTo(x + w - r, y)
-  s.absarc(x + w - r, y + r, r, -Math.PI / 2, 0, false)
-  s.lineTo(x + w, y + h - r)
-  s.absarc(x + w - r, y + h - r, r, 0, Math.PI / 2, false)
-  s.lineTo(x + r, y + h)
-  s.absarc(x + r, y + h - r, r, Math.PI / 2, Math.PI, false)
-  s.lineTo(x, y + r)
-  s.absarc(x + r, y + r, r, Math.PI, Math.PI * 1.5, false)
-  const g = new THREE.ExtrudeGeometry(s, { depth: DEPTH, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.004, bevelSegments: 2, curveSegments: 10 })
-  g.translate(0, 0, -DEPTH - 0.006)
-  return g
-}
-
 /**
- * One surface of the 2D UI, standing in the room: a thin solid panel that takes
- * the room's real light (the sun through the windows, her mood in the cove),
- * casts a shadow on the floor, and carries its face (text, washes) painted on a
- * canvas that stays readable in any light. The 2D motion: scale in with a little
- * overshoot, ease out, glide to a new spot, lift on hover.
+ * One surface of the 2D UI, standing in the room, in the same glass as the 2D
+ * pills: the room behind it blurred (the 2D backdrop-filter), under a face
+ * painted on a canvas (the glass tint, sheen and hairline from paintGlass, then
+ * the type). No body, so no edge. The 2D motion: scale in with a little
+ * overshoot, ease out, glide to a new spot, lift on hover; an alarm breathes.
  */
 export function Pane({ width, height, radius = 0.06, position, rotation, paint, deps, bare, ring, present = true, onGone, delay = 0, onPress, from, size = 1 }: PaneProps) {
   const look = useLook()
@@ -103,34 +84,33 @@ export function Pane({ width, height, radius = 0.06, position, rotation, paint, 
     return { canvas, texture: t }
   }, [pw, ph])
   const geometry = useMemo(() => roundedRect(width, height, radius), [width, height, radius])
-  const body = useMemo(() => (bare ? null : slab(width, height, radius)), [bare, width, height, radius])
+  const u = useMemo(() => ({ appear: uniform(0), tint: uniform(new THREE.Color()), tintAmount: uniform(0) }), [])
 
-  const u = useMemo(() => ({ appear: uniform(0) }), [])
-
-  // The face: unlit, so text reads the same in sun or shade.
+  // Unlit, so the type reads the same in sun or shade. Glass panes show the room
+  // behind them, blurred; the bare line is just its type.
   const material = useMemo(() => {
     const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, fog: false })
     const f = tslTexture(face.texture)
-    m.colorNode = f.rgb
-    m.opacityNode = f.a.mul(u.appear)
+    if (bare) {
+      m.colorNode = f.rgb
+      m.opacityNode = f.a.mul(u.appear)
+    } else {
+      const behind = hashBlur(viewportSharedTexture(), float(BLUR), { repeats: float(24) })
+      const glass = mix(behind.rgb, f.rgb, f.a)
+      // Hover lifts it toward the accent; an alarm breathes the urgent colour into it.
+      m.colorNode = vec4(mix(glass, u.tint, u.tintAmount), 1)
+      m.opacityNode = u.appear
+    }
     return m
-  }, [face, u])
-
-  // The body: the theme's surface, lit by the room.
-  const bodyMaterial = useMemo(() => new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0, transparent: true }), [])
-  useEffect(() => {
-    parseCss(look.day ? '#f6f1ea' : '#26244a', bodyMaterial.color)
-  }, [look.day, bodyMaterial])
+  }, [face, bare, u])
 
   useEffect(
     () => () => {
       face.texture.dispose()
       geometry.dispose()
-      body?.dispose()
       material.dispose()
-      bodyMaterial.dispose()
     },
-    [face, geometry, body, material, bodyMaterial],
+    [face, geometry, material],
   )
 
   // Paint whenever the content, the look or the fonts change.
@@ -187,15 +167,13 @@ export function Pane({ width, height, radius = 0.06, position, rotation, paint, 
     g.position.z = damp(g.position.z, position[2] + a.hover * 0.04, 8, dt)
     u.appear.value = present ? Math.min(1, a.t * 1.6) : a.t
 
-    bodyMaterial.opacity = u.appear.value
     if (ringColor) {
-      // The alarm: the body glows past white at the peak, so the bloom carries it.
       const pulse = 0.5 + 0.5 * Math.sin(clock.elapsedTime * 5.2)
-      bodyMaterial.emissive.copy(ringColor)
-      bodyMaterial.emissiveIntensity = 0.06 + pulse * 0.22
+      u.tint.value.copy(ringColor)
+      u.tintAmount.value = 0.04 + pulse * 0.12
     } else {
-      bodyMaterial.emissive.copy(accentColor)
-      bodyMaterial.emissiveIntensity = a.hover * 0.3
+      u.tint.value.copy(accentColor)
+      u.tintAmount.value = a.hover * 0.08
     }
   })
 
@@ -215,7 +193,6 @@ export function Pane({ width, height, radius = 0.06, position, rotation, paint, 
 
   return (
     <group ref={group} rotation={rotation} visible={false}>
-      {body && <mesh geometry={body} material={bodyMaterial} castShadow receiveShadow />}
       <mesh geometry={geometry} material={material} renderOrder={2} {...handlers} />
     </group>
   )

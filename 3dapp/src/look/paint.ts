@@ -73,3 +73,47 @@ export function withAlpha(css: string, a: number): string {
   const n = parseInt(hex.length === 3 ? hex.replace(/./g, '$&$&') : hex.slice(0, 6), 16)
   return `rgb(${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255} / ${a})`
 }
+
+/** The 2D sheen tokens (index.css --t-spec / --t-spec-soft), by theme. */
+const SPEC = {
+  day: { spec: 'rgb(255 255 255 / 0.85)', soft: 'rgb(255 255 255 / 0.35)' },
+  dusk: { spec: 'rgb(255 248 232 / 0.4)', soft: 'rgb(255 248 232 / 0.1)' },
+}
+
+/**
+ * The face of a 2D `.glass-pill`, painted over the blurred room (Pane does the
+ * blur): the theme's glass tint, a soft light under the top edge, and a
+ * hairline that's brighter along the top. Cards and panels share it with the
+ * rail's pills, so everything reads as one material.
+ */
+export function paintGlass(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  r: number,
+  look: { day: boolean; glass: string; strong: string },
+): void {
+  const spec = look.day ? SPEC.day : SPEC.dusk
+  ctx.save()
+  ctx.beginPath()
+  ctx.roundRect(0, 0, w, h, r)
+  ctx.clip()
+  ctx.fillStyle = look.glass
+  ctx.fillRect(0, 0, w, h)
+  const top = ctx.createLinearGradient(0, 0, 0, Math.min(h * 0.4, px(0.18)))
+  top.addColorStop(0, spec.soft)
+  top.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = top
+  ctx.fillRect(0, 0, w, h)
+  ctx.restore()
+  // Hairline: brighter along the top, as the 2D ::before edge.
+  const edge = ctx.createLinearGradient(0, 0, 0, h)
+  edge.addColorStop(0, spec.spec)
+  edge.addColorStop(Math.min(0.5, px(0.05) / h), withAlpha(look.strong, 0.11))
+  edge.addColorStop(1, withAlpha(look.strong, 0.11))
+  ctx.lineWidth = 2
+  ctx.strokeStyle = edge
+  ctx.beginPath()
+  ctx.roundRect(1, 1, w - 2, h - 2, Math.max(0, r - 1))
+  ctx.stroke()
+}

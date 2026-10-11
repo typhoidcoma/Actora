@@ -6,39 +6,15 @@ import { useFocused } from '../look/focus'
 import { FOCUS_RADIUS, useFocusHost } from '../look/focusHost'
 import { focusLayout } from '../look/layout'
 import { damp } from '../look/motion'
-import { parseCss, useLook } from '../look/theme'
-
-const EDGE = 0.022
-
-/** A rounded rectangle's outline, for the slab's edge. */
-function slab(w: number, h: number, r: number): THREE.ExtrudeGeometry {
-  const s = new THREE.Shape()
-  const x = -w / 2
-  const y = -h / 2
-  s.moveTo(x + r, y)
-  s.lineTo(x + w - r, y)
-  s.absarc(x + w - r, y + r, r, -Math.PI / 2, 0, false)
-  s.lineTo(x + w, y + h - r)
-  s.absarc(x + w - r, y + h - r, r, 0, Math.PI / 2, false)
-  s.lineTo(x + r, y + h)
-  s.absarc(x + r, y + h - r, r, Math.PI / 2, Math.PI, false)
-  s.lineTo(x, y + r)
-  s.absarc(x + r, y + r, r, Math.PI, Math.PI * 1.5, false)
-  const g = new THREE.ExtrudeGeometry(s, { depth: EDGE, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.006, bevelSegments: 3, curveSegments: 12 })
-  g.translate(0, 0, -EDGE - 0.004)
-  return g
-}
 
 /**
  * The focus panel as a thing in the world. The 2D app's content (chat, item,
  * list, finds, vault) lives in a DOM element placed in the scene with CSS 3D
  * transforms that follow the camera, so it has perspective, parallax and turns
- * toward her; WebGPU gives the same plane a glass edge with thickness and a
- * shadow. It flies in from her right and out again, content and glass together.
+ * toward her. It flies in from her right and out again, content and glass together.
  */
 export function FocusPanel3D() {
   const focused = useFocused()
-  const look = useLook()
   const { size, camera, gl } = useThree()
   // (castShadow on the body below: the panel shades the floor like the cards do.)
   const f = focusLayout(size.width / size.height)
@@ -75,21 +51,6 @@ export function FocusPanel3D() {
     useFocusHost.setState({ w: pxW, h: pxH })
   }, [css, size, pxW, pxH])
 
-  // The glass edge and its shadow share the content's pose.
-  const geometry = useMemo(() => slab(f.panel.w, f.panel.h, FOCUS_RADIUS * unit), [f.panel.w, f.panel.h, unit])
-  useEffect(() => () => geometry.dispose(), [geometry])
-  const edge = useMemo(
-    () => [
-      new THREE.MeshBasicMaterial({ visible: false }),
-      new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0, transparent: true }),
-    ],
-    [],
-  )
-  useEffect(() => {
-    // The same body as the room's other panels.
-    parseCss(look.day ? '#f6f1ea' : '#26244a', (edge[1] as THREE.MeshStandardMaterial).color)
-  }, [look.day, edge])
-
   const group = useRef<THREE.Group>(null)
   const anim = useRef({ t: 0 })
   const turn = f.portrait ? 0 : -0.14
@@ -108,7 +69,6 @@ export function FocusPanel3D() {
     )
     g.rotation.set(f.portrait ? away * 0.5 : 0, turn - away * 0.7, 0)
     g.visible = k > 0
-    edge[1].opacity = k
 
     css.obj.position.copy(g.position)
     css.obj.quaternion.copy(g.quaternion)
@@ -122,7 +82,6 @@ export function FocusPanel3D() {
 
   return (
     <group ref={group} visible={false}>
-      <mesh geometry={geometry} material={edge} castShadow />
     </group>
   )
 }

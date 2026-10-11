@@ -3,7 +3,7 @@ import { ui, type TileId } from '@actora/stores/ui'
 import { clockTime, countdownParts } from '@actora/ui/format'
 import { useAgenda, useGoals, useInbox, useNow, useTasks } from '@actora/ui/tiles/data'
 import { useStage } from '../../look/layout'
-import { drawLines, font, px, textWidth, withAlpha, wrap } from '../../look/paint'
+import { drawLines, font, paintGlass, px, textWidth, withAlpha, wrap } from '../../look/paint'
 import { useLook } from '../../look/theme'
 import { Pane } from './Pane'
 
@@ -71,22 +71,8 @@ export function ListCard3D(p: { tile: TileId; corner: number; present: boolean; 
   const ink = look.ink[ROLE_OF[p.tile]]
 
   const paint = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
-    ctx.beginPath()
-    ctx.roundRect(0, 0, w, h, px(stage.card.radius))
-    ctx.clip()
-    // No fill: the panel's lit body shows through; the face adds the kind's wash and the type.
-    const gx = right ? w : 0
-    const gy = bottom ? h : 0
-    const wash = ctx.createRadialGradient(gx, gy, 0, gx, gy, w * 0.9)
-    wash.addColorStop(0, withAlpha(accent, look.day ? 0.22 : 0.2))
-    wash.addColorStop(1, withAlpha(accent, 0))
-    ctx.fillStyle = wash
-    ctx.fillRect(0, 0, w, h)
-    ctx.lineWidth = 2
-    ctx.strokeStyle = look.line
-    ctx.beginPath()
-    ctx.roundRect(1, 1, w - 2, h - 2, px(stage.card.radius))
-    ctx.stroke()
+    // The same glass as the rail's pills: the room shows through, blurred and tinted.
+    paintGlass(ctx, w, h, px(stage.card.radius), look)
 
     const pad = px(0.075)
     const x = right ? w - pad : pad

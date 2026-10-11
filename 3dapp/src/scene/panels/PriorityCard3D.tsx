@@ -8,7 +8,7 @@ import { useEntities } from '@actora/stores/entities'
 import { ui } from '@actora/stores/ui'
 import { useNow } from '@actora/ui/tiles/data'
 import { useStage } from '../../look/layout'
-import { drawLines, font, px, textWidth, withAlpha, wrap } from '../../look/paint'
+import { drawLines, font, paintGlass, px, textWidth, withAlpha, wrap } from '../../look/paint'
 import { useLook } from '../../look/theme'
 import { Pane } from './Pane'
 
@@ -46,7 +46,6 @@ export function PriorityCard3D(p: { item: RankedItem; corner: number; present: b
   const tCap = stage.portrait ? 1 : 2
 
   const warm = Math.max(0, item.urgency - 0.4) * 1.1
-  const glow = warm > 0.3 ? look.role[heat(item.urgency)] : look.role[kind.role]
   // At dusk the alarm red sits on a warm, dark card: a lighter alarm pink keeps it legible.
   const label = ring ? (look.day ? look.ink.urgent : '#ffb3c1') : warm > 0.3 ? look.ink[heat(item.urgency)] : look.ink[kind.role]
   const button = item.primary && item.primary.act.type !== 'complete' ? item.primary : null
@@ -56,18 +55,11 @@ export function PriorityCard3D(p: { item: RankedItem; corner: number; present: b
 
   const paint = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
     const r = px(stage.card.radius)
+    // The same glass as the rail's pills: the room shows through, blurred and tinted.
+    paintGlass(ctx, w, h, r, look)
     ctx.beginPath()
     ctx.roundRect(0, 0, w, h, r)
     ctx.clip()
-    // No fill: the panel's lit body shows through; the face adds the kind's wash and the type.
-    // The kind's colour, washing in from the outer corner.
-    const gx = right ? w : 0
-    const gy = bottom ? h : 0
-    const wash = ctx.createRadialGradient(gx, gy, 0, gx, gy, w * 0.95)
-    wash.addColorStop(0, withAlpha(glow, look.day ? 0.3 : 0.24))
-    wash.addColorStop(1, withAlpha(glow, 0))
-    ctx.fillStyle = wash
-    ctx.fillRect(0, 0, w, h)
 
     if (ring) {
       const alarm = look.role.urgent
@@ -80,12 +72,6 @@ export function PriorityCard3D(p: { item: RankedItem; corner: number; present: b
       ctx.roundRect(px(0.006), px(0.006), w - px(0.012), h - px(0.012), r)
       ctx.stroke()
       ctx.restore()
-    } else {
-      ctx.lineWidth = 2
-      ctx.strokeStyle = look.line
-      ctx.beginPath()
-      ctx.roundRect(1, 1, w - 2, h - 2, r)
-      ctx.stroke()
     }
 
     const pad = px(PAD)
