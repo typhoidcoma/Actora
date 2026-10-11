@@ -1,7 +1,10 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three/webgpu'
-import { builtinAOContext, depthPass, pass, screenUV } from 'three/tsl'
+import { builtinAOContext, depthPass, mix, pass, screenUV, uniform } from 'three/tsl'
+import { dof } from 'three/addons/tsl/display/DepthOfFieldNode.js'
+import { useFocused } from '../look/focus'
+import { damp } from '../look/motion'
 import { bloom } from 'three/addons/tsl/display/BloomNode.js'
 import { ao } from 'three/addons/tsl/display/GTAONode.js'
 
@@ -16,6 +19,12 @@ export function Post() {
   const scene = useThree((s) => s.scene)
   const camera = useThree((s) => s.camera)
   const aoCamera = useMemo(() => new THREE.PerspectiveCamera(), [])
+  const focused = useFocused()
+  // Depth of field for focus mode: focus held on her, the room behind her softening.
+  // `amount` blends it in: at home the frame is the sharp one (the DOF pass composites
+  // at reduced resolution, which softened the cards' type even at zero bokeh).
+  const lens = useMemo(() => ({ focus: uniform(3), range: uniform(0.9), bokeh: uniform(3), amount: uniform(0) }), [])
+  const her = useMemo(() => new THREE.Vector3(0, 1.3, 0), [])
 
   const pipeline = useMemo(() => {
     gl.toneMapping = THREE.NeutralToneMapping
@@ -36,14 +45,18 @@ export function Post() {
     const scenePass = pass(scene, camera)
     scenePass.contextNode = builtinAOContext(occlusion.getTextureNode().sample(screenUV).r)
     const color = scenePass.getTextureNode('output')
+    const soft = dof(color, scenePass.getViewZNode(), lens.focus, lens.range, lens.bokeh) as unknown as typeof color
+    const focusedColor = mix(color, soft, lens.amount)
 
     const glow = bloom(color, 0.45, 0.4, 1.05)
-    pipeline.outputNode = color.add(glow)
+    pipeline.outputNode = focusedColor.add(glow)
     return pipeline
-  }, [gl, scene, camera, aoCamera])
+  }, [gl, scene, camera, aoCamera, lens])
 
   useEffect(() => () => pipeline.dispose(), [pipeline])
-  useFrame(() => {
+  useFrame((_, dt) => {
+    lens.focus.value = camera.position.distanceTo(her)
+    lens.amount.value = damp(lens.amount.value, focused ? 1 : 0, focused ? 2.5 : 6, dt)
     // The AO depth pass follows the real camera exactly, minus the UI layer.
     aoCamera.copy(camera as THREE.PerspectiveCamera, false)
     aoCamera.layers.set(0)
