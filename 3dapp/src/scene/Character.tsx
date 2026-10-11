@@ -1,5 +1,5 @@
 import { useFrame } from '@react-three/fiber'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three/webgpu'
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js'
 import { orbSignals, useAgent } from '@actora/stores/agent'
@@ -80,14 +80,18 @@ function Animated({ gltf }: { gltf: GLTF }) {
     }
   }, [gltf])
 
-  useFrame((_, dt) => {
+  const here = useMemo(() => new THREE.Vector3(), [])
+  useFrame(({ camera }, dt) => {
     // Each streamed token bumps orbSignals; the 2D orb decays it, so here we do.
     orbSignals.energy *= Math.exp(-dt * 3.2)
     animator.current?.update(dt, orbSignals.energy)
-    // With a panel open she turns a little toward it, presenting it.
+    // She faces you: her body turns toward the camera wherever it is. With a panel
+    // open she turns a little toward it instead, presenting it.
     const ui = useUi.getState()
     const open = ui.chatOpen || panelOpen(ui)
-    gltf.scene.rotation.y = damp(gltf.scene.rotation.y, open ? 0.42 : 0, 3, dt)
+    ;(gltf.scene.parent ?? gltf.scene).getWorldPosition(here)
+    const toYou = Math.atan2(camera.position.x - here.x, camera.position.z - here.z)
+    gltf.scene.rotation.y = damp(gltf.scene.rotation.y, open ? 0.42 : toYou, 3, dt)
   })
 
   return <primitive object={gltf.scene} />

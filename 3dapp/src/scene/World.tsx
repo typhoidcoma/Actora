@@ -56,7 +56,7 @@ function Rig() {
       target.x = damp(target.x, frame.center[0], 3, dt)
       target.y = damp(target.y, frame.center[1], 3, dt)
       target.z = damp(target.z, frame.center[2], 3, dt)
-      camera.position.x = damp(camera.position.x, pointer.x * 0.18, 3, dt)
+      camera.position.x = damp(camera.position.x, frame.center[0] + pointer.x * 0.18, 3, dt)
       // A little above her eye line, looking slightly down: the floor, steps and reflections read.
       camera.position.y = damp(camera.position.y, target.y + 0.42 + pointer.y * 0.1, 3, dt)
       camera.position.z = damp(camera.position.z, dist, 3, dt)

@@ -17,7 +17,8 @@ export interface Stage {
   card: { w: number; h: number; radius: number }
   /** Corner 0..3 → where that card stands (wide: turned a little toward her). */
   pose: (corner: number) => Placed & { right: boolean; bottom: boolean }
-  line: Placed & { w: number; size: number }
+  /** Her line. `grow: 'up'` anchors its last line at `position` (a caption over her head). */
+  line: Placed & { w: number; size: number; grow: 'up' | 'down' }
   chips: Placed & { w: number }
   input: Placed & { w: number }
   /** Where she stands. */
@@ -47,35 +48,43 @@ export const PORTRAIT = {
 
 /**
  * The 2D stage, in the room around her.
- * Wide: her line above, a 2×2 grid of cards flanking her, chips below; she's at the origin.
+ * Wide: she's at the origin, left of centre, her line a caption over her head, the
+ * four cards as a 2×2 block to her right, the rail below.
  * Narrow (the 2D phone layout): her head and shoulders at the top, then her line, the
  * four cards, the chips and the input stacked in front of her, each placed by its
  * share of the screen and facing the camera.
  */
 export function stageFor(aspect: number): Stage {
   if (aspect >= 0.8) {
-    // Smaller cards, closer to her, and a camera that comes in a little: she's the subject.
+    // She's the subject: the camera is in close (she fills most of the height) and
+    // set so she stands left of centre with room to move. The four cards sit
+    // together as one 2×2 block to her right, painted at their canonical size and
+    // shown small (type and all), turned a little toward her. Her line is a
+    // caption over her head, so it's clearly hers.
     const w = 1.3
     const h = 0.88
-    // She's the subject: the camera is in close (she fills most of the height), and the
-    // cards, painted at their canonical size, are shown small beside her (type and all).
-    const rows = [1.4, 1.0]
     const cardScale = 0.44
+    const cw = w * cardScale
+    const ch = h * cardScale
+    const gap = 0.05
+    const cols = [0.78 + cw / 2, 0.78 + cw * 1.5 + gap]
+    const rows = [1.2 + ch / 2 + gap / 2, 1.2 - ch / 2 - gap / 2]
+    const centerX = 0.7
     return {
       portrait: false,
       card: { w, h, radius: RADIUS },
       pose: (c) => {
         const right = c % 2 === 1
         const bottom = c >= 2
-        return { position: [right ? 0.98 : -0.98, rows[bottom ? 1 : 0], 0], rotation: [0, right ? -0.12 : 0.12, 0], scale: cardScale, right, bottom }
+        return { position: [cols[right ? 1 : 0], rows[bottom ? 1 : 0], 0], rotation: [0, -0.16, 0], scale: cardScale, right, bottom }
       },
-      line: { position: [0, 1.95, 0.05], rotation: [0, 0, 0], scale: 1, w: 2.8, size: 0.05 },
-      // The top of the 2D rail (and the message box under it) is pinned here.
-      chips: { position: [0, 0.42, 0.55], rotation: [-0.12, 0, 0], scale: 1, w: 3.4 },
+      line: { position: [0, 1.82, 0.08], rotation: [0, 0, 0], scale: 1, w: 1.45, size: 0.048, grow: 'up' },
+      // The top of the 2D rail (and the message box under it) is pinned here, centred on screen.
+      chips: { position: [centerX, 0.42, 0.55], rotation: [-0.12, 0, 0], scale: 1, w: 3.4 },
       input: { position: [0, -0.08, 0.8], rotation: [-0.14, 0, 0], scale: 1, w: 2.2 },
       her: [0, 0, 0],
       // Room under the cards for the 2D rail (up to two rows) and the message box.
-      frame: { w: 3.0, h: 2.15, center: [0, 0.96, 0] },
+      frame: { w: 3.0, h: 2.15, center: [centerX, 0.96, 0] },
     }
   }
 
@@ -107,7 +116,7 @@ export function stageFor(aspect: number): Stage {
     portrait: true,
     card: { w, h, radius: RADIUS },
     pose: (c) => ({ position: at(0.5, first + cardH / 2 + c * (cardH + gap)), rotation: facing, scale: s, right: false, bottom: false }),
-    line: { position: at(0.5, first - 0.05), rotation: facing, scale: s, w: 2.5, size: 0.1 },
+    line: { position: at(0.5, first - 0.05), rotation: facing, scale: s, w: 2.5, size: 0.1, grow: 'down' },
     // Chips and the input read larger than the cards' type would make them, as the 2D phone rail does.
     chips: { position: at(0.5, chipsAt), rotation: facing, scale: s * 1.9, w: 2.5 / 1.9 },
     input: { position: at(0.5, 0.975), rotation: facing, scale: s * 1.6, w: 2.4 / 1.6 },
