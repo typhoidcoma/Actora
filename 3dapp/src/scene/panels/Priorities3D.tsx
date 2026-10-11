@@ -17,10 +17,9 @@ export function Priorities3D() {
           position={[0, -i * 0.5, 0]}
           width={1.25}
           height={0.44}
-          kicker={item.meta}
           title={item.title}
-          body={item.why}
-          titleSize={0.06}
+          body={item.meta}
+          titleSize={0.075}
           bodySize={0.045}
           tone={urgencyTone(item.urgency)}
         />

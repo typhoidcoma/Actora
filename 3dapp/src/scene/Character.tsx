@@ -1,5 +1,5 @@
 import { useFrame } from '@react-three/fiber'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three/webgpu'
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js'
 import { orbSignals, useAgent } from '@actora/stores/agent'
@@ -28,6 +28,10 @@ function useCharacterModel(): Loaded {
 
 /** Scales to character.height and stands the model on the floor at the origin. */
 function fit(root: THREE.Object3D): void {
+  // Measure from scratch so fitting twice gives the same result.
+  root.scale.setScalar(1)
+  root.position.set(0, 0, 0)
+  root.updateMatrixWorld(true)
   const box = new THREE.Box3().setFromObject(root)
   const size = box.getSize(new THREE.Vector3())
   if (size.y <= 0) return
@@ -48,27 +52,32 @@ export function Character() {
 }
 
 function Animated({ gltf }: { gltf: GLTF }) {
-  const [animator] = useState(() => {
-    fit(gltf.scene)
-    return new AgentAnimator(gltf.scene, gltf.animations)
-  })
+  const animator = useRef<AgentAnimator | null>(null)
 
+  // Built and torn down in one effect: StrictMode's mount-unmount-mount must
+  // never leave a disposed mixer behind (that froze her in a T-pose).
   useEffect(() => {
-    animator.setPhase(useAgent.getState().phase)
+    fit(gltf.scene)
+    const anim = new AgentAnimator(gltf.scene, gltf.animations)
+    animator.current = anim
+    anim.setPhase(useAgent.getState().phase)
     let lastReaction = useAgent.getState().reaction
     const off = useAgent.subscribe((s) => {
-      animator.setPhase(s.phase)
-      if (s.reaction && s.reaction !== lastReaction) animator.react(s.reaction.bus, s.reaction.intensity, s.reaction.holdMs)
+      anim.setPhase(s.phase)
+      if (s.reaction && s.reaction !== lastReaction) anim.react(s.reaction.bus, s.reaction.intensity, s.reaction.holdMs)
       lastReaction = s.reaction
     })
-    return off
-  }, [animator])
-  useEffect(() => () => animator.dispose(), [animator])
+    return () => {
+      off()
+      anim.dispose()
+      animator.current = null
+    }
+  }, [gltf])
 
   useFrame((_, dt) => {
     // Each streamed token bumps orbSignals; the 2D orb decays it, so here we do.
     orbSignals.energy *= Math.exp(-dt * 3.2)
-    animator.update(dt, orbSignals.energy)
+    animator.current?.update(dt, orbSignals.energy)
   })
 
   return <primitive object={gltf.scene} />
