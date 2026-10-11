@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+# Raw USD sources are large; the converted GLB is what ships.
+assets-src/*
+!assets-src/README.md
+# Dev stand-in (npm run placeholder), never your character.
+public/models/placeholder.glb
