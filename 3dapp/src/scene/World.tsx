@@ -71,8 +71,14 @@ function Rig() {
 
 /** Where the 2D rail (the glass option pills, chat, keyboard, menu) is pinned in the room. */
 function RailAnchor() {
-  const { chips } = useStage()
-  return <Anchor name="rail" position={chips.position} align="top" />
+  const { chips, line } = useStage()
+  return (
+    <>
+      <Anchor name="rail" position={chips.position} align="top" />
+      {/* Her thinking (the 2D Activity) sits where her line does, over her head. */}
+      <Anchor name="thinking" position={line.position} align="bottom" />
+    </>
+  )
 }
 
 /** She stands where the stage says. */

@@ -37,6 +37,7 @@ export function AgentLine3D() {
       step: s.steps[s.steps.length - 1],
       last: s.messages.findLast((m) => m.role === 'assistant')?.text ?? null,
       greeting: s.greeting.text,
+      busy: s.awaitingTurn || s.turnId !== null,
     })),
   )
   const reminder = useEntities((s) => (a.notice ? s.notifications[a.notice.notificationId] : undefined))
@@ -54,8 +55,8 @@ export function AgentLine3D() {
   } else if (a.line === 'message' && a.message) text = a.message
   else if (a.line === 'reply') {
     if (a.streaming) text = firstSentence(plainText(a.streaming))
-    else if (a.phase === 'tool' && a.step?.status === 'running') text = `${a.step.doing}…`
-    else if (a.phase === 'thinking') text = '…'
+    // Working on it: the animated Activity (Overlay) shows over her head instead.
+    else if (a.busy) text = ''
     else text = firstSentence(plainText(a.last ?? ''))
   } else text = a.greeting
 

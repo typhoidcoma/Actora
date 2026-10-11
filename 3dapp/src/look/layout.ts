@@ -84,7 +84,8 @@ export function stageFor(aspect: number): Stage {
       input: { position: [0, -0.08, 0.8], rotation: [-0.14, 0, 0], scale: 1, w: 2.2 },
       her: [0, 0, 0],
       // Room under the cards for the 2D rail (up to two rows) and the message box.
-      frame: { w: 3.0, h: 2.15, center: [centerX, 0.96, 0] },
+      // Headroom above her for her line and her thinking (the Activity, which grows upward).
+      frame: { w: 3.0, h: 2.3, center: [centerX, 1.04, 0] },
     }
   }
 

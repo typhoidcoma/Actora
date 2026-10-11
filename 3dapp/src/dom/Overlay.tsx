@@ -27,6 +27,8 @@ import { useFocused } from '../look/focus'
 import { FOCUS_RADIUS, FOCUS_RAIL, useFocusHost } from '../look/focusHost'
 import { anchorRef } from '../scene/Anchor'
 import { useDraft } from '../scene/draft'
+import { Activity } from '@actora/ui/Activity'
+import { useAgent } from '@actora/stores/agent'
 
 const LISTS: Record<TileId, { label: string; accent: string; Detail: () => React.ReactNode }> = {
   tasks: { label: 'Tasks', accent: TASKS_ACCENT, Detail: TasksDetail },
@@ -99,6 +101,7 @@ export function Overlay() {
           <OptionRail contextKey={key} trailing={<MenuButton onSignOut={onSignOut} />} />
           {!phone && <MessageBox />}
         </motion.div>
+        <Thinking hidden={focused} />
         {host.el && createPortal(<FocusContent focused={focused} />, host.el)}
       </LayoutGroup>
       <KeyboardSheet />
@@ -170,5 +173,31 @@ function MessageBox() {
       aria-label="Message"
       className="glass-pill mx-auto h-11 w-full max-w-[640px] rounded-full px-5 text-[15px] text-strong outline-none placeholder:text-muted"
     />
+  )
+}
+
+/**
+ * Her thinking over her head at home: the 2D app's own animated Activity (step
+ * icon, sweeping "Looking at your calendar…" label, the steps she's done),
+ * shown while a turn is under way and nothing has streamed yet.
+ */
+function Thinking({ hidden }: { hidden: boolean }) {
+  const show = useAgent((s) => (s.awaitingTurn || s.turnId !== null) && !s.streaming && s.line === 'reply')
+  return (
+    <div ref={anchorRef('thinking')} className="pointer-events-none fixed top-0 left-0 z-20" style={{ paddingBottom: 6 }}>
+      <AnimatePresence>
+        {show && !hidden && (
+          <motion.div
+            key="thinking"
+            className="display text-center text-[clamp(16px,1.6vw,22px)] whitespace-nowrap text-strong"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+          >
+            <Activity />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }

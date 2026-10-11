@@ -23,7 +23,7 @@ export function Anchor({
   name: string
   position: [number, number, number]
   /** Which point of the element sits on the anchor: its left edge (vertically centred), or its top centre. */
-  align?: 'left' | 'top'
+  align?: 'left' | 'top' | 'bottom'
 }) {
   const ref = useRef<THREE.Group>(null)
   const v = useMemo(() => new THREE.Vector3(), [])
@@ -33,7 +33,7 @@ export function Anchor({
     ref.current.getWorldPosition(v).project(camera)
     const x = ((v.x + 1) / 2) * size.width
     const y = ((1 - v.y) / 2) * size.height
-    const shift = align === 'top' ? 'translateX(-50%)' : 'translateY(-50%)'
+    const shift = align === 'top' ? 'translateX(-50%)' : align === 'bottom' ? 'translate(-50%, -100%)' : 'translateY(-50%)'
     el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) ${shift}`
   })
   return <group ref={ref} position={position} />
