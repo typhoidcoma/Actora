@@ -27,7 +27,7 @@ import type { LocalAct, Option } from './types'
 
 let stopVoice: (() => void) | null = null
 
-/** Start (or stop) listening; the final transcript is sent to Wendy as a turn. */
+/** Start (or stop) listening; the final transcript is sent to the agent as a turn. */
 export function toggleVoice(): void {
   if (stopVoice) {
     stopVoice()
@@ -53,7 +53,7 @@ export function toggleVoice(): void {
   })
 }
 
-/** Send a user turn. Off the chat screen, Wendy answers in the line above the grid. */
+/** Send a user turn. Off the chat screen, the agent answers in the line above the grid. */
 export function say(text: string): boolean {
   const u = useUi.getState()
   // Asked from inside a task, list or other panel: answer in the main chat, so

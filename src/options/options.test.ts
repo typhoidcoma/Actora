@@ -5,7 +5,7 @@ import { isStale, mergeOptions, useOptionsStore, type OptionHistory } from '../s
 import { useEntities } from '../stores/entities'
 import { useUi } from '../stores/ui'
 import { localOptions, type Snapshot } from './local'
-import { feasible, parseWendyOptions } from './wendy'
+import { feasible, parseAgentOptions } from './agentOptions'
 import { actOption, sayOption } from './types'
 
 const NOW = new Date(2026, 9, 8, 18, 0).getTime()
@@ -141,7 +141,7 @@ describe('card-aware home options', () => {
       'Plan my day',
     ])
     // Wendy's (written for this moment) lead; the top card and direct actions keep their places right after.
-    const merged = mergeOptions(opts, [sayOption('Generic idea', 'x', 'wendy')], []).map((o) => o.label)
+    const merged = mergeOptions(opts, [sayOption('Generic idea', 'x', 'agent')], []).map((o) => o.label)
     expect(merged.slice(0, 3)).toEqual(['Generic idea', 'Prep: Standup', 'Got it: Stretch'])
   })
 })
@@ -149,7 +149,7 @@ describe('card-aware home options', () => {
 describe('merge', () => {
   it("leads with Wendy's (pushed, then generated), keeps room for local acts, then local says; dedupes and caps", () => {
     const local = [sayOption('Plan my day'), actOption('Done', { type: 'complete', id: 'a' })]
-    const wendy = [sayOption('plan my day!', 'Plan my day', 'wendy'), sayOption('Quick wins', 'x', 'wendy')]
+    const wendy = [sayOption('plan my day!', 'Plan my day', 'agent'), sayOption('Quick wins', 'x', 'agent')]
     const pushed = [sayOption('From Wendy', 'y', 'pushed')]
     const out = mergeOptions(local, wendy, pushed, 3).map((o) => o.label)
     expect(out).toEqual(['From Wendy', 'plan my day!', 'Done'])
@@ -160,7 +160,7 @@ describe('merge', () => {
 
   it("when she offered her own answers, generated ideas don't crowd in (card actions still show)", () => {
     const local = [actOption('Done', { type: 'complete', id: 'a' }), sayOption('Plan my day')]
-    const wendy = [sayOption('F1 highlights', 'x', 'wendy'), sayOption('SpaceX update', 'y', 'wendy')]
+    const wendy = [sayOption('F1 highlights', 'x', 'agent'), sayOption('SpaceX update', 'y', 'agent')]
     const pushed = [sayOption('Yes please', 'Yes please', 'pushed'), sayOption('Not right now', 'Not now', 'pushed')]
     const out = mergeOptions(local, wendy, pushed, 6).map((o) => o.label)
     expect(out).toEqual(['Yes please', 'Not right now', 'Done'])
@@ -186,7 +186,7 @@ describe('merge', () => {
       sayOption('Plan my day'),
     ]
     const wendy = ['Yes, move it', 'Keep it today', 'Break it down', 'Why this?', 'Something else'].map((l) =>
-      sayOption(l, l, 'wendy'),
+      sayOption(l, l, 'agent'),
     )
     expect(mergeOptions(local, wendy, []).map((o) => o.label)).toEqual([
       'Yes, move it',
@@ -199,23 +199,23 @@ describe('merge', () => {
   })
 })
 
-describe('parseWendyOptions', () => {
+describe('parseAgentOptions', () => {
   it('accepts the object form, a bare array and fenced JSON', () => {
-    expect(parseWendyOptions('{"options":[{"label":"Yes","say":"Yes please"}]}')).toHaveLength(1)
-    expect(parseWendyOptions('[{"label":"No"}]')[0].say).toBe('No')
-    expect(parseWendyOptions('```json\n{"options":[{"label":"Ok","say":"Ok"}]}\n```')).toHaveLength(1)
+    expect(parseAgentOptions('{"options":[{"label":"Yes","say":"Yes please"}]}')).toHaveLength(1)
+    expect(parseAgentOptions('[{"label":"No"}]')[0].say).toBe('No')
+    expect(parseAgentOptions('```json\n{"options":[{"label":"Ok","say":"Ok"}]}\n```')).toHaveLength(1)
   })
 
   it('rejects junk and duplicates, shortens over-long labels (keeping the full say); caps at five', () => {
-    expect(parseWendyOptions('not json')).toEqual([])
-    expect(parseWendyOptions('{"options":"nope"}')).toEqual([])
+    expect(parseAgentOptions('not json')).toEqual([])
+    expect(parseAgentOptions('{"options":"nope"}')).toEqual([])
     const long = 'Help me draft the two questions for Steve and Kham'
     const many = Array.from({ length: 8 }, (_, i) => ({ label: `L${i}` }))
-    const parsed = parseWendyOptions(JSON.stringify({ options: [{ label: long }, { label: 'A' }, { label: 'a' }] }))
+    const parsed = parseAgentOptions(JSON.stringify({ options: [{ label: long }, { label: 'A' }, { label: 'a' }] }))
     expect(parsed).toHaveLength(2)
     expect(parsed[0].label.length).toBeLessThanOrEqual(24)
     expect(parsed[0].say).toBe(long)
-    expect(parseWendyOptions(JSON.stringify({ options: many }))).toHaveLength(5)
+    expect(parseAgentOptions(JSON.stringify({ options: many }))).toHaveLength(5)
   })
 })
 
@@ -271,7 +271,7 @@ describe('freshness', () => {
 
   it('drops stale suggestions but keeps direct actions and never empties the rail', () => {
     const local = [actOption('Done', { type: 'complete', id: 'a' }), sayOption('Plan my day')]
-    const wendy = [sayOption('Old idea', 'x', 'wendy'), sayOption('Fresh idea', 'y', 'wendy')]
+    const wendy = [sayOption('Old idea', 'x', 'agent'), sayOption('Fresh idea', 'y', 'agent')]
     const stale = (o: { label: string }) => o.label === 'Old idea' || o.label === 'Done'
     expect(mergeOptions(local, wendy, [], 6, stale).map((o) => o.label)).toEqual(['Fresh idea', 'Done', 'Plan my day'])
     const allStale = () => true

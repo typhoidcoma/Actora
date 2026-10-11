@@ -9,11 +9,12 @@ import { actOption, sayOption, type Option } from './types'
 import { shortLabel } from './label'
 
 // Instant, deterministic options for every context. They render immediately
-// and are then refined (not replaced wholesale) by Wendy-written options.
+// and are then refined (not replaced wholesale) by agent-written options.
 
 export interface Snapshot {
   entities: Pick<EntitiesState, 'tasks' | 'goals' | 'events' | 'notifications'>
   agent: Pick<AgentState, 'messages' | 'line' | 'notice' | 'turnId' | 'awaitingTurn'> &
+    Partial<Pick<AgentState, 'botName'>> &
     Partial<Pick<AgentState, 'mood' | 'greeting'>>
   push: Pick<PushState, 'status' | 'snoozedUntil'>
   now: number
@@ -24,6 +25,9 @@ export interface Snapshot {
   /** Today's fun finds, for Discover options. */
   finds?: Array<Pick<Find, 'id' | 'title' | 'url'>>
 }
+
+/** The agent's name for pills that say it ("Hey Wendy"), as the server gave it. */
+const nameOf = (s: Snapshot) => s.agent.botName?.trim() || null
 
 type Card = NonNullable<Snapshot['cards']>[number]
 
@@ -94,20 +98,21 @@ function nextEvent(s: Snapshot): CalendarOccurrence | null {
   )
 }
 
-/** Has Wendy replied at least once (so a reminder offer feels earned, not pushy)? */
+/** Has the agent replied at least once (so a reminder offer feels earned, not pushy)? */
 const hasTalked = (s: Snapshot) => s.agent.messages.some((m) => m.role === 'assistant')
 
 function pushOffer(s: Snapshot): Option[] {
   const { status, snoozedUntil } = s.push
   if (!hasTalked(s) || (snoozedUntil && snoozedUntil > s.now)) return []
-  // One quiet chip, always last. Ignoring it is the "not now"; Wendy can push a
+  // One quiet chip, always last. Ignoring it is the "not now"; the agent can push a
   // Not-now chip with push.offer when she raises it herself.
-  if (status === 'off') return [actOption('Let Wendy remind me', { type: 'enablePush' })]
+  if (status === 'off')
+    return [actOption(nameOf(s) ? `Let ${nameOf(s)} remind me` : 'Turn on reminders', { type: 'enablePush' })]
   if (status === 'needs-install') return [actOption('Get reminders here', { type: 'installHelp' })]
   return []
 }
 
-/** Stand-ins until Wendy's own options arrive: answer her if she asked, else go deeper. */
+/** Stand-ins until the agent's own options arrive: answer it if it asked, else go deeper. */
 function followUps(s: Snapshot): Option[] {
   const last = [...s.agent.messages].reverse().find((m) => m.role === 'assistant')
   if (last && last.text.trim().endsWith('?')) {
@@ -173,7 +178,7 @@ function moments(s: Snapshot): Option[] {
 function homeBase(s: Snapshot): Option[] {
   if (s.cards?.length) {
     // Act on what is on screen. Only the top card is pinned; the rest compete with
-    // Wendy's ideas, and each card's alternates fill in when its first idea is stale.
+    // the agent's ideas, and each card's alternates fill in when its first idea is stale.
     const [first, ...others] = s.cards.slice(0, 3).map(cardOptions)
     return [
       { ...first[0], pin: true },
@@ -284,7 +289,7 @@ function item(kind: string, id: string, s: Snapshot): Option[] {
       if (!n) return []
       return [
         ...(n.read_at ? [] : [actOption('Got it', { type: 'markRead', id })]),
-        // Snoozes are direct (no Wendy turn): back as a new reminder at that time.
+        // Snoozes are direct (no the agent turn): back as a new reminder at that time.
         actOption('In an hour', { type: 'snooze', id, when: 'hour' }),
         actOption('Tonight', { type: 'snooze', id, when: 'tonight' }),
         actOption('Tomorrow 9am', { type: 'snooze', id, when: 'tomorrow' }),
@@ -297,7 +302,7 @@ function item(kind: string, id: string, s: Snapshot): Option[] {
 
 function chat(s: Snapshot): Option[] {
   const last = s.agent.messages.at(-1)
-  if (!last) return [sayOption('Hey Wendy'), sayOption('Plan my day')]
+  if (!last) return [sayOption(nameOf(s) ? `Hey ${nameOf(s)}` : 'Hey there'), sayOption('Plan my day')]
   if (last.role === 'assistant') return followUps(s)
   return [sayOption('Plan my day'), sayOption("What's next?", "What's next on my calendar?")]
 }

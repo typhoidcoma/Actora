@@ -4,7 +4,7 @@ import { markNotificationRead } from '../aelora/client'
 import { startGreeting } from '../aelora/greeting'
 import { startIdleHome } from './idleHome'
 import { useContextKey } from '../options/useOptions'
-import { startWendyOptions } from '../options/wendy'
+import { startAgentOptions } from '../options/agentOptions'
 import { startRanking } from '../priority/rank'
 import { initPush, setNotificationOpener } from '../push/push'
 import { agent, useAgent } from '../stores/agent'
@@ -63,7 +63,7 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
   useThemeSync()
 
   useEffect(() => watchMetrics(), [])
-  useEffect(() => startWendyOptions(), [])
+  useEffect(() => startAgentOptions(), [])
   useEffect(() => startRanking(), [])
   useEffect(() => startAutoChat(), [])
   useEffect(() => startGreeting(), [])

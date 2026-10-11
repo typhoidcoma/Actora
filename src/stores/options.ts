@@ -2,14 +2,14 @@ import { create } from 'zustand'
 import type { Option } from '../options/types'
 
 interface Entry {
-  wendy: Option[]
+  agent: Option[]
   loading: boolean
 }
 
 interface OptionsState {
-  /** Wendy-written options per context key. */
+  /** Agent-written options per context key. */
   byKey: Record<string, Entry>
-  /** Options Wendy pushed via the options.set ui_action; win until the context changes. */
+  /** Options the agent pushed via the options.set ui_action; win until the context changes. */
   pushed: { key: string; options: Option[] } | null
   listening: boolean
   interim: string
@@ -35,9 +35,9 @@ export const useOptionsStore = create<OptionsState>(() => ({
 const set = useOptionsStore.setState
 
 export const optionsStore = {
-  setWendy: (key: string, wendy: Option[]) => set((s) => ({ byKey: { ...s.byKey, [key]: { wendy, loading: false } } })),
+  setAgent: (key: string, agent: Option[]) => set((s) => ({ byKey: { ...s.byKey, [key]: { agent, loading: false } } })),
   setLoading: (key: string, loading: boolean) =>
-    set((s) => ({ byKey: { ...s.byKey, [key]: { wendy: s.byKey[key]?.wendy ?? [], loading } } })),
+    set((s) => ({ byKey: { ...s.byKey, [key]: { agent: s.byKey[key]?.agent ?? [], loading } } })),
   push: (key: string, options: Option[]) => set({ pushed: { key, options } }),
   clearPushed: () => set({ pushed: null }),
   /** A different user: forget what the last one was shown and tapped (and their generated options). */
@@ -94,7 +94,7 @@ const norm = (s: string) =>
 const TRAILING = new Set(['enablePush', 'snoozePush', 'installHelp', 'checkinLater'])
 
 /**
- * Most relevant first. Wendy's options are written for this exact moment (an
+ * Most relevant first. The agent's options are written for this exact moment (an
  * answer to what she just asked, the item on screen), so they lead: what she
  * pushed with options.set, then her generated ones in the order she ranked them.
  * Concrete local actions (Done, Got it, the top card) keep up to two places right
@@ -104,7 +104,7 @@ const TRAILING = new Set(['enablePush', 'snoozePush', 'installHelp', 'checkinLat
  */
 export function mergeOptions(
   local: Option[],
-  wendy: Option[],
+  agent: Option[],
   pushed: Option[],
   max = 6,
   stale: (o: Option) => boolean = () => false,
@@ -126,23 +126,23 @@ export function mergeOptions(
       out.push(o)
     }
   }
-  // Concrete actions and what Wendy pushed always count; suggestions that went
+  // Concrete actions and what the agent pushed always count; suggestions that went
   // stale sit out, unless that would leave the rail nearly empty.
   const keep = (o: Option) => !!o.act || o.source === 'pushed' || !stale(o)
   // Her own answers to what she just asked (pushed) are the whole conversation for now:
   // generated ideas and suggestions wait until it's answered (concrete card actions still show).
   const answering = pushed.filter((o) => o.say).length >= 2
   if (answering) {
-    wendy = []
+    agent = []
     says.length = 0
   }
-  const lead = [...pushed, ...wendy].filter(keep)
+  const lead = [...pushed, ...agent].filter(keep)
   const anchors = acts.filter(keep)
   const reserve = Math.min(anchors.length, 2)
   pick(lead.slice(0, Math.max(pushed.length, 3)), room - reserve)
   pick(anchors)
   pick(lead)
   pick(says.filter(keep))
-  if (out.length < Math.min(3, room)) pick([...pushed, ...wendy, ...acts, ...says].filter((o) => !keep(o)))
+  if (out.length < Math.min(3, room)) pick([...pushed, ...agent, ...acts, ...says].filter((o) => !keep(o)))
   return [...out, ...trailing]
 }

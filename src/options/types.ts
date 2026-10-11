@@ -25,7 +25,7 @@ export type LocalAct =
   | { type: 'snooze'; id: string; when: 'hour' | 'tonight' | 'tomorrow' }
 
 /**
- * One tap target. `say` sends a chat turn to Wendy in the user's voice;
+ * One tap target. `say` sends a chat turn to the agent in the user's voice;
  * `act` runs locally. Exactly one of the two is set.
  */
 export interface Option {
@@ -33,10 +33,10 @@ export interface Option {
   label: string
   say?: string
   act?: LocalAct
-  source: 'local' | 'wendy' | 'pushed'
-  /** Pinned ahead of Wendy-written options (e.g. one per priority card). */
+  source: 'local' | 'agent' | 'pushed'
+  /** Pinned ahead of agent-written options (e.g. one per priority card). */
   pin?: boolean
-  /** A stand-in: only fills space Wendy's options leave (even if it's a direct action). */
+  /** A stand-in: only fills space the agent's options leave (even if it's a direct action). */
   alt?: boolean
 }
 

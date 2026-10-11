@@ -19,7 +19,7 @@ export function useContextKey(): string {
   return useUi(useShallow((s) => contextKeyOf(s)))
 }
 
-/** The options for a context: instant local ones, refined by Wendy's, overridden by any she pushed. */
+/** The options for a context: instant local ones, refined by the agent's, overridden by any it pushed. */
 export function useOptions(key: string): { options: Option[]; loading: boolean } {
   const entities = useEntities(
     useShallow((s) => ({ tasks: s.tasks, goals: s.goals, events: s.events, notifications: s.notifications })),
@@ -31,6 +31,7 @@ export function useOptions(key: string): { options: Option[]; loading: boolean }
       notice: s.notice,
       turnId: s.turnId,
       awaitingTurn: s.awaitingTurn,
+      botName: s.botName,
     })),
   )
   const push = usePush(useShallow((s) => ({ status: s.status, snoozedUntil: s.snoozedUntil })))
@@ -43,7 +44,7 @@ export function useOptions(key: string): { options: Option[]; loading: boolean }
     () => localOptions(key, { entities, agent, push, now, cards, finds, focusing }),
     [key, entities, agent, push, now, cards, finds, focusing],
   )
-  const wendy = useOptionsStore((s) => s.byKey[key]?.wendy ?? EMPTY)
+  const agentOptions = useOptionsStore((s) => s.byKey[key]?.agent ?? EMPTY)
   const loading = useOptionsStore((s) => s.byKey[key]?.loading ?? false)
   const pushed = useOptionsStore((s) => (s.pushed?.key === key ? s.pushed.options : EMPTY))
   // Anything waiting for the user's OK leads, wherever they are.
@@ -53,7 +54,9 @@ export function useOptions(key: string): { options: Option[]; loading: boolean }
   // vanish mid-look just because it was counted as shown.
   const options = useMemo(() => {
     const history = useOptionsStore.getState().history
-    return mergeOptions(local, wendy, [...approvalOptions(approval), ...pushed], 6, (o) => isStale(o, history, now))
-  }, [local, wendy, pushed, now, approval])
+    return mergeOptions(local, agentOptions, [...approvalOptions(approval), ...pushed], 6, (o) =>
+      isStale(o, history, now),
+    )
+  }, [local, agentOptions, pushed, now, approval])
   return { options, loading }
 }

@@ -2,7 +2,7 @@ import type { Option } from './types'
 
 /**
  * The top options laid into fixed slots, keeping each one in the slot it was
- * already in when the list changes (Wendy's options arriving after the instant
+ * already in when the list changes (the agent's options arriving after the instant
  * ones), so a tile only changes when its own option does. New ones fill the
  * free slots in order of relevance.
  */

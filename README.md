@@ -101,11 +101,13 @@ options for that context, merged in this order:
 
 1. **Local options** (`local.ts`): instant and deterministic, built from your data. They include **direct actions**
    that need no chat turn, such as _Done_, _Tomorrow_, _Got it_ and _Mark all read_.
-2. **Wendy-written options** (`wendy.ts`): generated through Aelora's `POST /api/llm`. The request carries a summary of
-   the screen with real item titles, the recent turns, and her last message, plus `context: {profile, memoryQuery}`.
-   If her last message asks something, the options are answers to it. These refresh on every context change and every
-   finished reply, and they are debounced, cached for 3 minutes, and back off on 429.
-3. **Options pushed by Wendy** through the `options.set` ui_action. These win until you move to another context.
+2. **Agent-written options** (`agentOptions.ts`): generated through Aelora's `POST /api/llm`, written for whichever
+   agent is connected (its name comes from the server; Wendy today). The request carries a summary of the screen with
+   real item titles, the recent turns, and the agent's last message (or its welcome / check-in), plus
+   `context: {profile, memoryQuery}`. If that message asks something, the options are only answers to it. These
+   refresh on every context change, finished reply and new welcome, and they are debounced, cached for 3 minutes, and
+   back off on 429.
+3. **Options pushed by the agent** through the `options.set` ui_action. These win until you move to another context.
 
 Tapping a _say_ option sends a chat turn, and Wendy answers in the line above the grid. The orb is the microphone: tap
 it to talk, and its pulse follows the words as they come in. Hold it to open the full conversation. On iPad a chat button, a

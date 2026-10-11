@@ -14,7 +14,7 @@ import { useVault } from '../stores/vault'
 import { localOptions, type Snapshot } from './local'
 import { sayOption, type Option } from './types'
 
-// Wendy-written tap replies, generated with Aelora's stateless POST /api/llm
+// Agent-written tap replies, generated with Aelora's stateless POST /api/llm
 // (memory-grounded via `context`). They refine the instant local options.
 
 const MAX_LABEL = 20
@@ -23,7 +23,7 @@ const DEBOUNCE_MS = 350
 const CACHE_MS = 3 * 60_000
 
 /** Strict-but-forgiving parse: tolerates code fences and a bare array; drops anything malformed. */
-export function parseWendyOptions(text: string): Option[] {
+export function parseAgentOptions(text: string): Option[] {
   const cleaned = text
     .trim()
     .replace(/^```(?:json)?\s*/i, '')
@@ -50,7 +50,7 @@ export function parseWendyOptions(text: string): Option[] {
     const k = label.toLowerCase()
     if (seen.has(k)) continue
     seen.add(k)
-    const option = sayOption(label, say, 'wendy')
+    const option = sayOption(label, say, 'agent')
     if (!feasible(option)) continue
     out.push(option)
     if (out.length >= 5) break
@@ -67,6 +67,7 @@ function partOfDay(d: Date): string {
 
 /** What is on screen, in a few compact lines, with real item titles. */
 function screenSummary(key: string, s: Snapshot): string {
+  const name = agentName()
   const now = new Date(s.now)
   const sky = useSky.getState()
   const lines = [
@@ -104,7 +105,7 @@ function screenSummary(key: string, s: Snapshot): string {
       p.pushed && p.pushed.until > s.now ? p.pushed.entries : null,
     )
     lines.push(
-      `Screen: home. The three priority cards, in order: ${top.map((t, i) => `#${i + 1} ${t.kind} "${t.title}" (${t.meta})`).join('; ') || 'none'}. Box 4 has Wendy's fun finds (or something waiting for the user's OK).`,
+      `Screen: home. The three priority cards, in order: ${top.map((t, i) => `#${i + 1} ${t.kind} "${t.title}" (${t.meta})`).join('; ') || 'none'}. Box 4 has ${name}'s fun finds (or something waiting for the user's OK).`,
       taskLine(5),
       eventLine(3),
     )
@@ -125,7 +126,7 @@ function screenSummary(key: string, s: Snapshot): string {
       }.`,
     )
   } else if (key === 'chat') {
-    lines.push('Screen: the full chat with Wendy is open.')
+    lines.push(`Screen: the full chat with ${name} is open.`)
   } else if (key.startsWith('tile:')) {
     const tile = key.slice(5)
     lines.push(`Screen: the ${tile} panel is open.`)
@@ -159,18 +160,18 @@ function screenSummary(key: string, s: Snapshot): string {
   } else if (key === 'vault') {
     const mem = Object.values(useVault.getState().entries).slice(0, 12)
     lines.push(
-      `Screen: the Vault, everything Wendy remembers about the user (${mem.length} shown): ${mem.map((m) => `"${m.content.slice(0, 80)}"`).join('; ') || 'nothing yet'}.`,
+      `Screen: the Vault, everything ${name} remembers about the user (${mem.length} shown): ${mem.map((m) => `"${m.content.slice(0, 80)}"`).join('; ') || 'nothing yet'}.`,
       'Options should help curate it: correct or update something, forget something outdated, or add something new about themselves.',
     )
   } else if (key === 'finds' || key.startsWith('find:')) {
     const fs = useFinds.getState()
     if (key === 'finds') {
       lines.push(
-        `Screen: Wendy's fun finds page${fs.headline ? `, headed "${fs.headline}"` : ''}. The finds: ${
+        `Screen: ${name}'s fun finds page${fs.headline ? `, headed "${fs.headline}"` : ''}. The finds: ${
           fs.items.map((x) => `"${x.title}" (${x.tag}, ${x.source})`).join('; ') || 'none yet'
         }.`,
       )
-      if (fs.note) lines.push(`What Wendy said about them: ${fs.note.slice(0, 500)}`)
+      if (fs.note) lines.push(`What ${name} said about them: ${fs.note.slice(0, 500)}`)
       lines.push(
         'Make the options act on these finds by name: put one on the calendar, set a reminder, save one as a task, dig deeper into one, or find more like one.',
       )
@@ -187,25 +188,29 @@ function screenSummary(key: string, s: Snapshot): string {
   const finds = useFinds.getState().items
   if (key === 'home' && finds.length)
     lines.push(
-      `Box 4 has Wendy's fun finds: ${finds
+      `Box 4 has ${name}'s fun finds: ${finds
         .map((x) => `"${x.title}"`)
         .slice(0, 4)
         .join(', ')}.`,
     )
   const mood = s.agent.mood
-  if (mood?.emotion) lines.push(`Wendy's current mood: ${mood.emotion}${mood.intensity ? ` (${mood.intensity})` : ''}.`)
+  if (mood?.emotion)
+    lines.push(`${name}'s current mood: ${mood.emotion}${mood.intensity ? ` (${mood.intensity})` : ''}.`)
   if (s.agent.line === 'greeting' && s.agent.greeting?.text && !s.agent.greeting.spent)
-    lines.push(`Wendy's line above the grid says: "${s.agent.greeting.text.slice(0, 200)}"`)
+    lines.push(`${name}'s line above the grid says: "${s.agent.greeting.text.slice(0, 200)}"`)
   if (s.agent.line === 'notice' && s.agent.notice) {
     lines.push(
-      `Wendy just told the user about a reminder: "${s.agent.notice.title}" ${s.agent.notice.body ?? ''}`.trim(),
+      `${name} just told the user about a reminder: "${s.agent.notice.title}" ${s.agent.notice.body ?? ''}`.trim(),
     )
   }
   return lines.join('\n')
 }
 
-/** What a tapped "say" can actually get done: Wendy's tools on Aelora (WEBSOCKET.md) plus conversation. */
-const CAN_DO = `What Wendy can actually do when the user taps a button (nothing else):
+/** The agent's name, as the server gave it (Wendy today), for the prompts. */
+const agentName = () => useAgent.getState().botName || 'the assistant'
+
+/** What a tapped "say" can actually get done: the agent's tools on Aelora (WEBSOCKET.md) plus conversation. */
+const canDo = (name: string) => `What ${name} can actually do when the user taps a button (nothing else):
 - Tasks: add, list, complete, edit, delete, reschedule. Goals: add, review progress, edit, complete.
 - Calendar: list events, create events, move or delete events (events with other guests need the user's confirmation).
 - Reminders: schedule a reminder at a time, list them, mark read, cancel.
@@ -216,29 +221,32 @@ const CAN_DO = `What Wendy can actually do when the user taps a button (nothing 
 - In the app: open lists (tasks, calendar, goals, inbox), open an item, show fun finds.
 She cannot book, buy, order, pay, call, text or message people, play media, set device alarms or timers, navigate, or control other apps.`
 
-const SYSTEM = `You write the tap-to-reply buttons for Wendy, a warm personal assistant inside a touch-only app.
-The user never types: these buttons are the only way they talk to Wendy, so they must cover what the user would most likely want to say next.
+const system = (
+  name: string,
+) => `You write the tap-to-reply buttons for ${name}, a warm personal assistant inside a touch-only app.
+The user never types: these buttons are the only way they talk to ${name}, so they must cover what the user would most likely want to say next.
 Rules:
 - Return JSON only: {"options":[{"label":"...","say":"..."}]}
-- 3 to 5 options. "label": 1-3 words, at most ${MAX_LABEL} characters (a button, not a sentence: "Draft them", "Move to 4pm"), sentence case, no emoji, no trailing period. "say": exactly what the user says to Wendy when they tap it, first person, natural, at most 120 characters.
-- If Wendy just asked something (marked QUESTION below), every option is an answer to it, in the user's words: 2 to 4 of them, including a yes and a no style answer for a yes/no question. Nothing else: no other topics, no cards.
+- 3 to 5 options. "label": 1-3 words, at most ${MAX_LABEL} characters (a button, not a sentence: "Draft them", "Move to 4pm"), sentence case, no emoji, no trailing period. "say": exactly what the user says to ${name} when they tap it, first person, natural, at most 120 characters.
+- If ${name} just asked something (marked QUESTION below), every option is an answer to it, in the user's words: 2 to 4 of them, including a yes and a no style answer for a yes/no question. Nothing else: no other topics, no cards.
 - Otherwise suggest the most useful next things for what is on screen, using the user's real item titles.
 - On the home screen, the app already offers one button for the top priority card. Yours act on the other cards by name (for example "Prep for Standup" or "Start the report") or follow what they were just talking about.
-- Every option must connect to something real right now: an item on screen, what Wendy said, or what the user was just talking about. Their interests from memory only count when something specific and timely is known (a race on today, a launch this week), and then at most one option. Never a bare topic like "F1 highlights", "SpaceX update" or "Check stocks".
+- Every option must connect to something real right now: an item on screen, what ${name} said, or what the user was just talking about. Their interests from memory only count when something specific and timely is known (a race on today, a launch this week), and then at most one option. Never a bare topic like "F1 highlights", "SpaceX update" or "Check stocks".
 - Labels start with a verb, so the user knows what tapping does: "Plan Three.js time", not "Three.js coding".
-- Order them by how likely the user is to tap them, most likely first. If Wendy's last message asks something, the direct answers come first.
+- Order them by how likely the user is to tap them, most likely first. If ${name}'s last message asks something, the direct answers come first.
 - Make them distinct; never two options that do the same thing. Match a relaxed, adult, friendly tone.
-- Every option must be something Wendy can actually do (see the list above). Never suggest booking, buying, calling, texting, timers or anything outside it.
-- Ground options in what is really there: the user's actual items, what Wendy just said, and what you know about the user from memory. Never invent items, people or plans.
+- Every option must be something ${name} can actually do (see the list above). Never suggest booking, buying, calling, texting, timers or anything outside it.
+- Ground options in what is really there: the user's actual items, what ${name} just said, and what you know about the user from memory. Never invent items, people or plans.
 - Follow the conversation: if they're mid-topic, offer the natural next steps in that topic rather than jumping back to the cards.
 - Don't repeat what the user just tapped or what they keep ignoring (listed below); find a fresher, more specific idea instead.`
 
 function buildRequest(key: string, s: Snapshot, existing: Option[]): LlmRequest {
+  const name = agentName()
   const summary = screenSummary(key, s)
   const turns = s.agent.messages
     .filter((m) => m.role !== 'error')
     .slice(-8)
-    .map((m) => `${m.role === 'user' ? 'User' : 'Wendy'}: ${m.text.slice(0, 400)}`)
+    .map((m) => `${m.role === 'user' ? 'User' : name}: ${m.text.slice(0, 400)}`)
   const last = [...s.agent.messages].reverse().find((m) => m.role === 'assistant')
   const lastUser = [...s.agent.messages].reverse().find((m) => m.role === 'user')?.text
   // What she last said to them: her reply, or the welcome / check-in on her line while it's unanswered.
@@ -262,8 +270,8 @@ function buildRequest(key: string, s: Snapshot, existing: Option[]): LlmRequest 
     turns.length ? `\nRecent conversation:\n${turns.join('\n')}` : '',
     replyingTo
       ? asking
-        ? `\nQUESTION. Wendy just asked the user this; write only answers to it:\n${replyingTo.slice(0, 600)}`
-        : `\nWendy's last message:\n${replyingTo.slice(0, 600)}`
+        ? `\nQUESTION. ${name} just asked the user this; write only answers to it:\n${replyingTo.slice(0, 600)}`
+        : `\n${name}'s last message:\n${replyingTo.slice(0, 600)}`
       : '',
     existing.length ? `\nButtons already shown, do not repeat: ${existing.map((o) => o.label).join(', ')}.` : '',
     tapped.length
@@ -273,7 +281,7 @@ function buildRequest(key: string, s: Snapshot, existing: Option[]): LlmRequest 
     '\nWrite the options.',
   ].join('\n')
   return {
-    system: `${SYSTEM}\n\n${CAN_DO}`,
+    system: `${system(name)}\n\n${canDo(name)}`,
     prompt: prompt.slice(0, 11_000),
     json: true,
     maxTokens: 300,
@@ -350,7 +358,7 @@ function itemDetails(kind: string, id: string, s: Snapshot): string | null {
   return null
 }
 
-/** A last line of defence: drop suggestions for things Wendy has no way to do. */
+/** A last line of defence: drop suggestions for things the agent has no way to do. */
 const CANT =
   /\b(book|buy|order|purchase|pay|call|phone|text|sms|whatsapp|play|timer|alarm|navigate|directions|uber|lyft|venmo)\b/i
 
@@ -375,7 +383,7 @@ function snapshot(): Snapshot {
   }
 }
 
-/** Cache identity: the context plus what Wendy last said and what the line shows. */
+/** Cache identity: the context plus what the agent last said and what the line shows. */
 function signature(key: string): string {
   const a = useAgent.getState()
   const lastId = a.messages.at(-1)?.id ?? '-'
@@ -385,10 +393,10 @@ function signature(key: string): string {
 }
 
 /**
- * Watches the screen and the conversation; whenever either changes, asks Wendy
+ * Watches the screen and the conversation; whenever either changes, asks the agent
  * for fresh options (debounced, one in flight, cached, 429-aware).
  */
-export function startWendyOptions(): () => void {
+export function startAgentOptions(): () => void {
   const cache = new Map<string, { at: number; options: Option[] }>()
   let timer: ReturnType<typeof setTimeout> | undefined
   let inflight: AbortController | null = null
@@ -412,7 +420,7 @@ export function startWendyOptions(): () => void {
 
     const hit = cache.get(sig)
     if (hit && Date.now() - hit.at < CACHE_MS) {
-      optionsStore.setWendy(key, hit.options)
+      optionsStore.setAgent(key, hit.options)
       return
     }
     if (Date.now() < pausedUntil) return
@@ -423,17 +431,17 @@ export function startWendyOptions(): () => void {
     const snap = snapshot()
     const req = buildRequest(key, snap, localOptions(key, snap))
     // Drop options written for an earlier moment (e.g. answers to a previous question).
-    optionsStore.setWendy(key, [])
+    optionsStore.setAgent(key, [])
     optionsStore.setLoading(key, true)
     try {
       const text = config.mock
         ? await (await import('../aelora/mock')).mockLlm(req, ctrl.signal)
         : await llm(req, ctrl.signal)
       if (ctrl.signal.aborted) return
-      const options = parseWendyOptions(text)
+      const options = parseAgentOptions(text)
       cache.set(sig, { at: Date.now(), options })
       // Only apply if the user is still where we generated for.
-      if (contextKeyOf(useUi.getState()) === key) optionsStore.setWendy(key, options)
+      if (contextKeyOf(useUi.getState()) === key) optionsStore.setAgent(key, options)
       else optionsStore.setLoading(key, false)
     } catch (e) {
       if (ctrl.signal.aborted) return

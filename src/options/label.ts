@@ -1,6 +1,6 @@
-// Pill labels are tap targets, not sentences. Whatever Wendy (or the app)
+// Pill labels are tap targets, not sentences. Whatever the agent (or the app)
 // writes, a label is cut down to a short phrase at a word boundary: never an
-// ellipsis, never a two-line wall. The full sentence still goes to Wendy as the
+// ellipsis, never a two-line wall. The full sentence still goes to the agent as the
 // option's `say`, so nothing is lost by shortening what's shown.
 
 export const LABEL_MAX = 24
