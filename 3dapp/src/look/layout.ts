@@ -57,24 +57,25 @@ export function stageFor(aspect: number): Stage {
     // Smaller cards, closer to her, and a camera that comes in a little: she's the subject.
     const w = 1.3
     const h = 0.88
-    const rows = [1.62, 0.84]
-    // Cards are painted at their canonical size and shown smaller (type and all).
-    const cardScale = 0.84
+    // She's the subject: the camera is in close (she fills most of the height), and the
+    // cards, painted at their canonical size, are shown small beside her (type and all).
+    const rows = [1.4, 1.0]
+    const cardScale = 0.44
     return {
       portrait: false,
       card: { w, h, radius: RADIUS },
       pose: (c) => {
         const right = c % 2 === 1
         const bottom = c >= 2
-        return { position: [right ? 1.3 : -1.3, rows[bottom ? 1 : 0], 0], rotation: [0, right ? -0.1 : 0.1, 0], scale: cardScale, right, bottom }
+        return { position: [right ? 0.98 : -0.98, rows[bottom ? 1 : 0], 0], rotation: [0, right ? -0.12 : 0.12, 0], scale: cardScale, right, bottom }
       },
-      line: { position: [0, 2.3, 0.05], rotation: [0, 0, 0], scale: 1, w: 3.8, size: 0.07 },
+      line: { position: [0, 1.95, 0.05], rotation: [0, 0, 0], scale: 1, w: 2.8, size: 0.05 },
       // The top of the 2D rail (and the message box under it) is pinned here.
-      chips: { position: [0, 0.3, 0.55], rotation: [-0.12, 0, 0], scale: 1, w: 3.4 },
+      chips: { position: [0, 0.42, 0.55], rotation: [-0.12, 0, 0], scale: 1, w: 3.4 },
       input: { position: [0, -0.08, 0.8], rotation: [-0.14, 0, 0], scale: 1, w: 2.2 },
       her: [0, 0, 0],
       // Room under the cards for the 2D rail (up to two rows) and the message box.
-      frame: { w: 4.4, h: 3.0, center: [0, 1.06, 0] },
+      frame: { w: 3.0, h: 2.15, center: [0, 0.96, 0] },
     }
   }
 
