@@ -11,7 +11,8 @@ import { AgentLine3D } from './panels/AgentLine3D'
 import { ChatInput3D } from './panels/ChatInput3D'
 import { Grid3D } from './panels/Grid3D'
 import { OptionPills3D } from './panels/OptionPills3D'
-import { FocusSlab } from './FocusSlab'
+import { FocusPanel3D } from './FocusPanel3D'
+import { ui } from '@actora/stores/ui'
 import { Overlay } from '../dom/Overlay'
 import { Post } from './Post'
 
@@ -39,8 +40,8 @@ function Rig() {
       const f = focusLayout(aspect)
       target.x = damp(target.x, f.target[0], 3.2, dt)
       target.y = damp(target.y, f.target[1], 3.2, dt)
-      camera.position.x = damp(camera.position.x, f.target[0], 3.2, dt)
-      camera.position.y = damp(camera.position.y, f.target[1], 3.2, dt)
+      camera.position.x = damp(camera.position.x, f.target[0] + pointer.x * 0.06, 3.2, dt)
+      camera.position.y = damp(camera.position.y, f.target[1] + pointer.y * 0.04, 3.2, dt)
       camera.position.z = damp(camera.position.z, f.dist, 3.2, dt)
     } else {
       const t = Math.tan(((FOV / 2) * Math.PI) / 180)
@@ -62,6 +63,8 @@ export function World() {
     <>
       <Canvas
         shadows
+        // A tap on the scene itself (not a card or the panel) puts the open thing away.
+        onPointerMissed={() => ui.closeAll()}
         camera={{ position: [0, 1.2, 5], fov: FOV }}
         gl={async (props) => {
           const renderer = new THREE.WebGPURenderer({ ...(props as object), antialias: true })
@@ -77,7 +80,7 @@ export function World() {
         <Grid3D />
         <OptionPills3D />
         <ChatInput3D />
-        <FocusSlab />
+        <FocusPanel3D />
       </Canvas>
       <Overlay />
       <input

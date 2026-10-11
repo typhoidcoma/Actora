@@ -91,7 +91,7 @@ export function focusLayout(aspect: number): FocusLayout {
   const viewW = viewH * aspect
   const dist = viewH / 2 / t
   const target: Vec3 = portrait ? [0, 1.0, 0] : [0.26 * viewW, 1.47, 0]
-  const rect = portrait ? { x0: 0.03, y0: 0.3, x1: 0.97, y1: 0.985 } : { x0: 0.45, y0: 0.05, x1: 0.975, y1: 0.95 }
+  const rect = portrait ? { x0: 0.03, y0: 0.3, x1: 0.97, y1: 0.985 } : { x0: 0.45, y0: 0.06, x1: 0.95, y1: 0.94 }
   const cx = (rect.x0 + rect.x1) / 2
   const cy = (rect.y0 + rect.y1) / 2
   return {

@@ -1,5 +1,6 @@
 import { AnimatePresence, LayoutGroup, motion, MotionConfig } from 'motion/react'
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { signOut } from '@actora/auth/supabase'
 import { config } from '@actora/config'
 import { useContextKey } from '@actora/options/useOptions'
@@ -22,9 +23,8 @@ import { GOALS_ACCENT, GoalsDetail } from '@actora/ui/tiles/Goals'
 import { INBOX_ACCENT, InboxDetail } from '@actora/ui/tiles/Inbox'
 import { TASKS_ACCENT, TasksDetail } from '@actora/ui/tiles/Tasks'
 import { useFocused } from '../look/focus'
-import { focusLayout } from '../look/layout'
+import { FOCUS_RADIUS, FOCUS_RAIL, useFocusHost } from '../look/focusHost'
 import { anchorRef } from '../scene/Anchor'
-import { FOCUS_RADIUS } from '../scene/FocusSlab'
 
 const LISTS: Record<TileId, { label: string; accent: string; Detail: () => React.ReactNode }> = {
   tasks: { label: 'Tasks', accent: TASKS_ACCENT, Detail: TasksDetail },
@@ -33,75 +33,53 @@ const LISTS: Record<TileId, { label: string; accent: string; Detail: () => React
   inbox: { label: 'Inbox', accent: INBOX_ACCENT, Detail: InboxDetail },
 }
 
-/** Height kept under an open panel for its options (the 2D rail). */
-const RAIL = 60
 const onSignOut = config.mock ? undefined : () => void signOut()
 
 /**
- * The 2D app's metrics, re-pointed at the 3D focus panel: its components lay
- * themselves out from `useMetrics` (the chat sheet, the panel box, the rail), so
- * telling them the panel's screen box makes them land exactly on the slab.
+ * The 2D app's metrics, re-pointed at the focus panel's host element. That
+ * element is transformed into the scene (CSS3D), so it is the containing block
+ * even for the chat sheet's `position: fixed`: its box starts at 0,0.
  */
-function useFocusMetrics() {
+function useHostMetrics(w: number, h: number, portrait: boolean) {
   useEffect(() => {
-    const apply = () => {
-      const vw = window.innerWidth
-      const vh = window.innerHeight
-      const f = focusLayout(vw / vh)
-      const x = Math.round(f.rect.x0 * vw)
-      const y = Math.round(f.rect.y0 * vh)
-      const w = Math.round((f.rect.x1 - f.rect.x0) * vw)
-      const h = Math.round((f.rect.y1 - f.rect.y0) * vh)
-      const grid = Math.min(w, h)
-      useMetrics.setState({
-        vw,
-        vh,
-        grid,
-        compact: f.portrait,
-        stack: false,
-        short: false,
-        radius: FOCUS_RADIUS - 1,
-        sheet: { x, y, w, h, radius: FOCUS_RADIUS, inset: 0 },
-        panel: { x, y, w, h: h - RAIL },
-        rail: { x, y: y + h - RAIL, w, h: RAIL, padBottom: 0, top: y + h - RAIL },
-        panelInset: 0,
-      })
-      const s = document.documentElement.style
-      s.setProperty('--grid', `${grid}px`)
-      s.setProperty('--radius', `${FOCUS_RADIUS - 1}px`)
-    }
-    apply()
-    window.addEventListener('resize', apply)
-    return () => window.removeEventListener('resize', apply)
-  }, [])
+    if (!w || !h) return
+    const grid = Math.min(w, h)
+    useMetrics.setState({
+      vw: window.innerWidth,
+      vh: window.innerHeight,
+      grid,
+      compact: portrait,
+      stack: false,
+      short: false,
+      radius: FOCUS_RADIUS - 1,
+      sheet: { x: 0, y: 0, w, h, radius: FOCUS_RADIUS, inset: 0 },
+      panel: { x: 0, y: 0, w, h: h - FOCUS_RAIL },
+      rail: { x: 0, y: h - FOCUS_RAIL, w, h: FOCUS_RAIL, padBottom: 0, top: h - FOCUS_RAIL },
+      panelInset: 0,
+    })
+    const s = document.documentElement.style
+    s.setProperty('--grid', `${grid}px`)
+    s.setProperty('--radius', `${FOCUS_RADIUS - 1}px`)
+  }, [w, h, portrait])
 }
 
 /**
- * What stays DOM: the 2D app's own panels, chat, menu and sheets, laid over the
- * scene. At home that's just the chat and menu buttons riding the end of the
- * chip row; in focus mode it's whatever is open, on the slab, with its options
- * under it. They fade in once the slab has landed and out as it leaves.
+ * What's DOM. At home: the chat and menu buttons riding the end of the chip
+ * row. In focus: the 2D app's own panel for whatever is open, portalled into
+ * the element the scene stands up as the focus panel (FocusPanel3D), with its
+ * options in a strip at its foot. And the screen-level sheets (keyboard, past
+ * chats, date picker, toasts).
  */
 export function Overlay() {
-  useFocusMetrics()
   const focused = useFocused()
-  const m = useMetrics()
-  const key = useContextKey()
-  const chatOpen = useUi((s) => s.chatOpen)
-  const focus = useUi((s) => s.focus)
-  const selected = useUi((s) => s.selected)
-  const finds = useUi((s) => s.finds)
-  const vault = useUi((s) => s.vault)
-  const item = !focus && selected ? selected : null
+  const host = useFocusHost()
+  useHostMetrics(host.w, host.h, window.innerWidth / window.innerHeight < 0.8)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && ui.closeAll()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
-
-  // In once the slab has landed (its flight is ~0.55 s), out at once as it leaves.
-  const land = { opacity: focused ? 1 : 0, transition: { delay: focused ? 0.55 : 0, duration: focused ? 0.28 : 0.1 } }
 
   return (
     <MotionConfig reducedMotion="user">
@@ -132,32 +110,44 @@ export function Overlay() {
           </motion.button>
           <MenuButton onSignOut={onSignOut} />
         </motion.div>
-
-        {/* Focus: the open panel on the slab, its options beneath. */}
-        <motion.div className="pointer-events-none fixed inset-0 z-20" initial={false} animate={land}>
-          <div className="absolute" style={{ left: m.panel.x, top: m.panel.y, width: m.panel.w, height: m.panel.h }}>
-            <AnimatePresence>
-              {focus && <ListPanel key={`list-${focus}`} id={focus} />}
-              {item && <ItemPanel key={`item-${item.kind}:${item.id}`} item={item} />}
-              {finds && <FindsPanel key="finds" />}
-              {vault && <VaultPanel key="vault" />}
-            </AnimatePresence>
-          </div>
-          {focused && !chatOpen && (
-            <div className="pointer-events-auto absolute flex items-center" style={{ left: m.rail.x, top: m.rail.y, width: m.rail.w, height: m.rail.h }}>
-              <OptionRail contextKey={key} trailing={<MenuButton onSignOut={onSignOut} />} />
-            </div>
-          )}
-          <div className="pointer-events-auto">
-            <ChatSheet />
-          </div>
-        </motion.div>
+        {host.el && createPortal(<FocusContent focused={focused} />, host.el)}
       </LayoutGroup>
       <KeyboardSheet />
       <PastChats />
       <DateSheet />
       <Toaster />
     </MotionConfig>
+  )
+}
+
+/** The open thing, filling the in-scene panel; its options below it, never cut off. */
+function FocusContent({ focused }: { focused: boolean }) {
+  const m = useMetrics()
+  const key = useContextKey()
+  const chatOpen = useUi((s) => s.chatOpen)
+  const focus = useUi((s) => s.focus)
+  const selected = useUi((s) => s.selected)
+  const finds = useUi((s) => s.finds)
+  const vault = useUi((s) => s.vault)
+  const item = !focus && selected ? selected : null
+
+  return (
+    <>
+      <div className="absolute" style={{ left: m.panel.x, top: m.panel.y, width: m.panel.w, height: m.panel.h }}>
+        <AnimatePresence>
+          {focus && <ListPanel key={`list-${focus}`} id={focus} />}
+          {item && <ItemPanel key={`item-${item.kind}:${item.id}`} item={item} />}
+          {finds && <FindsPanel key="finds" />}
+          {vault && <VaultPanel key="vault" />}
+        </AnimatePresence>
+      </div>
+      {focused && !chatOpen && (
+        <div className="absolute flex items-center overflow-hidden" style={{ left: m.rail.x, top: m.rail.y + 8, width: m.rail.w, height: m.rail.h - 8 }}>
+          <OptionRail contextKey={key} trailing={<MenuButton onSignOut={onSignOut} />} />
+        </div>
+      )}
+      <ChatSheet />
+    </>
   )
 }
 
