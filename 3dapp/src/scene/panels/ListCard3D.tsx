@@ -74,13 +74,7 @@ export function ListCard3D(p: { tile: TileId; corner: number; present: boolean; 
     ctx.beginPath()
     ctx.roundRect(0, 0, w, h, px(stage.card.radius))
     ctx.clip()
-    // Dusk glass reads dark (the 2D cards sit on deep indigo); here the sky behind is brighter.
-    if (!look.day) {
-      ctx.fillStyle = withAlpha(look.bg, 0.55)
-      ctx.fillRect(0, 0, w, h)
-    }
-    ctx.fillStyle = look.glass
-    ctx.fillRect(0, 0, w, h)
+    // No fill: the panel's lit body shows through; the face adds the kind's wash and the type.
     const gx = right ? w : 0
     const gy = bottom ? h : 0
     const wash = ctx.createRadialGradient(gx, gy, 0, gx, gy, w * 0.9)
@@ -89,7 +83,7 @@ export function ListCard3D(p: { tile: TileId; corner: number; present: boolean; 
     ctx.fillStyle = wash
     ctx.fillRect(0, 0, w, h)
     ctx.lineWidth = 2
-    ctx.strokeStyle = look.day ? 'rgba(255,255,255,0.95)' : look.line
+    ctx.strokeStyle = look.line
     ctx.beginPath()
     ctx.roundRect(1, 1, w - 2, h - 2, px(stage.card.radius))
     ctx.stroke()
@@ -148,6 +142,7 @@ export function ListCard3D(p: { tile: TileId; corner: number; present: boolean; 
       radius={stage.card.radius}
       position={pose.position}
       rotation={pose.rotation}
+      size={pose.scale}
       paint={paint}
       deps={[face.label, face.value, face.unit, face.line, face.dots?.lit, face.dots?.total, face.bar, p.corner, stage]}
       present={p.present}

@@ -47,7 +47,8 @@ export function PriorityCard3D(p: { item: RankedItem; corner: number; present: b
 
   const warm = Math.max(0, item.urgency - 0.4) * 1.1
   const glow = warm > 0.3 ? look.role[heat(item.urgency)] : look.role[kind.role]
-  const label = ring ? look.ink.urgent : warm > 0.3 ? look.ink[heat(item.urgency)] : look.ink[kind.role]
+  // At dusk the alarm red sits on a warm, dark card: a lighter alarm pink keeps it legible.
+  const label = ring ? (look.day ? look.ink.urgent : '#ffb3c1') : warm > 0.3 ? look.ink[heat(item.urgency)] : look.ink[kind.role]
   const button = item.primary && item.primary.act.type !== 'complete' ? item.primary : null
 
   // Where the button lands, for hit-testing a tap (canvas fractions).
@@ -58,13 +59,7 @@ export function PriorityCard3D(p: { item: RankedItem; corner: number; present: b
     ctx.beginPath()
     ctx.roundRect(0, 0, w, h, r)
     ctx.clip()
-    // Dusk glass reads dark (the 2D cards sit on deep indigo); here the sky behind is brighter.
-    if (!look.day) {
-      ctx.fillStyle = withAlpha(look.bg, 0.55)
-      ctx.fillRect(0, 0, w, h)
-    }
-    ctx.fillStyle = look.glass
-    ctx.fillRect(0, 0, w, h)
+    // No fill: the panel's lit body shows through; the face adds the kind's wash and the type.
     // The kind's colour, washing in from the outer corner.
     const gx = right ? w : 0
     const gy = bottom ? h : 0
@@ -72,12 +67,6 @@ export function PriorityCard3D(p: { item: RankedItem; corner: number; present: b
     wash.addColorStop(0, withAlpha(glow, look.day ? 0.3 : 0.24))
     wash.addColorStop(1, withAlpha(glow, 0))
     ctx.fillStyle = wash
-    ctx.fillRect(0, 0, w, h)
-    // A soft sheen along the top edge, like the 2D glass.
-    const sheen = ctx.createLinearGradient(0, 0, 0, h * 0.35)
-    sheen.addColorStop(0, look.day ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.08)')
-    sheen.addColorStop(1, 'rgba(255,255,255,0)')
-    ctx.fillStyle = sheen
     ctx.fillRect(0, 0, w, h)
 
     if (ring) {
@@ -93,7 +82,7 @@ export function PriorityCard3D(p: { item: RankedItem; corner: number; present: b
       ctx.restore()
     } else {
       ctx.lineWidth = 2
-      ctx.strokeStyle = look.day ? 'rgba(255,255,255,0.95)' : look.line
+      ctx.strokeStyle = look.line
       ctx.beginPath()
       ctx.roundRect(1, 1, w - 2, h - 2, r)
       ctx.stroke()
@@ -165,6 +154,7 @@ export function PriorityCard3D(p: { item: RankedItem; corner: number; present: b
       radius={stage.card.radius}
       position={pose.position}
       rotation={pose.rotation}
+      size={pose.scale}
       paint={paint}
       deps={[item.title, item.meta, item.urgency, ring, corner, button?.label, stage]}
       ring={ring ? look.role.urgent : null}

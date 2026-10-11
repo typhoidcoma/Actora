@@ -116,6 +116,7 @@ export function FindsCard3D({ corner, present }: { corner: number; present: bool
       radius={stage.card.radius}
       position={pose.position}
       rotation={pose.rotation}
+      size={pose.scale}
       paint={paint}
       deps={[f?.id, img, items.length, status, index, corner, look.day, stage]}
       delay={0.21}

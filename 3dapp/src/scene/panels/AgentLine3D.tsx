@@ -74,7 +74,9 @@ export function AgentLine3D() {
       bare
       width={stage.line.w}
       height={height}
-      position={[0, stage.line.y - height / 2 + SIZE * LH * 0.5, 0.05]}
+      position={[stage.line.position[0], stage.line.position[1] - (height / 2 - SIZE * LH * 0.5) * stage.line.scale, stage.line.position[2]]}
+      rotation={stage.line.rotation}
+      size={stage.line.scale}
       paint={(ctx, w) => drawLines(ctx, lines, w / 2, px(0.02), px(SIZE * LH), f, shown.current.color, 'center', spacing)}
       deps={[lines.join('\n'), shown.current.color]}
       present={present && !focused}

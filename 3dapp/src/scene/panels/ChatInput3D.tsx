@@ -18,15 +18,14 @@ export function ChatInput3D() {
       width={stage.input.w}
       height={CHIP_H}
       radius={CHIP_H / 2}
-      position={[0, stage.input.y, stage.input.z]}
-      rotation={[-0.14, 0, 0]}
+      position={stage.input.position}
+      rotation={stage.input.rotation}
+      size={stage.input.scale}
       paint={(ctx, w, h) => {
         ctx.beginPath()
         ctx.roundRect(1, 1, w - 2, h - 2, h / 2)
-        ctx.fillStyle = look.glassThick
-        ctx.fill()
         ctx.lineWidth = 2
-        ctx.strokeStyle = focused ? look.role.accent : look.day ? 'rgba(255,255,255,0.95)' : look.line
+        ctx.strokeStyle = focused ? look.role.accent : look.line
         ctx.stroke()
         const x = px(0.06)
         ctx.font = font(500, 0.044)

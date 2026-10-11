@@ -1,16 +1,14 @@
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three/webgpu'
-import { float, mix, texture as tslTexture, uniform, vec4, viewportSharedTexture } from 'three/tsl'
-import { hashBlur } from 'three/addons/tsl/display/hashBlur.js'
+import { texture as tslTexture, uniform } from 'three/tsl'
 import { useFonts } from '../../look/fonts'
 import { backOut, damp } from '../../look/motion'
 import { PPU } from '../../look/paint'
 import { parseCss, useLook } from '../../look/theme'
 
-/** How far the 2D glass blurs what's behind it, in screen UV. */
-const BLUR = 0.022
-const HALO = 0.16
+/** How thick a panel is: enough to catch light on its edge and cast a real shadow. */
+const DEPTH = 0.022
 
 export interface PaneProps {
   width: number
@@ -22,9 +20,9 @@ export interface PaneProps {
   /** Paints the face (fill, text). Re-run when `deps` change. */
   paint: (ctx: CanvasRenderingContext2D, w: number, h: number) => void
   deps: unknown[]
-  /** Text only: no glass behind it (her line). */
+  /** Text only: no body behind it (her line). */
   bare?: boolean
-  /** An alarm: a halo that breathes in this colour around the pane. */
+  /** An alarm: the panel's edge breathes in this colour (bloom carries it). */
   ring?: string | null
   present?: boolean
   onGone?: () => void
@@ -33,6 +31,8 @@ export interface PaneProps {
   onPress?: (uv: { x: number; y: number }) => void
   /** Where it enters from, relative to its spot (default: just below it). */
   from?: [number, number, number]
+  /** Uniform scale of the whole panel (the phone stack is drawn at canonical size, then fitted). */
+  size?: number
 }
 
 function roundedRect(w: number, h: number, r: number): THREE.ShapeGeometry {
@@ -57,36 +57,34 @@ function roundedRect(w: number, h: number, r: number): THREE.ShapeGeometry {
   return g
 }
 
-/** A soft blurred outline outside the pane: its drop shadow, or its alarm halo. */
-function haloTexture(w: number, h: number, r: number): THREE.CanvasTexture {
-  const scale = PPU / 4
-  const c = document.createElement('canvas')
-  const m = HALO * scale
-  c.width = Math.round(w * scale + m * 2)
-  c.height = Math.round(h * scale + m * 2)
-  const ctx = c.getContext('2d')!
-  ctx.shadowColor = '#fff'
-  ctx.shadowBlur = m * 0.55
-  ctx.fillStyle = '#fff'
-  ctx.beginPath()
-  ctx.roundRect(m, m, w * scale, h * scale, r * scale)
-  ctx.fill()
-  // Only outside the pane: inside, the glass shows the real backdrop.
-  ctx.shadowBlur = 0
-  ctx.globalCompositeOperation = 'destination-out'
-  ctx.fill()
-  const t = new THREE.CanvasTexture(c)
-  t.colorSpace = THREE.SRGBColorSpace
-  return t
+/** The panel's body: the same rounded rectangle, extruded, its front face just behind the painted face. */
+function slab(w: number, h: number, r: number): THREE.ExtrudeGeometry {
+  const s = new THREE.Shape()
+  const x = -w / 2
+  const y = -h / 2
+  r = Math.min(r, w / 2, h / 2)
+  s.moveTo(x + r, y)
+  s.lineTo(x + w - r, y)
+  s.absarc(x + w - r, y + r, r, -Math.PI / 2, 0, false)
+  s.lineTo(x + w, y + h - r)
+  s.absarc(x + w - r, y + h - r, r, 0, Math.PI / 2, false)
+  s.lineTo(x + r, y + h)
+  s.absarc(x + r, y + h - r, r, Math.PI / 2, Math.PI, false)
+  s.lineTo(x, y + r)
+  s.absarc(x + r, y + r, r, Math.PI, Math.PI * 1.5, false)
+  const g = new THREE.ExtrudeGeometry(s, { depth: DEPTH, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.004, bevelSegments: 2, curveSegments: 10 })
+  g.translate(0, 0, -DEPTH - 0.006)
+  return g
 }
 
 /**
- * One surface of the 2D UI, standing in the scene: frosted glass that really
- * blurs what's behind it (the 2D backdrop-filter), a face painted on a canvas,
- * a soft shadow (or an alarm halo), and the 2D motion: scale in with a little
+ * One surface of the 2D UI, standing in the room: a thin solid panel that takes
+ * the room's real light (the sun through the windows, her mood in the cove),
+ * casts a shadow on the floor, and carries its face (text, washes) painted on a
+ * canvas that stays readable in any light. The 2D motion: scale in with a little
  * overshoot, ease out, glide to a new spot, lift on hover.
  */
-export function Pane({ width, height, radius = 0.06, position, rotation, paint, deps, bare, ring, present = true, onGone, delay = 0, onPress, from }: PaneProps) {
+export function Pane({ width, height, radius = 0.06, position, rotation, paint, deps, bare, ring, present = true, onGone, delay = 0, onPress, from, size = 1 }: PaneProps) {
   const look = useLook()
   const fonts = useFonts((s) => s.ready)
   const pw = Math.round(width * PPU)
@@ -105,40 +103,34 @@ export function Pane({ width, height, radius = 0.06, position, rotation, paint, 
     return { canvas, texture: t }
   }, [pw, ph])
   const geometry = useMemo(() => roundedRect(width, height, radius), [width, height, radius])
-  const halo = useMemo(() => haloTexture(width, height, radius), [width, height, radius])
+  const body = useMemo(() => (bare ? null : slab(width, height, radius)), [bare, width, height, radius])
 
-  const u = useMemo(() => ({ appear: uniform(0), haloColor: uniform(new THREE.Color()), haloAlpha: uniform(0) }), [])
+  const u = useMemo(() => ({ appear: uniform(0) }), [])
 
+  // The face: unlit, so text reads the same in sun or shade.
   const material = useMemo(() => {
     const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, fog: false })
     const f = tslTexture(face.texture)
-    if (bare) {
-      m.colorNode = f.rgb
-      m.opacityNode = f.a.mul(u.appear)
-    } else {
-      const behind = hashBlur(viewportSharedTexture(), float(BLUR), { repeats: float(28) })
-      m.colorNode = vec4(mix(behind.rgb, f.rgb, f.a), 1)
-      m.opacityNode = u.appear
-    }
+    m.colorNode = f.rgb
+    m.opacityNode = f.a.mul(u.appear)
     return m
-  }, [face, bare, u])
+  }, [face, u])
 
-  const haloMaterial = useMemo(() => {
-    const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, fog: false })
-    m.colorNode = u.haloColor
-    m.opacityNode = tslTexture(halo).a.mul(u.haloAlpha).mul(u.appear)
-    return m
-  }, [halo, u])
+  // The body: the theme's surface, lit by the room.
+  const bodyMaterial = useMemo(() => new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0, transparent: true }), [])
+  useEffect(() => {
+    parseCss(look.day ? '#f6f1ea' : '#26244a', bodyMaterial.color)
+  }, [look.day, bodyMaterial])
 
   useEffect(
     () => () => {
       face.texture.dispose()
       geometry.dispose()
-      halo.dispose()
+      body?.dispose()
       material.dispose()
-      haloMaterial.dispose()
+      bodyMaterial.dispose()
     },
-    [face, geometry, halo, material, haloMaterial],
+    [face, geometry, body, material, bodyMaterial],
   )
 
   // Paint whenever the content, the look or the fonts change.
@@ -161,7 +153,7 @@ export function Pane({ width, height, radius = 0.06, position, rotation, paint, 
   }, [hover, onPress])
 
   const ringColor = useMemo(() => (ring ? parseCss(ring).color.clone() : null), [ring])
-  const shadowColor = useMemo(() => parseCss(look.day ? '#1a1936' : '#000000').color.clone(), [look.day])
+  const accentColor = useMemo(() => parseCss(look.role.accent).color.clone(), [look.role.accent])
 
   const group = useRef<THREE.Group>(null)
   const anim = useRef({ t: 0, wait: delay, hover: 0, placed: false, gone: false })
@@ -189,20 +181,21 @@ export function Pane({ width, height, radius = 0.06, position, rotation, paint, 
     g.visible = true
     a.hover = damp(a.hover, hover ? 1 : 0, 14, dt)
     const s = (present ? 0.92 + 0.08 * backOut(a.t) : 0.94 + 0.06 * a.t) * (1 + a.hover * 0.012)
-    g.scale.setScalar(s)
+    g.scale.setScalar(s * size)
     g.position.x = damp(g.position.x, position[0], 8, dt)
     g.position.y = damp(g.position.y, position[1] - (1 - a.t) * 0.05, 8, dt)
     g.position.z = damp(g.position.z, position[2] + a.hover * 0.04, 8, dt)
     u.appear.value = present ? Math.min(1, a.t * 1.6) : a.t
 
+    bodyMaterial.opacity = u.appear.value
     if (ringColor) {
-      // Brighter than white at the peak, so the bloom carries it.
+      // The alarm: the body glows past white at the peak, so the bloom carries it.
       const pulse = 0.5 + 0.5 * Math.sin(clock.elapsedTime * 5.2)
-      u.haloColor.value.copy(ringColor).multiplyScalar(1.2 + pulse * 1.3)
-      u.haloAlpha.value = 0.55 + pulse * 0.45
+      bodyMaterial.emissive.copy(ringColor)
+      bodyMaterial.emissiveIntensity = 0.06 + pulse * 0.22
     } else {
-      u.haloColor.value.copy(shadowColor)
-      u.haloAlpha.value = bare ? 0 : look.day ? 0.1 : 0.3
+      bodyMaterial.emissive.copy(accentColor)
+      bodyMaterial.emissiveIntensity = a.hover * 0.3
     }
   })
 
@@ -222,11 +215,7 @@ export function Pane({ width, height, radius = 0.06, position, rotation, paint, 
 
   return (
     <group ref={group} rotation={rotation} visible={false}>
-      {!bare && (
-        <mesh position={[0, -0.025, -0.004]} material={haloMaterial} renderOrder={1}>
-          <planeGeometry args={[width + HALO * 2, height + HALO * 2]} />
-        </mesh>
-      )}
+      {body && <mesh geometry={body} material={bodyMaterial} castShadow receiveShadow />}
       <mesh geometry={geometry} material={material} renderOrder={2} {...handlers} />
     </group>
   )

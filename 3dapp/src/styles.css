@@ -59,11 +59,10 @@ body {
 }
 
 /*
- * The focus panel stands in the scene through CSS 3D transforms, where browsers
- * drop backdrop-filter: without the blur, the 2D glass would show her through it.
- * Mix the theme background into its fill so it stays a solid reading surface.
+ * The focus panel stands in the room (CSS 3D, where backdrop-filter is dropped
+ * anyway): a solid surface like the room's other panels, not glass.
  */
 .focus-host .glass,
 .focus-host .glass-thick {
-  --fill: color-mix(in srgb, var(--t-bg) 88%, var(--t-glass-thick));
+  --fill: var(--t-bg);
 }

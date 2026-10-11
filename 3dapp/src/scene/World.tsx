@@ -32,7 +32,7 @@ const target = new THREE.Vector3(0, 1.2, 0)
  * panel stays registered on the glass.
  */
 function Rig() {
-  const { frame } = useStage()
+  const { frame, camera: fixed } = useStage()
   const focused = useFocused()
   useFrame(({ camera, size, pointer }, dt) => {
     const aspect = size.width / size.height
@@ -40,21 +40,42 @@ function Rig() {
       const f = focusLayout(aspect)
       target.x = damp(target.x, f.target[0], 3.2, dt)
       target.y = damp(target.y, f.target[1], 3.2, dt)
+      target.z = damp(target.z, f.target[2], 3.2, dt)
       camera.position.x = damp(camera.position.x, f.target[0] + pointer.x * 0.06, 3.2, dt)
       camera.position.y = damp(camera.position.y, f.target[1] + pointer.y * 0.04, 3.2, dt)
-      camera.position.z = damp(camera.position.z, f.dist, 3.2, dt)
+      camera.position.z = damp(camera.position.z, f.target[2] + f.dist, 3.2, dt)
+    } else if (fixed) {
+      // Phones: a set camera, head and shoulders above the stack, with a touch of parallax.
+      target.x = damp(target.x, fixed.target[0], 3, dt)
+      target.y = damp(target.y, fixed.target[1], 3, dt)
+      target.z = damp(target.z, fixed.target[2], 3, dt)
+      camera.position.x = damp(camera.position.x, fixed.position[0] + pointer.x * 0.04, 3, dt)
+      camera.position.y = damp(camera.position.y, fixed.position[1] + pointer.y * 0.03, 3, dt)
+      camera.position.z = damp(camera.position.z, fixed.position[2], 3, dt)
     } else {
       const t = Math.tan(((FOV / 2) * Math.PI) / 180)
       const dist = Math.max(frame.h / 2 / t, frame.w / 2 / (t * aspect))
       target.x = damp(target.x, frame.center[0], 3, dt)
       target.y = damp(target.y, frame.center[1], 3, dt)
+      target.z = damp(target.z, frame.center[2], 3, dt)
       camera.position.x = damp(camera.position.x, pointer.x * 0.18, 3, dt)
-      camera.position.y = damp(camera.position.y, target.y + 0.08 + pointer.y * 0.1, 3, dt)
+      // A little above her eye line, looking slightly down: the floor, steps and reflections read.
+      camera.position.y = damp(camera.position.y, target.y + 0.42 + pointer.y * 0.1, 3, dt)
       camera.position.z = damp(camera.position.z, dist, 3, dt)
     }
     camera.lookAt(target)
   })
   return null
+}
+
+/** She stands where the stage says. */
+function Her() {
+  const { her } = useStage()
+  return (
+    <group position={her}>
+      <Character />
+    </group>
+  )
 }
 
 export function World() {
@@ -75,7 +96,7 @@ export function World() {
         <Rig />
         <Post />
         <Environment />
-        <Character />
+        <Her />
         <AgentLine3D />
         <Grid3D />
         <OptionPills3D />

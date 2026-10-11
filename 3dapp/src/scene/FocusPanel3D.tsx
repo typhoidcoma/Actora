@@ -40,6 +40,7 @@ export function FocusPanel3D() {
   const focused = useFocused()
   const look = useLook()
   const { size, camera, gl } = useThree()
+  // (castShadow on the body below: the panel shades the floor like the cards do.)
   const f = focusLayout(size.width / size.height)
 
   // The DOM size: the panel's on-screen size when it faces the camera, so text is crisp.
@@ -80,13 +81,14 @@ export function FocusPanel3D() {
   const edge = useMemo(
     () => [
       new THREE.MeshBasicMaterial({ visible: false }),
-      new THREE.MeshPhysicalMaterial({ roughness: 0.25, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.2, transparent: true }),
+      new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0, transparent: true }),
     ],
     [],
   )
   useEffect(() => {
-    parseCss(look.day ? '#ffffff' : look.role.agent, (edge[1] as THREE.MeshPhysicalMaterial).color)
-  }, [look, edge])
+    // The same body as the room's other panels.
+    parseCss(look.day ? '#f6f1ea' : '#26244a', (edge[1] as THREE.MeshStandardMaterial).color)
+  }, [look.day, edge])
 
   const group = useRef<THREE.Group>(null)
   const anim = useRef({ t: 0 })
@@ -120,7 +122,7 @@ export function FocusPanel3D() {
 
   return (
     <group ref={group} visible={false}>
-      <mesh geometry={geometry} material={edge} />
+      <mesh geometry={geometry} material={edge} castShadow />
     </group>
   )
 }

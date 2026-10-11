@@ -21,7 +21,8 @@ export function OptionPills3D() {
   const stage = useStage()
   const focused = useFocused()
   const { options } = useOptions(useContextKey())
-  const shown = options.slice(0, stage.portrait ? 4 : 8)
+  // Phones: two rows at most (the chat and menu buttons share the first).
+  const shown = options.slice(0, stage.portrait ? 3 : 8)
   const [list, done] = usePresence(shown, (o) => o.id)
 
   // Rows of chips, each centred; a chip on its way out keeps the spot it had.
@@ -50,7 +51,7 @@ export function OptionPills3D() {
   })
 
   return (
-    <group position={[0, stage.chips.y, stage.chips.z]} rotation-x={-0.12}>
+    <group position={stage.chips.position} rotation={stage.chips.rotation} scale={stage.chips.scale}>
       <Anchor name="rail-end" position={[firstEnd + 0.01, 0, 0]} />
       {list.map((p) => (
         <Chip
@@ -81,10 +82,8 @@ function Chip(p: { option: Option; spot: [number, number]; index: number; presen
       paint={(ctx, cw, ch) => {
         ctx.beginPath()
         ctx.roundRect(1, 1, cw - 2, ch - 2, px(0.022))
-        ctx.fillStyle = look.glass
-        ctx.fill()
         ctx.lineWidth = 2
-        ctx.strokeStyle = look.day ? 'rgba(255,255,255,0.95)' : look.line
+        ctx.strokeStyle = look.line
         ctx.stroke()
         ctx.font = font(500, SIZE)
         ctx.fillStyle = look.strong
