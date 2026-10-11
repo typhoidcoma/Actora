@@ -22,6 +22,7 @@ declare module '@react-three/fiber' {
 extend(THREE as never)
 
 const target = new THREE.Vector3(0, 1.2, 0)
+const still = new THREE.Vector2(0, 0)
 
 /**
  * Frames the 2D stage at any aspect (wide screens fit its height, narrow ones its
@@ -32,8 +33,10 @@ const target = new THREE.Vector3(0, 1.2, 0)
 function Rig() {
   const { frame, camera: fixed } = useStage()
   const focused = useFocused()
-  useFrame(({ camera, size, pointer }, dt) => {
+  useFrame(({ camera, size, pointer: p }, dt) => {
     const aspect = size.width / size.height
+    // Phones hold the camera still: on touch, parallax only shifts the stack off the sides.
+    const pointer = aspect < 0.8 ? still : p
     if (focused) {
       const f = focusLayout(aspect)
       target.x = damp(target.x, f.target[0], 3.2, dt)
@@ -88,7 +91,10 @@ export function World() {
       <Canvas
         shadows
         // A tap on the scene itself (not a card or the panel) puts the open thing away.
-        onPointerMissed={() => ui.closeAll()}
+        onPointerMissed={(e) => {
+          // Only a tap on the scene itself (not on a panel or control laid over it).
+          if ((e.target as HTMLElement | null)?.tagName === 'CANVAS') ui.closeAll()
+        }}
         camera={{ position: [0, 1.2, 5], fov: FOV }}
         onCreated={({ camera, raycaster }) => {
           // The camera and the pointer see the UI layer; the AO depth pass doesn't (Post).

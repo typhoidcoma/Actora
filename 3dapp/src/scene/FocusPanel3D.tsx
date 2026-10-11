@@ -45,8 +45,9 @@ export function FocusPanel3D() {
     return { renderer, scene, el, obj }
   }, [])
   useEffect(() => {
-    const parent = (gl.domElement as HTMLCanvasElement).parentElement?.parentElement ?? document.body
-    parent.appendChild(css.renderer.domElement)
+    // On <body>, outside the canvas's event area: inside it, every click in the panel
+    // also reached the scene as a tap on empty space, which closed the panel.
+    document.body.appendChild(css.renderer.domElement)
     useFocusHost.setState({ el: css.el })
     return () => {
       css.renderer.domElement.remove()

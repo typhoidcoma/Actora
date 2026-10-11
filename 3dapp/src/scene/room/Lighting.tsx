@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three/webgpu'
 import { ringing } from '@actora/aelora/protocol'
 import { useAgent } from '@actora/stores/agent'
+import { useUi } from '@actora/stores/ui'
+import { useSky } from '@actora/weather/sky'
 import { useEntities } from '@actora/stores/entities'
 import { useScheme } from '@actora/stores/scheme'
 import { moodIntensity, orbColors } from '@actora/ui/palette'
@@ -18,6 +20,34 @@ const SUN = {
   dusk: { dir: new THREE.Vector3(-1, 0.3, 0.22).normalize(), color: new THREE.Color('#ffc38a'), intensity: 2.6 },
 }
 const SUN_TARGET = new THREE.Vector3(1, 0, -1.5)
+const NOON = new THREE.Color('#fff3e0')
+const LOW = new THREE.Color('#ffb067')
+
+/** Minutes past local midnight of "YYYY-MM-DDTHH:MM" (Open-Meteo's sunrise/sunset), or null. */
+const minuteOf = (iso?: string | null): number | null => {
+  const m = iso ? /T(d{2}):(d{2})/.exec(iso) : null
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null
+}
+
+/**
+ * Where the real sun is right now, for "follows the sun": its arc through the
+ * window wall from today's sunrise to sunset at the user's location (or 6:00 to
+ * 19:00 without a forecast). Low and gold at the ends of the day, high and white
+ * at noon, gone at night (the room is on its own lights then).
+ */
+function realSun(out: { dir: THREE.Vector3; color: THREE.Color; intensity: number }, now = new Date()) {
+  const sky = useSky.getState()
+  const rise = minuteOf(sky.sunrise) ?? 360
+  const set = minuteOf(sky.sunset) ?? 1140
+  const t = (now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60 - rise) / Math.max(60, set - rise)
+  const arc = Math.sin(Math.PI * Math.min(1, Math.max(0, t)))
+  // Morning from the front of the window wall, evening from its far end.
+  out.dir.set(-1, 0.12 + arc * 0.95, 0.65 - Math.min(1, Math.max(0, t)) * 1.2).normalize()
+  out.color.copy(LOW).lerp(NOON, Math.min(1, arc * 1.6))
+  // Fades in after sunrise and out before sunset (about 25 minutes of twilight each side).
+  const edge = Math.min(1, Math.max(0, Math.min(t, 1 - t) * ((set - rise) / 25)))
+  out.intensity = edge * (2.4 + arc * 1.0)
+}
 const WASH_X = [-1.6, 0.4, 2.4]
 /** Interior architectural light: warm white, about 3000 K. */
 const WARM = new THREE.Color('#ffd9ae')
@@ -112,11 +142,13 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
     return () => clearTimeout(t)
   }, [pmrem, scene])
 
+  const live = useMemo(() => ({ dir: new THREE.Vector3(), color: new THREE.Color(), intensity: 0 }), [])
   const first = useRef(true)
   useFrame(({ clock }, dt) => {
     const k = first.current ? 1 : 1 - Math.exp(-dt * 1.6)
     first.current = false
-    const s = look.day ? SUN.day : SUN.dusk
+    // Following the sun: the real one. A chosen Day or Dusk keeps its fixed look.
+    const s = useUi.getState().theme === 'auto' ? (realSun(live), live) : look.day ? SUN.day : SUN.dusk
 
     if (sun.current) {
       to.dir.copy(s.dir)

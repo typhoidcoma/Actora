@@ -69,3 +69,9 @@ body {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
+
+/* Typing has its own box here (the message box at home, the composer in the chat):
+   the 2D rail's "Type instead" keyboard button is redundant. */
+button[aria-label='Type instead'] {
+  display: none !important;
+}
