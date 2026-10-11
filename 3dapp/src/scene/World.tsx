@@ -1,20 +1,17 @@
 import { Canvas, extend, useFrame, type ThreeToJSXElements } from '@react-three/fiber'
 import * as THREE from 'three/webgpu'
-import { say } from '@actora/options/run'
 import { useFocused } from '../look/focus'
 import { FOV, focusLayout, useStage } from '../look/layout'
 import { damp } from '../look/motion'
 import { Character } from './Character'
-import { draftInput, useDraft } from './draft'
 import { Environment } from './Environment'
 import { AgentLine3D } from './panels/AgentLine3D'
-import { ChatInput3D } from './panels/ChatInput3D'
 import { Grid3D } from './panels/Grid3D'
-import { OptionPills3D } from './panels/OptionPills3D'
 import { FocusPanel3D } from './FocusPanel3D'
 import { ui } from '@actora/stores/ui'
 import { Overlay } from '../dom/Overlay'
 import { Post } from './Post'
+import { Anchor } from './Anchor'
 
 declare module '@react-three/fiber' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -68,6 +65,12 @@ function Rig() {
   return null
 }
 
+/** Where the 2D rail (the glass option pills, chat, keyboard, menu) is pinned in the room. */
+function RailAnchor() {
+  const { chips } = useStage()
+  return <Anchor name="rail" position={chips.position} align="top" />
+}
+
 /** She stands where the stage says. */
 function Her() {
   const { her } = useStage()
@@ -79,7 +82,6 @@ function Her() {
 }
 
 export function World() {
-  const { text } = useDraft()
   return (
     <>
       <Canvas
@@ -99,24 +101,10 @@ export function World() {
         <Her />
         <AgentLine3D />
         <Grid3D />
-        <OptionPills3D />
-        <ChatInput3D />
+        <RailAnchor />
         <FocusPanel3D />
       </Canvas>
       <Overlay />
-      <input
-        ref={draftInput}
-        className="draft"
-        aria-label="Message"
-        value={text}
-        onChange={(e) => useDraft.setState({ text: e.target.value })}
-        onFocus={() => useDraft.setState({ focused: true })}
-        onBlur={() => useDraft.setState({ focused: false })}
-        onKeyDown={(e) => {
-          if (e.key !== 'Enter' || !text.trim()) return
-          if (say(text.trim())) useDraft.setState({ text: '' })
-        }}
-      />
     </>
   )
 }

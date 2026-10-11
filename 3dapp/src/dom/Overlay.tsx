@@ -14,7 +14,8 @@ import { ChatSheet } from '@actora/ui/ChatSheet'
 import { DateSheet } from '@actora/ui/DateSheet'
 import { KeyboardSheet } from '@actora/ui/KeyboardSheet'
 import { MenuButton } from '@actora/ui/Menu'
-import { jelly } from '@actora/ui/motion'
+import { say } from '@actora/options/run'
+import { agentName } from '@actora/stores/agent'
 import { OptionRail } from '@actora/ui/OptionRail'
 import { PastChats } from '@actora/ui/PastChats'
 import { Toaster } from '@actora/ui/Toast'
@@ -25,6 +26,7 @@ import { TASKS_ACCENT, TasksDetail } from '@actora/ui/tiles/Tasks'
 import { useFocused } from '../look/focus'
 import { FOCUS_RADIUS, FOCUS_RAIL, useFocusHost } from '../look/focusHost'
 import { anchorRef } from '../scene/Anchor'
+import { useDraft } from '../scene/draft'
 
 const LISTS: Record<TileId, { label: string; accent: string; Detail: () => React.ReactNode }> = {
   tasks: { label: 'Tasks', accent: TASKS_ACCENT, Detail: TasksDetail },
@@ -73,7 +75,9 @@ function useHostMetrics(w: number, h: number, portrait: boolean) {
 export function Overlay() {
   const focused = useFocused()
   const host = useFocusHost()
-  useHostMetrics(host.w, host.h, window.innerWidth / window.innerHeight < 0.8)
+  const phone = window.innerWidth / window.innerHeight < 0.8
+  const key = useContextKey()
+  useHostMetrics(host.w, host.h, phone)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && ui.closeAll()
@@ -84,31 +88,16 @@ export function Overlay() {
   return (
     <MotionConfig reducedMotion="user">
       <LayoutGroup>
-        {/* Home: chat and menu at the end of the chip row (positioned by the scene's Anchor). */}
+        {/* Home: the 2D rail (glass option pills, chat, keyboard, menu), pinned in the room by the scene's Anchor. */}
         <motion.div
-          ref={anchorRef('rail-end')}
-          className="fixed top-0 left-0 z-30 flex items-center gap-1.5"
+          ref={anchorRef('rail')}
+          className="fixed top-0 left-0 z-30 flex flex-col items-stretch gap-2.5"
+          style={{ width: railWidth(), pointerEvents: focused ? 'none' : 'auto' }}
           animate={{ opacity: focused ? 0 : 1 }}
           transition={{ delay: focused ? 0 : 0.5, duration: 0.25 }}
-          style={{ pointerEvents: focused ? 'none' : 'auto' }}
         >
-          <motion.button
-            whileTap={jelly}
-            onClick={ui.openChat}
-            aria-label="Open the conversation"
-            className="glass-pill grid h-10 w-10 place-items-center rounded-[8px] text-muted"
-          >
-            <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden>
-              <path
-                d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v6a2.5 2.5 0 0 1-2.5 2.5H11l-4 3.5V15h0a2 2 0 0 1-2-2z"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinejoin="round"
-                fill="none"
-              />
-            </svg>
-          </motion.button>
-          <MenuButton onSignOut={onSignOut} />
+          <OptionRail contextKey={key} trailing={<MenuButton onSignOut={onSignOut} />} />
+          {!phone && <MessageBox />}
         </motion.div>
         {host.el && createPortal(<FocusContent focused={focused} />, host.el)}
       </LayoutGroup>
@@ -157,5 +146,29 @@ function ListPanel({ id }: { id: TileId }) {
     <Panel layoutId={`list-${id}`} accent={accent} title={label} onClose={() => ui.focus(null)}>
       <Detail />
     </Panel>
+  )
+}
+
+/** The home rail's width: the 2D rail's, or the phone's width less its margins. */
+function railWidth(): number {
+  const vw = window.innerWidth
+  return vw / window.innerHeight < 0.8 ? vw - 24 : Math.min(vw - 48, 980)
+}
+
+/** The message box under the rail (wide screens): the 2D glass, Enter sends. */
+function MessageBox() {
+  const text = useDraft((s) => s.text)
+  return (
+    <input
+      value={text}
+      onChange={(e) => useDraft.setState({ text: e.target.value })}
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter' || !text.trim()) return
+        if (say(text.trim())) useDraft.setState({ text: '' })
+      }}
+      placeholder={`Say something to ${agentName()}`}
+      aria-label="Message"
+      className="glass-pill mx-auto h-11 w-full max-w-[640px] rounded-full px-5 text-[15px] text-strong outline-none placeholder:text-muted"
+    />
   )
 }

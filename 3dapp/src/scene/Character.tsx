@@ -41,8 +41,12 @@ function fit(root: THREE.Object3D): void {
   box.setFromObject(root)
   const center = box.getCenter(new THREE.Vector3())
   root.position.set(-center.x, -box.min.y, -center.z)
+  const plain = character.tint ? new THREE.MeshStandardMaterial({ color: character.tint, roughness: 0.6, metalness: 0 }) : null
   root.traverse((o) => {
-    if ((o as THREE.Mesh).isMesh) o.castShadow = true
+    const mesh = o as THREE.Mesh
+    if (!mesh.isMesh) return
+    mesh.castShadow = true
+    if (plain) mesh.material = plain
   })
 }
 

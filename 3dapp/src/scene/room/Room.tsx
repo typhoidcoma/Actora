@@ -79,13 +79,7 @@ export function Room({ mat }: { mat: RoomMaterials }) {
         const h = platform.height * ((i + 1) / 3)
         const z0 = platform.z + (2 - i) * 0.32
         return (
-          <group key={i}>
-            <Box at={[stepX, h / 2, z0 + 0.16]} size={[stepW - (2 - i) * 0.04, h, 0.32]} m={mat.step} />
-            {/* LED under each nosing, in the scheme's accent */}
-            <mesh position={[stepX, h - 0.03, z0 + 0.325]} material={mat.accent.material}>
-              <boxGeometry args={[stepW - 0.3, 0.012, 0.01]} />
-            </mesh>
-          </group>
+          <Box key={i} at={[stepX, h / 2, z0 + 0.16]} size={[stepW - (2 - i) * 0.04, h, 0.32]} m={mat.step} />
         )
       })}
 

@@ -66,10 +66,12 @@ export function stageFor(aspect: number): Stage {
         return { position: [right ? 1.66 : -1.66, rows[bottom ? 1 : 0], 0], rotation: [0, right ? -0.1 : 0.1, 0], scale: 1, right, bottom }
       },
       line: { position: [0, 2.56, 0.05], rotation: [0, 0, 0], scale: 1, w: 3.8, size: 0.085 },
-      chips: { position: [0, 0.08, 0.55], rotation: [-0.12, 0, 0], scale: 1, w: 3.8 },
+      // The top of the 2D rail (and the message box under it) is pinned here.
+      chips: { position: [0, 0.1, 0.55], rotation: [-0.12, 0, 0], scale: 1, w: 3.8 },
       input: { position: [0, -0.08, 0.8], rotation: [-0.14, 0, 0], scale: 1, w: 2.2 },
       her: [0, 0, 0],
-      frame: { w: 5.1, h: 3.1, center: [0, 1.18, 0] },
+      // Room under the cards for the 2D rail (up to two rows) and the message box.
+      frame: { w: 5.1, h: 3.5, center: [0, 1.0, 0] },
     }
   }
 
@@ -93,9 +95,10 @@ export function stageFor(aspect: number): Stage {
   const s = (0.92 * viewW) / w
   const cardH = (h * s) / viewH
   const gap = 0.012
-  // Bands, top to bottom: her (to ~0.3), her line, four cards, two rows of chips, the input.
-  const chipsAt = 0.885
-  const first = chipsAt - 0.02 - 4 * (cardH + gap)
+  // Bands, top to bottom: her (to ~0.3), her line, four cards, then the 2D rail
+  // (its 2×2 grid; on phones typing lives in its menu, as in 2D).
+  const chipsAt = 0.872
+  const first = chipsAt - 0.012 - 4 * (cardH + gap)
   return {
     portrait: true,
     card: { w, h, radius: RADIUS },

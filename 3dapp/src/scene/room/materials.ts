@@ -1,28 +1,17 @@
 import * as THREE from 'three/webgpu'
-import { color, float, mix, mx_noise_float, positionWorld, uniform, vec3 } from 'three/tsl'
+import { uniform } from 'three/tsl'
 
-/**
- * Board-formed concrete without textures: a warm base broken up by two scales
- * of noise (large clouding and a fine grain) in tint and roughness.
- */
-function concrete(base: string, roughness: number, scale = 1): THREE.MeshStandardNodeMaterial {
-  const m = new THREE.MeshStandardNodeMaterial()
-  const p = positionWorld.mul(scale)
-  const cloud = mx_noise_float(p.mul(0.35)).mul(0.5).add(0.5)
-  const grain = mx_noise_float(p.mul(9)).mul(0.5).add(0.5)
-  const shade = cloud.mul(0.12).add(grain.mul(0.05)).add(0.88)
-  m.colorNode = color(base).mul(shade)
-  m.roughnessNode = float(roughness).add(cloud.sub(0.5).mul(0.12)).add(grain.sub(0.5).mul(0.06))
-  m.metalness = 0
-  return m
-}
+/** The room is one plain 90% white for now (no textures); the light does the work. */
+export const ROOM_WHITE = '#e6e6e6'
+
+const plain = (roughness: number) => new THREE.MeshStandardMaterial({ color: ROOM_WHITE, roughness, metalness: 0 })
 
 export interface RoomMaterials {
-  wall: THREE.MeshStandardNodeMaterial
-  floor: THREE.MeshStandardNodeMaterial
-  column: THREE.MeshStandardNodeMaterial
-  step: THREE.MeshStandardNodeMaterial
-  wood: THREE.MeshStandardNodeMaterial
+  wall: THREE.MeshStandardMaterial
+  floor: THREE.MeshStandardMaterial
+  column: THREE.MeshStandardMaterial
+  step: THREE.MeshStandardMaterial
+  wood: THREE.MeshStandardMaterial
   metal: THREE.MeshStandardMaterial
   /** Light strips: colour × strength, brighter than white so the bloom carries them. */
   cove: Strip
@@ -44,23 +33,15 @@ function strip(): Strip {
 }
 
 export function roomMaterials(): RoomMaterials {
-  const floor = concrete('#cbb9a2', 0.24, 0.7)
-  // A polished pour: a faint darker mottle, kept glossy.
-  floor.colorNode = mix(color('#b8a690'), color('#d3c2ab'), mx_noise_float(positionWorld.mul(0.22)).mul(0.5).add(0.5))
   return {
-    wall: concrete('#d8c8b2', 0.86),
-    floor,
-    column: concrete('#d2c3ae', 0.8, 1.3),
-    step: concrete('#d0bfa8', 0.62),
-    wood: (() => {
-      const m = new THREE.MeshStandardNodeMaterial()
-      const p = positionWorld
-      // Vertical grain: stretched noise along y.
-      const grain = mx_noise_float(vec3(p.x.mul(18), p.y.mul(0.6), p.z.mul(18))).mul(0.5).add(0.5)
-      m.colorNode = mix(color('#4a2a18'), color('#7a4a2c'), grain)
-      m.roughness = 0.55
-      return m
-    })(),
+    wall: plain(0.9),
+    // Same white, polished: it still reflects the windows and the cove.
+    floor: plain(0.28),
+    column: plain(0.85),
+    step: plain(0.7),
+    // Doors are wall-white too for now.
+    wood: plain(0.6),
+    // The window mullions and the railing stay dark so the window wall still reads.
     metal: new THREE.MeshStandardMaterial({ color: '#2a2724', roughness: 0.45, metalness: 0.6 }),
     cove: strip(),
     accent: strip(),

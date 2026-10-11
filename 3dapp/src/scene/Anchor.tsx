@@ -15,7 +15,16 @@ export const anchorRef = (name: string) => (el: HTMLElement | null) => {
  * the screen and the element is moved there (its left edge, vertically centred).
  * For the few 2D controls that stay DOM (the menu and its popover).
  */
-export function Anchor({ name, position }: { name: string; position: [number, number, number] }) {
+export function Anchor({
+  name,
+  position,
+  align = 'left',
+}: {
+  name: string
+  position: [number, number, number]
+  /** Which point of the element sits on the anchor: its left edge (vertically centred), or its top centre. */
+  align?: 'left' | 'top'
+}) {
   const ref = useRef<THREE.Group>(null)
   const v = useMemo(() => new THREE.Vector3(), [])
   useFrame(({ camera, size }) => {
@@ -24,7 +33,8 @@ export function Anchor({ name, position }: { name: string; position: [number, nu
     ref.current.getWorldPosition(v).project(camera)
     const x = ((v.x + 1) / 2) * size.width
     const y = ((1 - v.y) / 2) * size.height
-    el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translateY(-50%)`
+    const shift = align === 'top' ? 'translateX(-50%)' : 'translateY(-50%)'
+    el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) ${shift}`
   })
   return <group ref={ref} position={position} />
 }

@@ -89,23 +89,21 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
   }, [scene, fog, look.bg])
 
   // Reflections: capture the room into an environment map once the look settles.
+  // Keyed on a stable string (look.sky is a fresh array every render: keying on it
+  // re-captured constantly), and the old map is only released after the new one
+  // is in place, so there's never a frame without reflections (the flicker).
+  const envKey = `${look.day}|${look.skyKind}|${look.sky.join(',')}`
+  const pmrem = useMemo(() => new THREE.PMREMGenerator(renderer), [renderer])
+  useEffect(() => () => pmrem.dispose(), [pmrem])
   useEffect(() => {
-    let cancelled = false
-    const pmrem = new THREE.PMREMGenerator(renderer)
-    let env: THREE.Texture | null = null
     const t = setTimeout(() => {
-      if (cancelled) return
-      env = pmrem.fromScene(scene, 0.035, 0.1, 60, { position: new THREE.Vector3(0, 1.6, 2.5) }).texture
-      scene.environment = env
+      const prev = scene.environment
+      scene.environment = pmrem.fromScene(scene, 0.035, 0.1, 60, { position: new THREE.Vector3(0, 1.6, 2.5) }).texture
       scene.environmentIntensity = 0.75
+      prev?.dispose()
     }, 1600)
-    return () => {
-      cancelled = true
-      clearTimeout(t)
-      env?.dispose()
-      pmrem.dispose()
-    }
-  }, [renderer, scene, look.day, look.skyKind, look.sky])
+    return () => clearTimeout(t)
+  }, [pmrem, scene, envKey])
 
   const first = useRef(true)
   useFrame(({ clock }, dt) => {

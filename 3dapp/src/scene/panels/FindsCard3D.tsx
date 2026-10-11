@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useFinds } from '@actora/finds/finds'
+import { useFinds, type Find } from '@actora/finds/finds'
 import { ui } from '@actora/stores/ui'
 import { useStage } from '../../look/layout'
 import { drawLines, font, px, wrap } from '../../look/paint'
@@ -9,21 +9,44 @@ import { Pane } from './Pane'
 const ROTATE_MS = 7000
 const PAD = 0.075
 
-/** A find's image, if its host allows it on a canvas (CORS); otherwise the card goes without. */
-function useImage(url: string | null): HTMLImageElement | null {
-  const [img, setImg] = useState<HTMLImageElement | null>(null)
+/**
+ * Each photo is tried once per session. It can only go on the card (a WebGPU
+ * texture) if its host allows CORS; one that doesn't is remembered as missing,
+ * so the 7 s rotation never asks for it again (each refusal is a console error).
+ */
+const photos = new Map<string, Promise<HTMLImageElement | null>>()
+function loadPhoto(url: string): Promise<HTMLImageElement | null> {
+  let p = photos.get(url)
+  if (!p) {
+    p = new Promise((resolve) => {
+      const el = new Image()
+      el.crossOrigin = 'anonymous'
+      el.onload = () => resolve(el)
+      el.onerror = () => resolve(null)
+      el.src = url
+    })
+    photos.set(url, p)
+  }
+  return p
+}
+
+/**
+ * The find on the card, with its photo: the card keeps showing the current find
+ * until the next one's photo is ready (or known missing), then swaps text and
+ * photo together, so a rotation never paints a frame without its picture.
+ */
+function useShown(find: Find | null): { find: Find | null; img: HTMLImageElement | null } {
+  const [shown, setShown] = useState<{ find: Find | null; img: HTMLImageElement | null }>({ find: null, img: null })
   useEffect(() => {
-    setImg(null)
-    if (!url) return
-    const el = new Image()
-    el.crossOrigin = 'anonymous'
-    el.onload = () => setImg(el)
-    el.src = url
+    let live = true
+    if (!find) setShown({ find: null, img: null })
+    else if (!find.image) setShown({ find, img: null })
+    else void loadPhoto(find.image).then((img) => live && setShown({ find, img }))
     return () => {
-      el.onload = null
+      live = false
     }
-  }, [url])
-  return img
+  }, [find])
+  return shown
 }
 
 /** The fourth card: the agent's fun finds, rotating, dark like its photo. Tap to open them all. */
@@ -36,8 +59,7 @@ export function FindsCard3D({ corner, present }: { corner: number; present: bool
     const t = setInterval(() => setIndex((i) => (i + 1) % items.length), ROTATE_MS)
     return () => clearInterval(t)
   }, [items.length])
-  const f = items.length ? items[index % items.length] : null
-  const img = useImage(f?.image ?? null)
+  const { find: f, img } = useShown(items.length ? items[index % items.length] : null)
   const stage = useStage()
   const pose = stage.pose(corner)
   const { right } = pose
@@ -103,7 +125,7 @@ export function FindsCard3D({ corner, present }: { corner: number; present: bool
     ctx.fillText(f.tag || f.source, x, y)
     ctx.fillStyle = 'rgba(251,249,244,0.7)'
     ctx.textAlign = right ? 'left' : 'right'
-    ctx.fillText(`${(index % items.length) + 1} / ${items.length}`, right ? pad : w - pad, y)
+    ctx.fillText(`${Math.max(0, items.indexOf(f)) + 1} / ${items.length}`, right ? pad : w - pad, y)
     y += px(0.055)
     y = drawLines(ctx, title, x, y, px(0.066) * 1.08, font(700, 0.066), white, align, `${-px(0.002)}px`)
     drawLines(ctx, blurb, x, y + px(0.008), px(0.042) * 1.35, font(500, 0.042), 'rgba(251,249,244,0.85)', align)
@@ -118,7 +140,7 @@ export function FindsCard3D({ corner, present }: { corner: number; present: bool
       rotation={pose.rotation}
       size={pose.scale}
       paint={paint}
-      deps={[f?.id, img, items.length, status, index, corner, look.day, stage]}
+      deps={[f?.id, img, items.length, status, corner, look.day, stage]}
       delay={0.21}
       present={present}
       onPress={() => ui.openFinds()}
