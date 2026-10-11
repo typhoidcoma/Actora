@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { ringing } from '@actora/aelora/protocol'
 import { useAgent } from '@actora/stores/agent'
@@ -12,6 +12,10 @@ import { useLook } from '../../look/theme'
 import { Pane } from './Pane'
 
 const LH = 1.3
+/** How long her caption lingers once nothing new is arriving (as the 2D line). */
+const FADE_AFTER_MS = 10_000
+/** Captions that have already faded this session. */
+const fadedAway = new Set<string>()
 
 /** Her first sentence, as the 2D line carries it (the full answer lives in the chat). */
 function firstSentence(text: string): string {
@@ -37,6 +41,7 @@ export function AgentLine3D() {
       step: s.steps[s.steps.length - 1],
       last: s.messages.findLast((m) => m.role === 'assistant')?.text ?? null,
       greeting: s.greeting.text,
+      checkin: !!s.greeting.checkin,
       busy: s.awaitingTurn || s.turnId !== null,
     })),
   )
@@ -60,9 +65,25 @@ export function AgentLine3D() {
     else text = firstSentence(plainText(a.last ?? ''))
   } else text = a.greeting
 
+  // Once her words have sat still for a while, the caption fades off (the 2D rule);
+  // anything new brings it straight back. What needs the user (a reminder, a dead
+  // connection, a check-in waiting for its answer) and live words stay. A caption
+  // that has faded stays gone this session, even when it comes round again.
+  const holds = !!a.streaming || a.fatal || a.line === 'notice' || (a.line === 'greeting' && a.checkin)
+  const signature = `${a.line}|${text}`
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    if (holds || !text.trim() || fadedAway.has(signature)) return
+    const t = setTimeout(() => {
+      fadedAway.add(signature)
+      setTick((n) => n + 1)
+    }, FADE_AFTER_MS)
+    return () => clearTimeout(t)
+  }, [signature, holds, text])
+
   // Keep the last words while the line eases out.
   const shown = useRef({ text, color })
-  const present = !!text.trim()
+  const present = !!text.trim() && (holds || !fadedAway.has(signature))
   if (present) shown.current = { text, color }
 
   // 600: the 2D line is 500, but type drawn large and scaled down into the scene thins out.
