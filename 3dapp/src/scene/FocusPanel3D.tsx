@@ -48,8 +48,25 @@ export function FocusPanel3D() {
     // On <body>, outside the canvas's event area: inside it, every click in the panel
     // also reached the scene as a tap on empty space, which closed the panel.
     document.body.appendChild(css.renderer.domElement)
+    // Browsers don't route wheel scrolling into CSS-3D-transformed content (the
+    // compositor misses it), so the panel scrolls its own lists: the nearest
+    // scrollable element under the pointer that can still move that way.
+    const onWheel = (e: WheelEvent) => {
+      const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY
+      for (let el = e.target as HTMLElement | null; el && el !== css.el.parentElement; el = el.parentElement) {
+        const oy = getComputedStyle(el).overflowY
+        if (!/(auto|scroll)/.test(oy) || el.scrollHeight <= el.clientHeight + 1) continue
+        const max = el.scrollHeight - el.clientHeight
+        if ((dy < 0 && el.scrollTop <= 0) || (dy > 0 && el.scrollTop >= max - 1)) continue
+        el.scrollTop = Math.max(0, Math.min(max, el.scrollTop + dy))
+        e.preventDefault()
+        return
+      }
+    }
+    css.el.addEventListener('wheel', onWheel, { passive: false })
     useFocusHost.setState({ el: css.el })
     return () => {
+      css.el.removeEventListener('wheel', onWheel)
       css.renderer.domElement.remove()
       useFocusHost.setState({ el: null })
     }
