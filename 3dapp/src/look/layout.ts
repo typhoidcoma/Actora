@@ -155,12 +155,14 @@ export interface FocusLayout {
  */
 export function focusLayout(aspect: number): FocusLayout {
   const portrait = aspect < 0.8
+  // She's the star: wide, the camera is in close (half the distance it was), her
+  // head and shoulders beside the panel, for a more intimate conversation.
   // Phones keep to her head and shoulders above the panel.
-  const viewH = portrait ? 1.3 : 1.42
+  const viewH = portrait ? 1.3 : 0.74
   const viewW = viewH * aspect
   const dist = viewH / 2 / T
   const her = portrait ? PORTRAIT.her : ([0, 0, 0] as Vec3)
-  const target: Vec3 = portrait ? [her[0], her[1] + 1.2, her[2]] : [0.26 * viewW, 1.47, 0]
+  const target: Vec3 = portrait ? [her[0], her[1] + 1.2, her[2]] : [0.26 * viewW, 1.5, 0]
   const rect = portrait ? { x0: 0.03, y0: 0.32, x1: 0.97, y1: 0.985 } : { x0: 0.45, y0: 0.06, x1: 0.95, y1: 0.94 }
   const cx = (rect.x0 + rect.x1) / 2
   const cy = (rect.y0 + rect.y1) / 2

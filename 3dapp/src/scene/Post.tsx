@@ -24,7 +24,7 @@ export function Post() {
   // `amount` blends it in: at home the frame is the sharp one (the DOF pass composites
   // at reduced resolution, which softened the cards' type even at zero bokeh).
   const lens = useMemo(() => ({ focus: uniform(3), range: uniform(0.9), bokeh: uniform(3), amount: uniform(0) }), [])
-  const her = useMemo(() => new THREE.Vector3(0, 1.3, 0), [])
+  const her = useMemo(() => new THREE.Vector3(0, 1.5, 0), [])
 
   const pipeline = useMemo(() => {
     gl.toneMapping = THREE.NeutralToneMapping
