@@ -5,6 +5,7 @@ import { useAgent } from '@actora/stores/agent'
 import { useEntities } from '@actora/stores/entities'
 import { useNow } from '@actora/ui/tiles/data'
 import { plainText } from '@actora/ui/markdownText'
+import { useFocused } from '../../look/focus'
 import { useStage } from '../../look/layout'
 import { drawLines, font, px, wrap } from '../../look/paint'
 import { useLook } from '../../look/theme'
@@ -22,6 +23,7 @@ function firstSentence(text: string): string {
 export function AgentLine3D() {
   const look = useLook()
   const stage = useStage()
+  const focused = useFocused()
   const SIZE = stage.line.size
   const a = useAgent(
     useShallow((s) => ({
@@ -75,7 +77,7 @@ export function AgentLine3D() {
       position={[0, stage.line.y - height / 2 + SIZE * LH * 0.5, 0.05]}
       paint={(ctx, w) => drawLines(ctx, lines, w / 2, px(0.02), px(SIZE * LH), f, shown.current.color, 'center', spacing)}
       deps={[lines.join('\n'), shown.current.color]}
-      present={present}
+      present={present && !focused}
     />
   )
 }

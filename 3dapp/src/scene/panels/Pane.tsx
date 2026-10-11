@@ -31,6 +31,8 @@ export interface PaneProps {
   delay?: number
   /** uv in canvas space (0,0 top-left). */
   onPress?: (uv: { x: number; y: number }) => void
+  /** Where it enters from, relative to its spot (default: just below it). */
+  from?: [number, number, number]
 }
 
 function roundedRect(w: number, h: number, r: number): THREE.ShapeGeometry {
@@ -84,7 +86,7 @@ function haloTexture(w: number, h: number, r: number): THREE.CanvasTexture {
  * a soft shadow (or an alarm halo), and the 2D motion: scale in with a little
  * overshoot, ease out, glide to a new spot, lift on hover.
  */
-export function Pane({ width, height, radius = 0.06, position, rotation, paint, deps, bare, ring, present = true, onGone, delay = 0, onPress }: PaneProps) {
+export function Pane({ width, height, radius = 0.06, position, rotation, paint, deps, bare, ring, present = true, onGone, delay = 0, onPress, from }: PaneProps) {
   const look = useLook()
   const fonts = useFonts((s) => s.ready)
   const pw = Math.round(width * PPU)
@@ -162,13 +164,13 @@ export function Pane({ width, height, radius = 0.06, position, rotation, paint, 
   const shadowColor = useMemo(() => parseCss(look.day ? '#1a1936' : '#000000').color.clone(), [look.day])
 
   const group = useRef<THREE.Group>(null)
-  const anim = useRef({ t: 0, wait: delay, hover: 0, placed: false })
+  const anim = useRef({ t: 0, wait: delay, hover: 0, placed: false, gone: false })
   useFrame(({ clock }, dt) => {
     const g = group.current
     if (!g) return
     const a = anim.current
     if (!a.placed) {
-      g.position.set(...position)
+      g.position.set(position[0] + (from?.[0] ?? 0), position[1] + (from?.[1] ?? 0), position[2] + (from?.[2] ?? 0))
       a.placed = true
     }
     if (present && a.wait > 0) {
@@ -179,9 +181,11 @@ export function Pane({ width, height, radius = 0.06, position, rotation, paint, 
     a.t = Math.min(1, Math.max(0, a.t + (present ? dt / 0.55 : -dt / 0.3)))
     if (!present && a.t === 0) {
       g.visible = false
-      onGone?.()
+      if (!a.gone) onGone?.()
+      a.gone = true
       return
     }
+    a.gone = false
     g.visible = true
     a.hover = damp(a.hover, hover ? 1 : 0, 14, dt)
     const s = (present ? 0.92 + 0.08 * backOut(a.t) : 0.94 + 0.06 * a.t) * (1 + a.hover * 0.012)

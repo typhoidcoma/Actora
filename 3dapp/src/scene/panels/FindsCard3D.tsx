@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useFinds } from '@actora/finds/finds'
+import { ui } from '@actora/stores/ui'
 import { useStage } from '../../look/layout'
 import { drawLines, font, px, wrap } from '../../look/paint'
 import { useLook } from '../../look/theme'
@@ -25,8 +26,8 @@ function useImage(url: string | null): HTMLImageElement | null {
   return img
 }
 
-/** The fourth card: the agent's fun finds, rotating, dark like its photo. Tap for the next one. */
-export function FindsCard3D({ corner }: { corner: number }) {
+/** The fourth card: the agent's fun finds, rotating, dark like its photo. Tap to open them all. */
+export function FindsCard3D({ corner, present }: { corner: number; present: boolean }) {
   const look = useLook()
   const { items, status } = useFinds()
   const [index, setIndex] = useState(0)
@@ -118,7 +119,8 @@ export function FindsCard3D({ corner }: { corner: number }) {
       paint={paint}
       deps={[f?.id, img, items.length, status, index, corner, look.day, stage]}
       delay={0.21}
-      onPress={() => items.length > 1 && setIndex((i) => (i + 1) % items.length)}
+      present={present}
+      onPress={() => ui.openFinds()}
     />
   )
 }

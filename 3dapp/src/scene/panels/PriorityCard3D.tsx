@@ -5,6 +5,7 @@ import { runOption } from '@actora/options/run'
 import { actOption } from '@actora/options/types'
 import type { RankedItem } from '@actora/stores/priority'
 import { useEntities } from '@actora/stores/entities'
+import { ui } from '@actora/stores/ui'
 import { useNow } from '@actora/ui/tiles/data'
 import { useStage } from '../../look/layout'
 import { drawLines, font, px, textWidth, withAlpha, wrap } from '../../look/paint'
@@ -57,6 +58,11 @@ export function PriorityCard3D(p: { item: RankedItem; corner: number; present: b
     ctx.beginPath()
     ctx.roundRect(0, 0, w, h, r)
     ctx.clip()
+    // Dusk glass reads dark (the 2D cards sit on deep indigo); here the sky behind is brighter.
+    if (!look.day) {
+      ctx.fillStyle = withAlpha(look.bg, 0.55)
+      ctx.fillRect(0, 0, w, h)
+    }
     ctx.fillStyle = look.glass
     ctx.fillRect(0, 0, w, h)
     // The kind's colour, washing in from the outer corner.
@@ -168,6 +174,7 @@ export function PriorityCard3D(p: { item: RankedItem; corner: number; present: b
       onPress={(uv) => {
         const hit = uv.x >= btnBox.x0 && uv.x <= btnBox.x1 && uv.y >= btnBox.y0 && uv.y <= btnBox.y1
         if (hit && button) runOption(actOption(button.label, button.act))
+        else ui.open({ kind: item.kind, id: item.id, occurrence: item.occurrence })
       }}
     />
   )

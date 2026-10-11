@@ -9,6 +9,7 @@ import { config } from '@actora/config'
 import { startAgentOptions } from '@actora/options/agentOptions'
 import { startRanking } from '@actora/priority/rank'
 import { useAgent } from '@actora/stores/agent'
+import { useThemeSync } from '@actora/ui/Theme'
 import { World } from './scene/World'
 
 type Auth =
@@ -98,6 +99,8 @@ function Connected({ sb, userId }: { sb: SupabaseClient; userId: string }) {
 
 /** The same background loops the 2D Stage runs, minus the ones that only drive DOM panels. */
 function Live() {
+  // data-theme on <html>: the 2D panels' CSS tokens follow day/dusk.
+  useThemeSync()
   useEffect(() => startAgentOptions(), [])
   useEffect(() => startRanking(), [])
   useEffect(() => startGreeting(), [])

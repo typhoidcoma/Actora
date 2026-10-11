@@ -1,4 +1,5 @@
 import { useAgent } from '@actora/stores/agent'
+import { useFocused } from '../../look/focus'
 import { CHIP_H, useStage } from '../../look/layout'
 import { font, px } from '../../look/paint'
 import { useLook } from '../../look/theme'
@@ -9,6 +10,7 @@ import { Pane } from './Pane'
 export function ChatInput3D() {
   const look = useLook()
   const stage = useStage()
+  const open = useFocused()
   const { text, focused } = useDraft()
   const name = useAgent((s) => s.botName)
   return (
@@ -43,6 +45,7 @@ export function ChatInput3D() {
       }}
       deps={[text, focused, name]}
       delay={0.4}
+      present={!open}
       onPress={focusDraft}
     />
   )

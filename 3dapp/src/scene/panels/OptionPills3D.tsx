@@ -2,19 +2,24 @@ import { useRef } from 'react'
 import { runOption } from '@actora/options/run'
 import type { Option } from '@actora/options/types'
 import { useContextKey, useOptions } from '@actora/options/useOptions'
+import { useFocused } from '../../look/focus'
 import { CHIP_H, useStage } from '../../look/layout'
 import { font, px, textWidth } from '../../look/paint'
 import { usePresence } from '../../look/motion'
+import { Anchor } from '../Anchor'
 import { useLook } from '../../look/theme'
 import { Pane } from './Pane'
 
 const GAP = 0.03
 const SIZE = 0.042
 const chipWidth = (label: string) => textWidth(label, font(500, SIZE)) / px(1) + 0.09
+/** Room kept at the end of the first row for the chat and menu buttons (DOM, see Overlay). */
+const BUTTONS = 0.3
 
 /** The OptionRail: compact glass chips under the grid, wrapping to a second row like 2D. */
 export function OptionPills3D() {
   const stage = useStage()
+  const focused = useFocused()
   const { options } = useOptions(useContextKey())
   const shown = options.slice(0, stage.portrait ? 4 : 8)
   const [list, done] = usePresence(shown, (o) => o.id)
@@ -25,32 +30,35 @@ export function OptionPills3D() {
   let used = 0
   for (const o of shown) {
     const w = chipWidth(o.label)
-    if (used + w > stage.chips.w && rows[rows.length - 1].length) {
+    if (used + w > stage.chips.w - (rows.length === 1 ? BUTTONS : 0) && rows[rows.length - 1].length) {
       rows.push([])
       used = 0
     }
     rows[rows.length - 1].push(o)
     used += w + GAP
   }
+  let firstEnd = 0
   rows.forEach((row, r) => {
-    const total = row.reduce((s, o) => s + chipWidth(o.label), 0) + GAP * (row.length - 1)
+    const total = row.reduce((s, o) => s + chipWidth(o.label), 0) + GAP * (row.length - 1) + (r === 0 ? BUTTONS : 0)
     let x = -total / 2
     for (const o of row) {
       const w = chipWidth(o.label)
       spots.current.set(o.id, [x + w / 2, -r * (CHIP_H + GAP)])
       x += w + GAP
     }
+    if (r === 0) firstEnd = row.length ? x : -total / 2
   })
 
   return (
     <group position={[0, stage.chips.y, stage.chips.z]} rotation-x={-0.12}>
+      <Anchor name="rail-end" position={[firstEnd + 0.01, 0, 0]} />
       {list.map((p) => (
         <Chip
           key={p.key}
           option={p.item}
           spot={spots.current.get(p.key) ?? [0, 0]}
           index={p.index}
-          present={p.present}
+          present={p.present && !focused}
           onGone={() => {
             spots.current.delete(p.key)
             done(p.key)

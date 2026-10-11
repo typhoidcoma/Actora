@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three/webgpu'
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js'
 import { orbSignals, useAgent } from '@actora/stores/agent'
+import { panelOpen, useUi } from '@actora/stores/ui'
+import { damp } from '../look/motion'
 import { AgentAnimator } from '../bridge/agentAnim'
 import { character } from '../character'
 
@@ -78,6 +80,10 @@ function Animated({ gltf }: { gltf: GLTF }) {
     // Each streamed token bumps orbSignals; the 2D orb decays it, so here we do.
     orbSignals.energy *= Math.exp(-dt * 3.2)
     animator.current?.update(dt, orbSignals.energy)
+    // With a panel open she turns a little toward it, presenting it.
+    const ui = useUi.getState()
+    const open = ui.chatOpen || panelOpen(ui)
+    gltf.scene.rotation.y = damp(gltf.scene.rotation.y, open ? 0.42 : 0, 3, dt)
   })
 
   return <primitive object={gltf.scene} />

@@ -62,3 +62,48 @@ export function useStage(): Stage {
   const portrait = aspect < 0.8
   return useMemo(() => stageFor(portrait ? 0.5 : 1.6), [portrait])
 }
+
+export const FOV = 38
+
+export interface FocusLayout {
+  portrait: boolean
+  /** The open panel's box, as fractions of the screen (0,0 top-left). */
+  rect: { x0: number; y0: number; x1: number; y1: number }
+  /** Where the camera looks, and from how far (straight down -z, no tilt). */
+  target: Vec3
+  dist: number
+  /** The visible size of the target plane at that distance. */
+  view: { w: number; h: number }
+  /** The panel as it stands in the world (on the target plane, beside her). */
+  panel: { position: Vec3; w: number; h: number }
+}
+
+/**
+ * Focus mode, where the 3D app departs from 2D: when she brings something up
+ * (chat, a card, a list, finds, the vault), the camera comes in to her, waist
+ * up on the left, and the thing fills a full panel on the right. On a narrow
+ * screen she stays at the top, head and shoulders, and the panel takes the rest.
+ */
+export function focusLayout(aspect: number): FocusLayout {
+  const t = Math.tan(((FOV / 2) * Math.PI) / 180)
+  const portrait = aspect < 0.8
+  const viewH = portrait ? 1.9 : 1.42
+  const viewW = viewH * aspect
+  const dist = viewH / 2 / t
+  const target: Vec3 = portrait ? [0, 1.0, 0] : [0.26 * viewW, 1.47, 0]
+  const rect = portrait ? { x0: 0.03, y0: 0.3, x1: 0.97, y1: 0.985 } : { x0: 0.45, y0: 0.05, x1: 0.975, y1: 0.95 }
+  const cx = (rect.x0 + rect.x1) / 2
+  const cy = (rect.y0 + rect.y1) / 2
+  return {
+    portrait,
+    rect,
+    target,
+    dist,
+    view: { w: viewW, h: viewH },
+    panel: {
+      position: [target[0] + (cx - 0.5) * viewW, target[1] - (cy - 0.5) * viewH, 0],
+      w: (rect.x1 - rect.x0) * viewW,
+      h: (rect.y1 - rect.y0) * viewH,
+    },
+  }
+}

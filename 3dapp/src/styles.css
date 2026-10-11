@@ -1,3 +1,7 @@
+/* The 2D app's stylesheet (Tailwind, tokens, glass): its panels, chat and menu render here as-is. */
+@import '../../src/styles/index.css';
+@source '../../src';
+
 /* Satoshi, from the 2D app's public/fonts (bundled from there, not copied). */
 @font-face {
   font-family: 'Satoshi';
@@ -7,16 +11,22 @@
   font-display: swap;
 }
 
-html,
-body,
-#root {
-  margin: 0;
-  height: 100%;
-  /* --t-bg comes from the shared scheme (initScheme writes it), so the first frame matches the sky. */
+/* The scene is the backdrop; the 2D gradient would only flash before the first frame. */
+body {
   background: var(--t-bg, #13122a);
-  color: var(--t-text, #e9e9f5);
-  font-family: Satoshi, system-ui, sans-serif;
-  overflow: hidden;
+}
+
+/*
+ * Focus mode: she stays in view beside the panel, so the 2D scrim (which dims
+ * everything behind the chat) goes clear; it still catches the tap that closes.
+ */
+.bg-scrim {
+  background: transparent !important;
+}
+/* No orb docks in the 3D panels' headers: give the title its room back. */
+[data-panel] > header,
+[role='dialog'] header {
+  padding-left: 28px !important;
 }
 
 /* Keyboard capture for the 3D chat panel: focusable, never seen. */
