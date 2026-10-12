@@ -4,8 +4,8 @@ import * as THREE from 'three/webgpu'
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js'
 import { orbSignals, useAgent } from '@actora/stores/agent'
 import { panelOpen, useUi } from '@actora/stores/ui'
-import { damp } from '../look/motion'
 import { AgentAnimator } from '../bridge/agentAnim'
+import { Wander } from '../bridge/wander'
 import { character } from '../character'
 
 type Loaded = { gltf: GLTF } | { missing: true } | null
@@ -19,13 +19,42 @@ function useCharacterModel(): Loaded {
     loader
       .loadAsync(character.url)
       .catch(() => loader.loadAsync(character.placeholderUrl))
-      .then((gltf) => live && setLoaded({ gltf }))
+      .then(async (gltf) => {
+        gltf.animations.push(...(await extraClips()))
+        if (live) setLoaded({ gltf })
+      })
       .catch(() => live && setLoaded({ missing: true }))
     return () => {
       live = false
     }
   }, [])
   return loaded
+}
+
+/**
+ * Extra animation clips (character.clips): GLB or FBX files, e.g. from Mixamo,
+ * each named after its file ("texting.fbx" → "texting"). Mixamo's skeleton
+ * binds by bone name; position tracks are dropped so a clip plays in place
+ * (and FBX centimetres can't fling her across the room). A file that fails is skipped.
+ */
+async function extraClips(): Promise<THREE.AnimationClip[]> {
+  const out: THREE.AnimationClip[] = []
+  for (const url of character.clips) {
+    try {
+      const name = url.split('/').pop()!.replace(/.[^.]+$/, '').toLowerCase()
+      const clips = /.fbx$/i.test(url)
+        ? (await new (await import('three/addons/loaders/FBXLoader.js')).FBXLoader().loadAsync(url)).animations
+        : (await new GLTFLoader().loadAsync(url)).animations
+      const clip = clips[0]
+      if (!clip) continue
+      clip.name = name
+      clip.tracks = clip.tracks.filter((t) => !t.name.endsWith('.position'))
+      out.push(clip)
+    } catch {
+      /* missing or unreadable: she does without it */
+    }
+  }
+  return out
 }
 
 /** Scales to character.height and stands the model on the floor at the origin. */
@@ -81,21 +110,50 @@ function Animated({ gltf }: { gltf: GLTF }) {
   }, [gltf])
 
   const here = useMemo(() => new THREE.Vector3(), [])
-  useFrame(({ camera }, dt) => {
+  const mover = useRef<THREE.Group>(null)
+  const wander = useMemo(() => new Wander(), [])
+  useFrame(({ camera, size }, dt) => {
+    const m = mover.current
+    const anim = animator.current
+    if (!m || !anim) return
     // Each streamed token bumps orbSignals; the 2D orb decays it, so here we do.
     orbSignals.energy *= Math.exp(-dt * 3.2)
-    animator.current?.update(dt, orbSignals.energy)
-    // She faces you: her body turns toward the camera wherever it is. With a panel
-    // open she turns a little toward it instead, presenting it.
+
+    // Busy at home (working on a turn, nothing streamed yet): she gets up and
+    // does something (wander.ts) instead of standing frozen; back to her spot after.
     const ui = useUi.getState()
     const open = ui.chatOpen || panelOpen(ui)
-    ;(gltf.scene.parent ?? gltf.scene).getWorldPosition(here)
+    const a = useAgent.getState()
+    // Phones frame her head and shoulders: wandering would only walk her out of shot.
+    const wide = size.width / size.height >= 0.8
+    const busy = wide && !open && (a.awaitingTurn || a.turnId !== null) && !a.streaming
+    const w = wander.update(dt, busy || devBusy(), m.position)
+    anim.setActivity(w.walking ? 'walk' : w.phone ? 'phone' : null)
+    anim.update(dt, orbSignals.energy)
+
+    // Facing: along her path while walking; otherwise toward you (or, with a panel
+    // open, a little toward it, presenting it). Looking around turns her off that.
+    m.getWorldPosition(here)
     const toYou = Math.atan2(camera.position.x - here.x, camera.position.z - here.z)
-    gltf.scene.rotation.y = damp(gltf.scene.rotation.y, open ? 0.42 : toYou, 3, dt)
+    const face = w.walking ? (w.heading ?? toYou) : open ? 0.42 : toYou + (w.heading ?? 0)
+    m.rotation.y = dampAngle(m.rotation.y, face, w.walking ? 7 : 3, dt)
   })
 
-  return <primitive object={gltf.scene} />
+  return (
+    <group ref={mover}>
+      <primitive object={gltf.scene} />
+    </group>
+  )
 }
+
+/** Eases an angle along the short way round. */
+function dampAngle(from: number, to: number, lambda: number, dt: number): number {
+  const d = Math.atan2(Math.sin(to - from), Math.cos(to - from))
+  return from + d * (1 - Math.exp(-lambda * Math.min(dt, 0.1)))
+}
+
+/** Dev: `__actora3d.busy = true` sends her wandering without a turn in flight. */
+const devBusy = () => import.meta.env.DEV && !!(window as unknown as { __actora3d?: { busy?: boolean } }).__actora3d?.busy
 
 /** No model on disk yet: a capsule that still breathes with her phase. */
 function StandIn() {

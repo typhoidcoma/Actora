@@ -37,6 +37,22 @@ Don't import from `../src/ui/**` beyond its pure helpers (`markdownText`, `forma
 - **The character** (`Character.tsx`, `bridge/agentAnim.ts`): agent phase to
   clip, `avatar.react` to additive emotes, and a head nod with the token stream.
   She turns to face you.
+- **While she's working** (`bridge/wander.ts`): after about 2 seconds of a turn
+  at home, she wanders the open floor beside her and checks her phone (a phone
+  clip if she has one, otherwise a procedural pose). She walks back to face you
+  when her answer starts. Wide screens only.
+
+### Extra clips (Mixamo)
+
+1. On mixamo.com, pick an animation (e.g. "Texting While Standing").
+2. Download it as FBX, "Without Skin", "In Place".
+3. Put it in `public/models/clips/`.
+4. List it in `character.clips` (`src/character.ts`).
+
+It's named after its file. `texting.fbx` becomes the "texting" clip, which the
+phone routine then uses instead of the procedural pose. Any other name can be
+mapped in `character.busy`. The Xbot stand-in and Mixamo characters share the
+skeleton, so clips bind as they are.
 
 ## Run
 
