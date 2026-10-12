@@ -306,6 +306,19 @@ describe('chat turn', () => {
     expect(sendChat(bus, 'two')).toBe(false)
   })
 
+  it('closes out the turn on turn_timeout, the same way, so they can retry', () => {
+    sendChat(bus, 'delete that draft')
+    frame({ type: 'chat.start', conversationId: cid })
+    frame({ type: 'token', conversationId: cid, delta: 'Working on' })
+    frame({ type: 'error', code: 'turn_timeout', conversationId: cid, message: 'turn timed out' })
+    const s = useAgent.getState()
+    expect(s.turnId).toBeNull()
+    expect(s.awaitingTurn).toBe(false)
+    expect(s.streaming).toBeNull()
+    expect(s.messages.at(-1)?.role).toBe('error')
+    expect(sendChat(bus, 'try again')).toBe(true)
+  })
+
   it('closes out the turn on llm_failed', () => {
     sendChat(bus, 'hi')
     frame({ type: 'chat.start', conversationId: cid })

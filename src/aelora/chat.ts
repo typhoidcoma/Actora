@@ -1,3 +1,4 @@
+import { CHAT_ERROR_CODES } from './protocol'
 import { orbSignals, useAgent, type ChatBubble } from '../stores/agent'
 import type { MoodState, ServerFrame, TranscriptMessage } from './protocol'
 import type { FrameBus } from './socket'
@@ -299,7 +300,7 @@ export function handleChatFrame(f: ServerFrame): boolean {
 
     case 'error': {
       const code = String(f.code ?? '')
-      if (code !== 'llm_failed' && code !== 'conversation_failed') return false
+      if (!CHAT_ERROR_CODES.has(code)) return false
       if (cid && !mine) return true
       if (!s.turnId && !s.awaitingTurn) return true
       // No thread named: it's ours only if we just sent a message and nothing has
@@ -311,7 +312,7 @@ export function handleChatFrame(f: ServerFrame): boolean {
         rememberMain(null)
         set({ conversationId: null })
       }
-      failTurn()
+      failTurn(code === 'turn_timeout' ? 'took too long on that' : undefined)
       return true
     }
 
@@ -404,13 +405,13 @@ export function greetingInContext(): string | null {
   return m[i].text
 }
 
-function failTurn(): void {
+function failTurn(why = "couldn't answer that"): void {
   clearTimeout(turnTimer)
   pendingMessage = null
   pendingBus = null
   const s = get()
   set({
-    messages: [...s.messages, { id: bubbleId(), role: 'error', text: `${s.botName} couldn't answer that. Try again.` }],
+    messages: [...s.messages, { id: bubbleId(), role: 'error', text: `${s.botName} ${why}. Try again.` }],
     streaming: null,
     turnId: null,
     awaitingTurn: false,

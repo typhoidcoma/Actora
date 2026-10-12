@@ -143,4 +143,5 @@ export function occurrenceKey(e: CalendarOccurrence): string {
 }
 
 /** Error codes that belong to a chat turn rather than a request/response pair. */
-export const CHAT_ERROR_CODES = new Set(['llm_failed', 'conversation_failed'])
+// turn_timeout: Aelora gave up on a turn that ran past its deadline (a stalled model or tool call).
+export const CHAT_ERROR_CODES = new Set(['llm_failed', 'conversation_failed', 'turn_timeout'])
