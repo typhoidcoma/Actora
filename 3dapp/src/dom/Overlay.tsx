@@ -368,8 +368,8 @@ function FocusCaption() {
           style={{
             left: phone ? '5%' : '3%',
             top: phone ? '3%' : '6%',
-            width: phone ? '90%' : '38%',
-            fontSize: phone ? 15 : 19,
+            width: phone ? '90%' : '40%',
+            fontSize: phone ? 17 : 'clamp(22px, 2.2vw, 32px)',
             color,
             textShadow: '0 1px 12px color-mix(in srgb, var(--t-bg) 70%, transparent)',
           }}
