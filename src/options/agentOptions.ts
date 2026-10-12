@@ -21,6 +21,8 @@ const MAX_LABEL = 20
 const MAX_SAY = 160
 const DEBOUNCE_MS = 350
 const CACHE_MS = 3 * 60_000
+/** A conversation counts as in progress for this long after its last message. */
+const RECENT_TALK_MS = 20 * 60_000
 
 /** Strict-but-forgiving parse: tolerates code fences and a bare array; drops anything malformed. */
 export function parseAgentOptions(text: string): Option[] {
@@ -231,7 +233,7 @@ Rules:
 - If ${name} just asked something (marked QUESTION below), every option is an answer to it, in the user's words: 2 to 4 of them, including a yes and a no style answer for a yes/no question. Nothing else: no other topics, no cards.
 - Otherwise suggest the most useful next things for what is on screen, using the user's real item titles.
 - On the home screen, the app already offers one button for the top priority card. Yours act on the other cards by name (for example "Prep for Standup" or "Start the report") or follow what they were just talking about.
-- Every option must connect to something real right now: an item on screen, what ${name} said, or what the user was just talking about. Their interests from memory only count when something specific and timely is known (a race on today, a launch this week), and then at most one option. Never a bare topic like "F1 highlights", "SpaceX update" or "Check stocks".
+- Every option must connect to something real right now: an item on screen, what ${name} said, or what the user was just talking about. Their interests from memory only count when no conversation is in progress and something specific and timely is known (a race on today, a launch this week), and then at most one option, last. Never a bare topic like "F1 highlights", "SpaceX update" or "Check stocks".
 - Labels start with a verb, so the user knows what tapping does: "Plan Three.js time", not "Three.js coding".
 - Order them by how likely the user is to tap them, most likely first. If ${name}'s last message asks something, the direct answers come first.
 - Make them distinct; never two options that do the same thing. Match a relaxed, adult, friendly tone.
@@ -255,6 +257,11 @@ function buildRequest(key: string, s: Snapshot, existing: Option[]): LlmRequest 
   const replyingTo = s.agent.line === 'reply' || key === 'chat' ? last?.text : onLine
   // A question in it: the options are its answers and nothing else.
   const asking = !!replyingTo && /\?/.test(replyingTo.slice(-240))
+  // Mid-conversation (they talked in the last while): the options follow it first,
+  // and memory is searched for that topic, not their general profile (whose
+  // interests otherwise surface as generic pills: "Check stocks", "SpaceX news").
+  const lastAt = Date.parse(s.agent.messages.findLast((m) => m.role !== 'error')?.at ?? '')
+  const talking = Number.isFinite(lastAt) && Date.now() - lastAt < RECENT_TALK_MS
 
   // What the user did with earlier options, so the next set moves on.
   const h = useOptionsStore.getState().history
@@ -265,9 +272,14 @@ function buildRequest(key: string, s: Snapshot, existing: Option[]): LlmRequest 
     .map(([label]) => label)
     .filter((label) => !tapped.some((t) => t.toLowerCase() === label))
 
+  const conversation = turns.length ? `\nRecent conversation:\n${turns.join('\n')}` : ''
   const prompt = [
+    // What they were just talking about leads when it's live; the screen comes second.
+    talking
+      ? `CONVERSATION IN PROGRESS. The first options continue it: the natural next things to say about this topic. Screen items come after.${conversation}\n`
+      : '',
     summary,
-    turns.length ? `\nRecent conversation:\n${turns.join('\n')}` : '',
+    talking ? '' : conversation,
     replyingTo
       ? asking
         ? `\nQUESTION. ${name} just asked the user this; write only answers to it:\n${replyingTo.slice(0, 600)}`
@@ -287,11 +299,14 @@ function buildRequest(key: string, s: Snapshot, existing: Option[]): LlmRequest 
     maxTokens: 300,
     // Recall facts about what's actually in play: the topic they're on, else what's on screen.
     context: {
-      profile: true,
-      memoryQuery: ((asking ? replyingTo : null) ?? lastUser ?? focusOf(key, s) ?? 'what matters to me today').slice(
-        0,
-        200,
-      ),
+      profile: !talking,
+      memoryQuery: (
+        (asking ? replyingTo : null) ??
+        (talking ? `${lastUser ?? ''} ${last?.text ?? ''}` : null) ??
+        lastUser ??
+        focusOf(key, s) ??
+        'what matters to me today'
+      ).slice(0, 200),
     },
   }
 }
