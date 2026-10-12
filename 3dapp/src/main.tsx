@@ -25,11 +25,14 @@ if (import.meta.env.DEV) {
     import('@actora/stores/agent'),
     import('@actora/stores/entities'),
     import('@actora/stores/ui'),
-  ]).then(([router, run, agent, entities, ui]) => {
+    import('@actora/stores/scheme'),
+  ]).then(([router, run, agent, entities, ui, scheme]) => {
     ;(window as unknown as { __actora: object }).__actora = {
       ui: router.runUiAction,
       chat: run.say,
       open: ui.ui,
+      // e.g. __actora.colors({ accent: '#7c3aed' }); __actora.colors(null) for the brand.
+      colors: (input: Parameters<typeof scheme.setColors>[0] | null) => (input ? scheme.setColors(input) : scheme.resetColors()),
       stores: { agent: agent.useAgent, entities: entities.useEntities, ui: ui.useUi },
     }
   })

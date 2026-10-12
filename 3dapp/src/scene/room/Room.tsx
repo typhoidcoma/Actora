@@ -62,6 +62,7 @@ export function Room({ mat }: { mat: RoomMaterials }) {
     <group>
       {/* Floor and ceiling */}
       <Box at={[cx, -0.05, cz]} size={[w, 0.1, depth]} m={mat.floor} />
+      <primitive object={mat.floorReflection.target} />
       <Box at={[cx, height + 0.05, cz]} size={[w, 0.1, depth]} m={mat.wall} receive={false} />
 
       {/* Back wall, its recessed upper block, and the right wall with a light slot */}

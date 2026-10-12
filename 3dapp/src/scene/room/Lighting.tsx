@@ -52,6 +52,29 @@ function realSun(out: { dir: THREE.Vector3; color: THREE.Color; intensity: numbe
 const WASH_X = [-1.6, 0.4, 2.4]
 /** Interior architectural light: warm white, about 3000 K. */
 const WARM = new THREE.Color('#ffd9ae')
+const SKY_FILL = new THREE.Color('#fff3e4')
+const GROUND_FILL = new THREE.Color('#cdbfae')
+
+/**
+ * A colour scheme the agent chose is the room's, as it is the 2D app's: its
+ * surface hue paints the room (still light, like the 2D backgrounds), its ambient
+ * colours (the 2D background blobs) are the washes on the back wall, and its
+ * accent tints the sun, the fill and the cove. The brand keeps the room's
+ * natural warm light and plain white.
+ */
+const THEMED = { sun: 0.42, sky: 0.4, ground: 0.25, wash: 0.75, cove: 0.55 }
+const PLAIN = new THREE.Color('#cccccc')
+const hsl = { h: 0, s: 0, l: 0 }
+/** A colour as light: its hue, bright and saturated enough to read, never neon. */
+function lightTint(css: string, out: THREE.Color): THREE.Color {
+  parseCss(css, out).color.getHSL(hsl, THREE.SRGBColorSpace)
+  return out.setHSL(hsl.h, Math.min(0.85, Math.max(0.45, hsl.s)), 0.68, THREE.SRGBColorSpace)
+}
+/** The room's paint in a hue: the same 80% light, with a gentle tint of it. */
+function paintIn(css: string, out: THREE.Color): THREE.Color {
+  parseCss(css, out).color.getHSL(hsl, THREE.SRGBColorSpace)
+  return out.setHSL(hsl.h, Math.min(0.32, Math.max(0.12, hsl.s * 0.4)), 0.8, THREE.SRGBColorSpace)
+}
 
 /** Is a reminder going off right now (the room breathes in the urgent colour)? */
 function useAlarm(): boolean {
@@ -70,6 +93,8 @@ function useAlarm(): boolean {
 export function Lighting({ mat }: { mat: RoomMaterials }) {
   const look = useLook()
   const alarm = useAlarm()
+  const custom = useScheme((s) => (s.source === 'agent' ? s.scheme : null))
+  const themed = custom !== null
   const { gl, scene } = useThree()
   const renderer = gl as unknown as THREE.WebGPURenderer
 
@@ -104,13 +129,29 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
       fog: new THREE.Color(),
       mood: new THREE.Color(),
       urgent: new THREE.Color(),
+      tint: new THREE.Color(),
+      sky: new THREE.Color(),
+      ground: new THREE.Color(),
+      wash: new THREE.Color(),
+      paint: new THREE.Color(),
+      /** One per wall wash: the scheme's ambient colours, or null for her mood. */
+      washes: WASH_X.map(() => new THREE.Color()),
+      ambient: false,
     }),
     [],
   )
   useEffect(() => {
     parseCss(look.role.urgent, to.urgent)
     parseCss(look.bg, to.fog)
-  }, [look, to])
+    lightTint(look.role.accent, to.tint)
+    to.sky.copy(SKY_FILL).lerp(to.tint, themed ? THEMED.sky : 0)
+    to.ground.copy(GROUND_FILL).lerp(to.tint, themed ? THEMED.ground : 0)
+    if (custom) paintIn(custom.neutral, to.paint)
+    else to.paint.copy(PLAIN)
+    const ambient = custom?.[look.day ? 'day' : 'dusk'].ambient ?? null
+    to.ambient = !!ambient
+    if (ambient) to.washes.forEach((c, i) => lightTint(ambient[i % ambient.length], c))
+  }, [look, to, themed, custom])
 
   // Fog the far end a touch in the theme's air (eased in the frame loop, never snapped).
   const fog = useMemo(() => new THREE.Fog('#000', 16, 46), [])
@@ -163,13 +204,20 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
       to.dir.copy(s.dir)
       const p = scratch.copy(sun.current.position).sub(SUN_TARGET).normalize().lerp(to.dir, k).normalize()
       sun.current.position.copy(SUN_TARGET).addScaledVector(p, 18)
-      sun.current.color.lerp(s.color, k)
+      to.sunColor.copy(s.color).lerp(to.tint, themed ? THEMED.sun : 0)
+      sun.current.color.lerp(to.sunColor, k)
       sun.current.intensity = damp(sun.current.intensity, s.intensity, 1.6, dt)
     }
     // Reflections of the room's own light: brighter by day, quieter at dusk.
     scene.environmentIntensity = damp(scene.environmentIntensity, look.day ? 0.7 : 0.35, 1.6, dt)
     // Fill: neutral warm-white bounce, not the weather's colours (they cast odd tints on the room).
-    if (hemi.current) hemi.current.intensity = damp(hemi.current.intensity, look.day ? 0.6 : 0.3, 1.6, dt)
+    if (hemi.current) {
+      hemi.current.intensity = damp(hemi.current.intensity, look.day ? 0.6 : 0.3, 1.6, dt)
+      hemi.current.color.lerp(to.sky, k)
+      hemi.current.groundColor.lerp(to.ground, k)
+    }
+    // The floor's mirror: a little stronger at dusk, when the room's lights are what it shows.
+    mat.floorReflection.strength.value = damp(mat.floorReflection.strength.value, look.day ? 0.2 : 0.3, 1.6, dt)
     fog.color.lerp(to.fog, k)
     if (key.current) key.current.intensity = damp(key.current.intensity, look.day ? 5 : 11, 1.6, dt)
 
@@ -184,19 +232,26 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
     }
     const c1 = mm.c1
     to.mood.setRGB(c1[0], c1[1], c1[2], THREE.SRGBColorSpace)
-    // Architectural light is warm white (about 3000 K); her mood only tints it.
-    to.mood.lerp(WARM, 0.78)
+    // Architectural light is warm white (about 3000 K); her mood only tints it,
+    // and a chosen scheme leads it.
+    if (themed) to.mood.lerp(to.tint, THEMED.wash).lerp(WARM, 0.45)
+    else to.mood.lerp(WARM, 0.78)
     const glow = offline ? 0.15 : 0.45 + mm.intensity * 0.55
     const pulse = 0.5 + 0.5 * Math.sin(clock.elapsedTime * 4.2)
 
-    const coveColor = alarm ? to.urgent : to.mood
+    const coveColor = alarm ? to.urgent : themed ? to.wash.copy(to.mood).lerp(to.tint, THEMED.cove) : to.mood
     mat.cove.color.value.lerp(coveColor, alarm ? 1 - Math.exp(-dt * 8) : k)
     const coveTarget = (look.day ? 1.2 : 2.4) * (0.7 + glow * 0.3) * (alarm ? 0.8 + pulse * 0.7 : 1)
     mat.cove.strength.value = damp(mat.cove.strength.value, coveTarget, alarm ? 12 : 2, dt)
 
-    for (const w of washes.current) {
+    // The room's paint, eased like the 2D colours.
+    for (const m of [mat.wall, mat.floor, mat.column, mat.step, mat.wood]) m.color.lerp(to.paint, k)
+
+    for (let i = 0; i < washes.current.length; i++) {
+      const w = washes.current[i]
       if (!w) continue
-      w.color.lerp(to.mood, k)
+      // The scheme's ambient colours, warmed a touch by her mood; else her mood.
+      w.color.lerp(to.ambient ? to.wash.copy(to.washes[i]).lerp(to.mood, 0.2) : to.mood, k)
       w.intensity = damp(w.intensity, (look.day ? 10 : 24) * (0.7 + glow * 0.3), 1.6, dt)
     }
 
