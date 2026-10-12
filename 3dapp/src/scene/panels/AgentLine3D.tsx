@@ -10,6 +10,8 @@ import { Pane } from './Pane'
 const LH = 1.3
 /** The caption box shows this many lines; longer text scrolls up through it, live-caption style. */
 const VISIBLE = 2
+/** At rest the caption shows from its start, up to this many lines. */
+const REST_LINES = 3
 const PAD = 0.02
 
 /** Her voice: bare text (no panel) as a caption over her head, like the 2D AgentLine. */
@@ -28,13 +30,14 @@ export function AgentLine3D() {
   // 600: the 2D line is 500, but type drawn large and scaled down into the scene thins out.
   const f = font(600, SIZE)
   const spacing = `${-px(SIZE * 0.015)}px`
-  const lines = wrap(shown.current.text, f, px(line.w), Infinity, spacing)
-
-  // Live captions, not a growing block: the box never resizes (two lines tall),
-  // words land left-aligned so nothing already there shifts, and when a third
-  // line starts the text glides up and the oldest line fades out at the top.
-  const height = VISIBLE * SIZE * LH + PAD * 2
-  const target = Math.max(0, lines.length - VISIBLE)
+  // While her words stream in: live captions, a two-line window the text scrolls
+  // up through (left-aligned, so nothing already there shifts). At rest (a finished
+  // reply, a reminder): the whole caption from its start, up to three lines.
+  const live = caption.live
+  const lines = wrap(shown.current.text, f, px(line.w), live ? Infinity : REST_LINES, spacing)
+  const rows = live ? VISIBLE : Math.max(1, Math.min(REST_LINES, lines.length))
+  const height = rows * SIZE * LH + PAD * 2
+  const target = live ? Math.max(0, lines.length - VISIBLE) : 0
   const scrolled = useRef(target)
   const [scroll, setScroll] = useState(target)
   // A new caption (not more of the same one) starts at its own top, unscrolled.
@@ -75,17 +78,18 @@ export function AgentLine3D() {
       size={line.scale}
       paint={(ctx, w, h) => {
         const lh = px(SIZE * LH)
-        drawLines(ctx, lines, 0, px(PAD) - scroll * lh, lh, f, shown.current.color, 'left', spacing)
-        // The line scrolling away fades out under the top edge.
-        if (scroll > 0) {
-          const fade = ctx.createLinearGradient(0, 0, 0, lh * 0.9)
-          fade.addColorStop(0, `rgba(0,0,0,${Math.min(1, scroll)})`)
-          fade.addColorStop(1, 'rgba(0,0,0,0)')
-          ctx.globalCompositeOperation = 'destination-out'
-          ctx.fillStyle = fade
-          ctx.fillRect(0, 0, w, h)
-          ctx.globalCompositeOperation = 'source-over'
-        }
+        // Lines scrolled fully past are not drawn at all; the one sliding out fades
+        // as it goes, and the box clips at its top (no half-cut glyphs above it).
+        const first = Math.floor(scroll)
+        const frac = scroll - first
+        ctx.beginPath()
+        ctx.rect(0, px(PAD) * 0.5, w, h - px(PAD) * 0.5)
+        ctx.clip()
+        lines.slice(first).forEach((l, i) => {
+          ctx.globalAlpha = i === 0 ? 1 - frac : 1
+          drawLines(ctx, [l], 0, px(PAD) + (i - frac) * lh, lh, f, shown.current.color, 'left', spacing)
+        })
+        ctx.globalAlpha = 1
       }}
       deps={[lines.join('\n'), shown.current.color, scroll]}
       present={present && !focused && !chatOpen}

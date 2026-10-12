@@ -25,7 +25,7 @@ function firstSentence(text: string): string {
  * rule); what needs the user (a reminder, a dead connection, a check-in waiting
  * for its answer) and live words stay. `text` keeps the last words while it fades.
  */
-export function useCaption(): { text: string; color: string; present: boolean } {
+export function useCaption(): { text: string; color: string; present: boolean; live: boolean } {
   const look = useLook()
   const a = useAgent(
     useShallow((s) => ({
@@ -76,5 +76,5 @@ export function useCaption(): { text: string; color: string; present: boolean } 
   const shown = useRef({ text, color })
   const present = !!text.trim() && (holds || !fadedAway.has(signature))
   if (present) shown.current = { text, color }
-  return { ...shown.current, present }
+  return { ...shown.current, present, live: !!a.streaming }
 }
