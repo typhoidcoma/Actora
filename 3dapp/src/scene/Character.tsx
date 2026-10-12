@@ -112,6 +112,7 @@ function Animated({ gltf }: { gltf: GLTF }) {
   const here = useMemo(() => new THREE.Vector3(), [])
   const mover = useRef<THREE.Group>(null)
   const wander = useMemo(() => new Wander(), [])
+  const lastHeading = useRef<number | null>(null)
   useFrame(({ camera, size }, dt) => {
     const m = mover.current
     const anim = animator.current
@@ -127,8 +128,13 @@ function Animated({ gltf }: { gltf: GLTF }) {
     // Phones frame her head and shoulders: wandering would only walk her out of shot.
     const wide = size.width / size.height >= 0.8
     const busy = wide && !open && (a.awaitingTurn || a.turnId !== null) && !a.streaming
-    const w = wander.update(dt, busy || devBusy(), m.position)
+    const facing = lastHeading.current === null ? 1 : Math.cos(lastHeading.current - m.rotation.y)
+    const w = wander.update(dt, busy || devBusy(), m.position, anim.walkSpeed, facing)
+    lastHeading.current = w.walking ? w.heading : null
+    // Her offset from her spot, for the camera to follow (gently) while she wanders.
+    herOffset.set(m.position.x, 0, m.position.z)
     anim.setActivity(w.walking ? 'walk' : w.phone ? 'phone' : null)
+    anim.phoneGlow = document.documentElement.dataset.theme === 'dusk' ? 0.09 : 0.05
     anim.update(dt, orbSignals.energy)
 
     // Facing: along her path while walking; otherwise toward you (or, with a panel
@@ -145,6 +151,9 @@ function Animated({ gltf }: { gltf: GLTF }) {
     </group>
   )
 }
+
+/** How far she has wandered from her spot (read by the camera rig). */
+export const herOffset = new THREE.Vector3()
 
 /** Eases an angle along the short way round. */
 function dampAngle(from: number, to: number, lambda: number, dt: number): number {

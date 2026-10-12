@@ -31,12 +31,17 @@ export class AgentAnimator {
   private activity: THREE.AnimationAction | null = null
   private activityName: string | null = null
   private clips: THREE.AnimationClip[]
+  /** Metres per second the walk clip's feet travel over the floor (so she doesn't slide). */
+  walkSpeed = 0.75
   /** The procedural phone pose: bones, their offsets, how far in (0..1), and the phone itself. */
   private pose: Array<{ bone: THREE.Object3D; off: THREE.Quaternion; applied: THREE.Quaternion }> = []
   private poseW = 0
   private phoneTarget = 0
   private phoneMesh: THREE.Object3D | null = null
   private handScale = 1
+  private phoneLight: THREE.PointLight | null = null
+  /** How bright the screen's glow is: a touch more at dusk, when the room is darker (set by the scene). */
+  phoneGlow = 0.06
   /** The model has its own phone clip: use it instead of the procedural pose. */
   private phoneClip: THREE.AnimationClip | undefined
 
@@ -48,6 +53,7 @@ export class AgentAnimator {
     })
     this.phoneClip = pick(clips, character.busy.phone)
     if (!this.phoneClip) this.buildPhonePose(root)
+    this.walkSpeed = this.measureWalk(root)
 
     const used = new Set<THREE.AnimationClip>()
     for (const phase of Object.keys(character.base) as Phase[]) {
@@ -128,9 +134,50 @@ export class AgentAnimator {
       p.bone.quaternion.multiply(p.applied)
     }
     if (this.phoneMesh) this.phoneMesh.visible = w > 0.35
+    // The screen's glow on her face: fades in with the phone, flickers a touch as she scrolls.
+    if (this.phoneLight) this.phoneLight.intensity = w * this.phoneGlow * (1 + Math.sin(this.t * 2.3) * 0.08 + Math.sin(this.t * 7.1) * 0.04)
 
     this.nod = this.speaking ? energy * 0.12 * Math.sin(this.t * 9) : 0
     if (this.head) this.head.rotation.x += this.nod
+  }
+
+  /**
+   * The walk clip plays in place: a planted foot sweeps backward under her at
+   * the speed she'd move over the floor. Sampled once: the fastest backward
+   * sweep of a foot, relative to her hips, along her facing (+z), in world metres.
+   */
+  private measureWalk(root: THREE.Object3D): number {
+    const clip = pick(this.clips, character.busy.walk)
+    let foot: THREE.Object3D | null = null
+    let hips: THREE.Object3D | null = null
+    root.traverse((o) => {
+      if (!foot && /LeftFoot$/.test(o.name)) foot = o
+      if (!hips && /Hips$/.test(o.name)) hips = o
+    })
+    if (!clip || !foot || !hips) return 0.75
+    const f = foot as THREE.Object3D
+    const h = hips as THREE.Object3D
+    const probe = new THREE.AnimationMixer(root)
+    const action = probe.clipAction(clip).play()
+    const a = new THREE.Vector3()
+    const b = new THREE.Vector3()
+    const steps = 48
+    const dt = clip.duration / steps
+    const z: number[] = []
+    for (let i = 0; i <= steps; i++) {
+      action.time = i * dt
+      probe.update(0)
+      root.updateMatrixWorld(true)
+      f.getWorldPosition(a)
+      h.getWorldPosition(b)
+      z.push(a.z - b.z)
+    }
+    action.stop()
+    probe.uncacheRoot(root)
+    // Ground speed while planted: the median of the backward sweeps (forward swings excluded).
+    const back = z.slice(1).map((v, i) => (z[i] - v) / dt).filter((v) => v > 0).sort((p, q) => p - q)
+    const speed = back.length ? back[Math.floor(back.length * 0.6)] : 0.75
+    return Math.min(1.6, Math.max(0.35, speed))
   }
 
   /** Bone-local offsets for "looking at her phone" (character.busy.pose), and a phone in her hand. */
@@ -163,6 +210,11 @@ export class AgentAnimator {
     phone.castShadow = true
     hand.add(phone)
     this.phoneMesh = phone
+    // Its screen lights her face: a small blue-green point light just above the phone.
+    const light = new THREE.PointLight('#5fe3d0', 0, 0.55, 2)
+    light.position.set(0, 0, 0.06 / s)
+    phone.add(light)
+    this.phoneLight = light
   }
 
   dispose(): void {

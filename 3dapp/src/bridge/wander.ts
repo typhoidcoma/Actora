@@ -18,15 +18,13 @@ const ROUTINE: Step[] = [
   { kind: 'phone', for: 4 },
 ]
 const HOME: Spot = { x: 0, z: 0 }
-/** Walking pace, m/s (matches the walk clip's stride). */
-const SPEED = 0.75
 /** How long she has to be working before she gets up to do something. */
 const START_AFTER = 1.8
 
 export interface WanderFrame {
   /** Walking right now (play the walk clip). */
   walking: boolean
-  /** Checking her phone, 0..1 (eased by the animator). */
+  /** Checking her phone. */
   phone: boolean
   /** Which way she should face (radians around y), or null: face the user. */
   heading: number | null
@@ -36,9 +34,19 @@ export class Wander {
   private working = 0
   private step = -1
   private timer = 0
+  /** Current ground speed, eased. */
+  private v = 0
+  private speed = 0.75
+  private facing = 1
 
-  /** Advance; \`pos\` (her floor offset from home) is moved in place. */
-  update(dt: number, busy: boolean, pos: { x: number; z: number }): WanderFrame {
+  /**
+   * Advance; `pos` (her floor offset from home) is moved in place. `speed` is the
+   * walk clip's ground speed (so her feet don't slide); `facing` is how well she
+   * faces her heading (cos of the error), so she turns before she sets off.
+   */
+  update(dt: number, busy: boolean, pos: { x: number; z: number }, speed: number, facing: number): WanderFrame {
+    this.speed = speed
+    this.facing = facing
     this.working = busy ? this.working + dt : 0
     const away = Math.hypot(pos.x - HOME.x, pos.z - HOME.z) > 0.02
 
@@ -77,9 +85,14 @@ export class Wander {
     if (d < 0.03) {
       pos.x = to.x
       pos.z = to.z
+      this.v = 0
       return { walking: false, phone: false, heading: null }
     }
-    const stepLen = Math.min(d, SPEED * dt)
+    // Ease up to pace (as the walk clip blends in), slow for the last half metre,
+    // and hold while still turning to face the way.
+    const want = this.speed * Math.min(1, d / 0.45 + 0.25) * Math.max(0, this.facing) ** 3
+    this.v += (want - this.v) * (1 - Math.exp(-dt * 4))
+    const stepLen = Math.min(d, this.v * dt)
     pos.x += (dx / d) * stepLen
     pos.z += (dz / d) * stepLen
     return { walking: true, phone: false, heading: Math.atan2(dx, dz) }

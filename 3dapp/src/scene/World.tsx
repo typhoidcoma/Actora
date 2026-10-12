@@ -4,7 +4,7 @@ import { useFocused } from '../look/focus'
 import { FOV, focusLayout, useStage } from '../look/layout'
 import { UI_LAYER } from '../look/layers'
 import { damp } from '../look/motion'
-import { Character } from './Character'
+import { Character, herOffset } from './Character'
 import { Environment } from './Environment'
 import { AgentLine3D } from './panels/AgentLine3D'
 import { Grid3D } from './panels/Grid3D'
@@ -23,6 +23,8 @@ extend(THREE as never)
 
 const target = new THREE.Vector3(0, 1.2, 0)
 const still = new THREE.Vector2(0, 0)
+const follow = { x: 0, z: 0 }
+const zoom = { v: 1 }
 
 /**
  * Frames the 2D stage at any aspect (wide screens fit its height, narrow ones its
@@ -55,14 +57,20 @@ function Rig() {
       camera.position.z = damp(camera.position.z, fixed.position[2], 3, dt)
     } else {
       const t = Math.tan(((FOV / 2) * Math.PI) / 180)
-      const dist = Math.max(frame.h / 2 / t, frame.w / 2 / (t * aspect))
-      target.x = damp(target.x, frame.center[0], 3, dt)
+      // While she wanders, the camera follows a third of the way and eases in a
+      // touch (up to ~8%), slowly, so it reads as a camera operator, not a jump.
+      const away = Math.min(1, Math.hypot(herOffset.x, herOffset.z) / 0.6)
+      follow.x = damp(follow.x, herOffset.x * 0.35, 1.4, dt)
+      follow.z = damp(follow.z, herOffset.z * 0.35, 1.4, dt)
+      zoom.v = damp(zoom.v, 1 - away * 0.08, 1.2, dt)
+      const dist = Math.max(frame.h / 2 / t, frame.w / 2 / (t * aspect)) * zoom.v
+      target.x = damp(target.x, frame.center[0] + follow.x, 3, dt)
       target.y = damp(target.y, frame.center[1], 3, dt)
-      target.z = damp(target.z, frame.center[2], 3, dt)
-      camera.position.x = damp(camera.position.x, frame.center[0] + pointer.x * 0.18, 3, dt)
+      target.z = damp(target.z, frame.center[2] + follow.z, 3, dt)
+      camera.position.x = damp(camera.position.x, frame.center[0] + follow.x + pointer.x * 0.18, 3, dt)
       // A little above her eye line, looking slightly down: the floor, steps and reflections read.
       camera.position.y = damp(camera.position.y, target.y + 0.42 + pointer.y * 0.1, 3, dt)
-      camera.position.z = damp(camera.position.z, dist, 3, dt)
+      camera.position.z = damp(camera.position.z, frame.center[2] + follow.z + dist, 3, dt)
     }
     camera.lookAt(target)
   })
