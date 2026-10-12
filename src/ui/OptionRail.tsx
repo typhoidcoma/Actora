@@ -20,10 +20,13 @@ export function OptionRail({
   contextKey,
   className = '',
   trailing,
+  icons = true,
 }: {
   contextKey: string
   className?: string
   trailing?: React.ReactNode
+  /** Wide screens: false when chat and the menu sit beside a message box instead (HomeActions). */
+  icons?: boolean
 }) {
   const { options, loading } = useOptions(contextKey)
   const busy = useAgent((s) => s.awaitingTurn || s.turnId !== null)
@@ -173,7 +176,7 @@ export function OptionRail({
       <div className="flex max-h-[108px] min-w-0 flex-1 flex-wrap content-center items-center justify-center gap-2 overflow-hidden px-1 py-1.5">
         {pills}
       </div>
-      {!inChat && iconRow}
+      {!inChat && icons && iconRow}
     </div>
   )
 }

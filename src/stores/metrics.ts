@@ -71,8 +71,9 @@ function measure(): Metrics {
   // No top bar: The agent's line starts just under the safe area.
   const headerH = safe.top + (short ? 10 : 18)
   const baseLineH = Math.round(short ? 46 : clamp(vh * 0.1, 72, 116))
-  // Room for two rows of option chips (phones: the icons sit beside the first row).
-  const railH = Math.max(safe.bottom, 10) + (compact ? 108 : 112)
+  // Room for two rows of option chips (phones: the icons sit beside the first row;
+  // wide: the message box row under them).
+  const railH = Math.max(safe.bottom, 10) + (compact ? 108 : 166)
   const availW = vw - reserveX * 2
   const availH = vh - headerH - baseLineH - railH - 12
 

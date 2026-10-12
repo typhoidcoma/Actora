@@ -50,7 +50,8 @@ const THEME_LABEL: Record<ThemeMode, string> = { auto: 'Follows the sun', day: '
  * the rail: connection status, the full lists, look, reminders, sign out.
  * The button's dot mirrors the connection, so status is never hidden.
  */
-export function MenuButton({ onSignOut }: { onSignOut?: () => void }) {
+/** `large`: sized to the 44 px message box beside it (the home actions row). */
+export function MenuButton({ onSignOut, large }: { onSignOut?: () => void; large?: boolean }) {
   const [open, setOpen] = useState(false)
   const status = useStatus()
   const compact = useMetrics((m) => m.compact)
@@ -70,7 +71,7 @@ export function MenuButton({ onSignOut }: { onSignOut?: () => void }) {
         onClick={() => setOpen((v) => !v)}
         aria-label={`Menu · ${status.text}`}
         aria-expanded={open}
-        className={`glass-pill relative grid place-items-center rounded-[8px] text-muted ${compact ? 'h-[44px] w-11' : 'h-10 w-10'}`}
+        className={`glass-pill relative grid place-items-center rounded-[8px] text-muted ${compact || large ? 'h-[44px] w-11' : 'h-10 w-10'}`}
       >
         {/* Quiet when all is well; the icon itself tints and pulses only when something's off. */}
         <motion.span

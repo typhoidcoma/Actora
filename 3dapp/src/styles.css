@@ -69,16 +69,6 @@ button[aria-label='Type instead'] {
   display: none !important;
 }
 
-/* Wide home: chat and menu live beside the message box (Overlay), not at the end of the pills. */
-.home-rail button[aria-label='Open the conversation'],
-.home-rail button[aria-label^='Menu'] {
-  display: none !important;
-}
-/* The 2D menu button, sized to the message box beside it. */
-.home-actions button[aria-label^='Menu'] {
-  height: 44px;
-  width: 44px;
-}
 
 /*
  * In focus mode the 2D panel sits inside the 3D glass: its own hairline and

@@ -30,6 +30,8 @@ import { OrbDock, OrbSocket } from './OrbDock'
 import { startAutoChat } from './autoChat'
 import { useThemeSync } from './Theme'
 import { AgentLine } from './AgentLine'
+import { HomeActions } from './HomeBar'
+import { useTypeAnywhere } from './typeAnywhere'
 
 export function Backdrop({ grain = true }: { grain?: boolean }) {
   return (
@@ -61,7 +63,9 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
   const fatal = useAgent((s) => s.connection === 'fatal')
   const key = useContextKey()
   const rail = useMetrics((s) => s.rail)
+  const compact = useMetrics((s) => s.compact)
   useThemeSync()
+  useTypeAnywhere()
 
   useEffect(() => watchMetrics(), [])
   useEffect(() => startAgentOptions(), [])
@@ -139,13 +143,15 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
             key="rail"
             // The band from the cards' bottom to the screen edge; the pills sit centred in it,
             // so the space above and below them matches whatever the rows are.
-            className="fixed z-30 flex flex-col justify-center"
+            className="fixed z-30 flex flex-col justify-center gap-2.5"
             style={{ left: rail.x, top: rail.top, bottom: 0, width: rail.w, paddingBottom: rail.padBottom }}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 12 }}
           >
-            <OptionRail contextKey={key} trailing={<MenuButton onSignOut={onSignOut} />} />
+            {/* Wide: the pills, then a message box with the mic, chat and menu beside it. */}
+            <OptionRail contextKey={key} icons={compact} trailing={<MenuButton onSignOut={onSignOut} />} />
+            {!compact && <HomeActions onSignOut={onSignOut} />}
           </motion.div>
         )}
       </AnimatePresence>
