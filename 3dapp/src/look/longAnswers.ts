@@ -1,21 +1,50 @@
 import { useAgent } from '@actora/stores/agent'
 import { panelOpen, ui, useUi } from '@actora/stores/ui'
+import { herOffset } from '../scene/Character'
 
 /** A turn this long (or with this many steps: searches, lookups) gets the close-up chat. */
 const LONG_MS = 6000
 const MANY_STEPS = 2
+/** After her answer is in, how long to wait at most for her to be back at her spot. */
+const SETTLE_MAX_MS = 5000
 
 /**
- * After a long search or a long think, her answer is worth reading in full:
- * when its first words arrive, the chat opens (the close-up, camera on her) so
- * it can be read as she writes it. Quick answers stay on the caption over her
- * head. Only from home, and once per turn (closing it isn't overridden).
+ * After a long search or a long think, her answer is worth reading in full, so
+ * the chat (the close-up, camera on her) opens. But only once the turn is over:
+ * her thinking animations play out first, she walks back to her spot as the
+ * answer comes in (its first sentence over her head), and then the camera comes
+ * in on the whole answer. Quick answers stay on the caption. Only from home, once
+ * per turn; a new turn or anything opened meanwhile cancels it.
  */
 export function startLongAnswers(): () => void {
-  return useAgent.subscribe((s, p) => {
-    if (!s.streaming || p.streaming) return
+  let timer: ReturnType<typeof setInterval> | undefined
+  const cancel = () => {
+    clearInterval(timer)
+    timer = undefined
+  }
+
+  const off = useAgent.subscribe((s, p) => {
+    // A new turn starting: whatever was waiting is moot.
+    if (s.awaitingTurn && !p.awaitingTurn) cancel()
+    // The turn just finished (her last words are in).
+    const finished = p.turnId !== null && s.turnId === null && !s.streaming
+    if (!finished) return
     const long = (s.turnAt !== null && Date.now() - s.turnAt >= LONG_MS) || s.steps.length >= MANY_STEPS
-    const u = useUi.getState()
-    if (long && !u.chatOpen && !panelOpen(u)) ui.openChat()
+    if (!long) return
+    cancel()
+    const started = Date.now()
+    timer = setInterval(() => {
+      const u = useUi.getState()
+      if (u.chatOpen || panelOpen(u)) return cancel()
+      const home = Math.hypot(herOffset.x, herOffset.z) < 0.05
+      if (home || Date.now() - started > SETTLE_MAX_MS) {
+        cancel()
+        ui.openChat()
+      }
+    }, 100)
   })
+  return () => {
+    off()
+    cancel()
+  }
 }
