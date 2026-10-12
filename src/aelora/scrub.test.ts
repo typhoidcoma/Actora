@@ -28,6 +28,17 @@ describe('scrubToolLeaks', () => {
     expect(scrubToolLeaks('see [the docs](https://x.dev) now')).toBe('see [the docs](https://x.dev) now')
   })
 
+  it('drops any word glued to {key: …}, a directive the backend leaked', () => {
+    const leaked =
+      'performance{"state":"happy","trigger":"complement_success"} sweet. back to our regular programming.'
+    expect(scrubToolLeaks(leaked)).toBe('sweet. back to our regular programming.')
+    expect(scrubToolLeaks('mood{state:calm}okay.')).toBe('okay.')
+    expect(scrubToolLeaks('performance{"state":"hap', true)).toBe('')
+    expect(scrubToolLeaks('performance{', true)).toBe('')
+    // Prose with braces stays.
+    expect(scrubToolLeaks('use {curly} braces, or set {a: 1} in config')).toBe('use {curly} braces, or set {a: 1} in config')
+  })
+
   it('catches calls written with Markdown escapes or a capital', () => {
     const t =
       'perform\\_reaction\\{anchor:overcast, wet pavement,intensity:low,trigger:decision\\_making\\}done. moody.'

@@ -65,16 +65,19 @@ const TOOL_NAMES = [...TOOLS]
 // name{…} or name(…) with no nested brackets: tool-call syntax, not prose.
 const CALL = /\b([a-z]+(?:_[a-z]+)*)\s*([({])([^(){}]*)[)}]/gi
 // The same, still arriving at the very end of a stream.
-const OPEN = /\b([a-z]+(?:_[a-z]+)*)\s*[({][^(){}]*$/i
+const OPEN = /\b([a-z]+(?:_[a-z]+)*)(\s*)([({])([^(){}]*)$/i
+// Arguments, as JSON or loosely: `"state":` or `state:` first.
+const ARGS = /^\s*"?[a-z_]\w*"?\s*:/i
 
 /**
  * Braces after a snake_case or tool name are never prose. Parentheses count only
  * for multi-word tool names (ui_action(...)), or a one-word tool (remember) whose
  * contents look like arguments: "remember (it's important)" stays.
  */
-const isCall = (raw: string, bracket: string, inner: string) => {
+const isCall = (raw: string, bracket: string, inner: string, glued = false) => {
   const name = raw.toLowerCase()
-  if (bracket === '{') return TOOLS.has(name) || name.includes('_')
+  // Any word glued to {key: …} is a directive (performance{"state":"happy"}), not prose.
+  if (bracket === '{') return TOOLS.has(name) || name.includes('_') || (glued && ARGS.test(inner))
   if (!TOOLS.has(name)) return false
   return name.includes('_') || /[:=]/.test(inner)
 }
@@ -177,7 +180,9 @@ export function scrubToolLeaks(text: string, streaming = false): string {
   for (const a of textActions(out, streaming).reverse()) out = `${out.slice(0, a.start)} ${out.slice(a.end)}`
   // 3. Drop the tool calls themselves.
   out = out
-    .replace(CALL, (m, name: string, bracket: string, inner: string) => (isCall(name, bracket, inner) ? ' ' : m))
+    .replace(CALL, (m, name: string, bracket: string, inner: string) =>
+      isCall(name, bracket, inner, m.startsWith(name + bracket)) ? ' ' : m,
+    )
     // 3. Answer links go to the pills (sayLinks); a list item that held one goes with it.
     .replace(new RegExp(`^[ \\t]*(?:[-*+]|\\d+\\.)[ \\t]+${SAY_LINK.source}[ \\t]*$`, 'gm'), '')
     .replace(SAY_LINK, '')
@@ -186,7 +191,9 @@ export function scrubToolLeaks(text: string, streaming = false): string {
     .replace(APP_LINK, '$1')
   if (streaming) {
     const open = OPEN.exec(out)
-    if (open && (TOOLS.has(open[1].toLowerCase()) || open[1].includes('_'))) out = out.slice(0, open.index)
+    // A word glued to a "{" whose contents so far could be arguments: wait for it to close.
+    const glued = !!open && !open[2] && open[3] === '{' && (!open[4].trim() || ARGS.test(open[4]) || /^\s*"[a-z_]*$/i.test(open[4]))
+    if (open && (TOOLS.has(open[1].toLowerCase()) || open[1].includes('_') || glued)) out = out.slice(0, open.index)
     // Hold back a last word that may be the start of a call ("perf", "`perform_re"…):
     // it shows a token later if it was just a word.
     const tail = /(?:`+|\*+)?([a-z_]+)(?:`+|\*+)?$/.exec(out)
