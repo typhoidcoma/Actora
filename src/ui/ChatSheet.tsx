@@ -6,7 +6,7 @@ import { loadEarlier } from '../aelora/client'
 import { useAgent, type ChatBubble } from '../stores/agent'
 import { useMetrics } from '../stores/metrics'
 import { ui, useUi } from '../stores/ui'
-import { toolLabel } from './format'
+import { clockTime, dayLabel, toolLabel } from './format'
 import { Activity } from './Activity'
 import { LazyMarkdown as Markdown } from './LazyMarkdown'
 import { copyableText, stableMarkdown } from './markdownText'
@@ -256,6 +256,7 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
         className={`chat-user selectable relative max-w-[80%] self-end rounded-[6px] rounded-br-[3px] bg-accent/25 px-4 py-2.5 text-[15px] text-strong ${bubble.react ? 'mb-3' : ''}`}
       >
         {bubble.text}
+        <Stamp at={bubble.at} className="mt-0.5 block text-right" />
         {/* The agent's "got it" (message.react): pops onto the corner of what the user said. */}
         <AnimatePresence>
           {bubble.react && (
@@ -293,11 +294,26 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
       <div className="selectable">
         <Markdown text={bubble.text} />
       </div>
-      {/* Quiet until hovered on desktop; always there (faint) on touch. */}
-      <CopyButton
-        text={copyableText(bubble.text)}
-        className="chat-copy -ml-2 mt-0.5 opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
-      />
+      <div className="flex items-center gap-2">
+        {/* Quiet until hovered on desktop; always there (faint) on touch. */}
+        <CopyButton
+          text={copyableText(bubble.text)}
+          className="chat-copy -ml-2 mt-0.5 opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
+        />
+        <Stamp at={bubble.at} className="mt-0.5" />
+      </div>
     </motion.div>
+  )
+}
+
+/** When it was said, small and faint: the time today, the day and time before that. */
+function Stamp({ at, className = '' }: { at?: string; className?: string }) {
+  if (!at || !Number.isFinite(Date.parse(at))) return null
+  const when = new Date(at)
+  const today = new Date().toDateString() === when.toDateString()
+  return (
+    <time dateTime={at} className={`chat-time text-[11px] leading-none text-muted opacity-70 ${className}`}>
+      {today ? clockTime(when) : `${dayLabel(when)} · ${clockTime(when)}`}
+    </time>
   )
 }
