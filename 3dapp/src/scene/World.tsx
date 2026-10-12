@@ -60,7 +60,9 @@ function Rig() {
       // While she wanders, the camera pushes in on her (up to ~18%) and follows
       // most of her move, slowly, like a camera operator; it settles back after.
       const away = Math.min(1, Math.hypot(herOffset.x, herOffset.z) / 0.35)
-      follow.x = damp(follow.x, herOffset.x * 0.6, 1.2, dt)
+      // …and centres up on her as it comes in (her home spot is left of centre).
+      const aimX = frame.center[0] + (herOffset.x - frame.center[0]) * away * 0.85
+      follow.x = damp(follow.x, aimX - frame.center[0], 1.2, dt)
       follow.z = damp(follow.z, herOffset.z * 0.6, 1.2, dt)
       zoom.v = damp(zoom.v, 1 - away * 0.18, 0.9, dt)
       const dist = Math.max(frame.h / 2 / t, frame.w / 2 / (t * aspect)) * zoom.v
