@@ -13,6 +13,8 @@ export interface Pose {
   bones: Record<string, E>
   wiggle?: Array<{ bone: string; axis: 0 | 1 | 2; amp: number; hz: number }>
   hold?: number
+  /** She's holding the tablet in this pose. */
+  tablet?: boolean
 }
 
 const FIST = (side: 'Right' | 'Left', curl = 1.3): Record<string, E> =>
@@ -24,10 +26,36 @@ const FIST = (side: 'Right' | 'Left', curl = 1.3): Record<string, E> =>
     ]),
   )
 
+/** A pointing hand: the other fingers curled, the index straight. */
+const POINT = (side: 'Right' | 'Left'): Record<string, E> => {
+  const fist = FIST(side, 1.3)
+  for (const i of [1, 2, 3]) delete fist[`${side}HandIndex${i}`]
+  return { ...fist, [`${side}HandThumb2`]: [0, 0, side === 'Left' ? -0.5 : 0.5] }
+}
+
 /** Held while she's busy (eased in, held, eased out). */
 export const HOLDS: Record<string, Pose> = {
+  // A tablet in her right hand at her chest, her left index finger tapping and
+  // swiping at it (the left side mirrors the right by flipping y and z).
   phone: {
-    bones: { RightArm: [0, 0.3, 0.4], RightForeArm: [0, 1.7, 0], RightHand: [0, -1.2, 0], Spine2: [0.1, 0, 0], Head: [0.5, 0, 0] },
+    tablet: true,
+    bones: {
+      RightArm: [0, 0.3, 0.4],
+      RightForeArm: [0, 1.7, 0],
+      RightHand: [0, -1.2, 0],
+      LeftArm: [0, 0.1, -0.3],
+      LeftForeArm: [0, -1.5, 0],
+      LeftHand: [0, 0.4, 0],
+      ...POINT('Left'),
+      Spine2: [0.1, 0, 0],
+      Head: [0.5, 0, 0],
+    },
+    wiggle: [
+      // Taps: the finger dips to the glass and lifts, a beat at a time.
+      { bone: 'LeftForeArm', axis: 1, amp: 0.07, hz: 1.6 },
+      // Now and then a swipe across.
+      { bone: 'LeftArm', axis: 2, amp: 0.05, hz: 0.35 },
+    ],
   },
   think: {
     bones: {

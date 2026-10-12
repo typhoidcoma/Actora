@@ -45,7 +45,9 @@ export const character = {
     walk: ['walk', 'walking'],
     phone: ['phone', 'texting', 'looking_at_phone'],
     think: ['thinking', 'think'],
-    phoneAt: [0, -0.05, 0.02] as [number, number, number],
+    /** The tablet: its size (metres, w x h), where it sits off her right palm, and its turn. */
+    tabletSize: [0.17, 0.24] as [number, number],
+    phoneAt: [-0.03, -0.1, 0.02] as [number, number, number],
     phoneTurn: [0, 0, 0] as [number, number, number],
   },
 

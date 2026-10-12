@@ -41,6 +41,7 @@ export class AgentAnimator {
   /** A downloaded gesture clip playing instead of a procedural gesture. */
   private gestureClip: THREE.AnimationAction | null = null
   private phoneMesh: THREE.Object3D | null = null
+  private handScale = 1
   private phoneLight: THREE.PointLight | null = null
   /** How bright the screen's glow is: a touch more at dusk, when the room is darker (set by the scene). */
   phoneGlow = 0.06
@@ -162,6 +163,8 @@ export class AgentAnimator {
     const dev = devHooks()
     if (dev?.poses) Object.assign(GESTURES, dev.poses)
     if (dev?.hold !== undefined) this.hold.set(dev.hold ? (dev.poses?.[dev.hold] ?? HOLDS[dev.hold] ?? null) : null)
+    if (this.phoneMesh && dev?.at) this.phoneMesh.position.set(...dev.at).divideScalar(this.handScale)
+    if (this.phoneMesh && dev?.turn) this.phoneMesh.rotation.set(...dev.turn)
     if (dev?.gesture) {
       this.emote(dev.gesture)
       dev.gesture = undefined
@@ -174,7 +177,7 @@ export class AgentAnimator {
     }
     this.hold.apply(dt, this.t, 1 - this.gesture.w)
     this.gesture.apply(dt, this.t)
-    const w = this.hold.current === HOLDS.phone ? this.hold.w * (1 - this.gesture.w) : 0
+    const w = this.hold.current?.tablet ? this.hold.w * (1 - this.gesture.w) : 0
 
     // Shown and hidden by scale, never by .visible: hiding it would take its light out of
     // the scene, and a change in the scene's lights recompiles every lit shader (a
@@ -236,10 +239,19 @@ export class AgentAnimator {
     const hand = found as THREE.Object3D
     root.updateMatrixWorld(true)
     const s = hand.getWorldScale(new THREE.Vector3()).x || 1
+    this.handScale = s
+    // A tablet (about 17 x 24 cm): a dark body, and a screen that glows a little.
+    const [tw, th] = character.busy.tabletSize
     const phone = new THREE.Mesh(
-      new THREE.BoxGeometry(0.072 / s, 0.15 / s, 0.009 / s),
+      new THREE.BoxGeometry(tw / s, th / s, 0.008 / s),
       new THREE.MeshStandardMaterial({ color: '#1d1d22', roughness: 0.35, metalness: 0.4 }),
     )
+    const screen = new THREE.Mesh(
+      new THREE.PlaneGeometry((tw - 0.012) / s, (th - 0.012) / s),
+      new THREE.MeshBasicMaterial({ color: '#9fd9e6', toneMapped: true }),
+    )
+    screen.position.z = 0.0042 / s
+    phone.add(screen)
     const [px, py, pz] = character.busy.phoneAt
     phone.position.set(px / s, py / s, pz / s)
     phone.rotation.set(...character.busy.phoneTurn)
@@ -247,9 +259,9 @@ export class AgentAnimator {
     phone.castShadow = true
     hand.add(phone)
     this.phoneMesh = phone
-    // Its screen lights her face: a small blue-green point light just above the phone.
-    const light = new THREE.PointLight('#5fe3d0', 0, 0.55, 2)
-    light.position.set(0, 0, 0.06 / s)
+    // Its screen lights her face: a soft blue-green point light just above it.
+    const light = new THREE.PointLight('#5fe3d0', 0, 0.7, 2)
+    light.position.set(0, 0, 0.08 / s)
     phone.add(light)
     this.phoneLight = light
   }
@@ -260,7 +272,7 @@ export class AgentAnimator {
   }
 }
 
-type DevHooks = { hold?: string | null; gesture?: string; poses?: Record<string, Pose> }
+type DevHooks = { hold?: string | null; gesture?: string; poses?: Record<string, Pose>; at?: [number, number, number]; turn?: [number, number, number] }
 /** Dev only: window.__actora3d, for trying poses and gestures live. */
 const devHooks = (): DevHooks | undefined =>
   import.meta.env.DEV ? (window as unknown as { __actora3d?: DevHooks }).__actora3d : undefined
