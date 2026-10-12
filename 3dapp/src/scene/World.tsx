@@ -47,8 +47,9 @@ function Rig() {
       target.x = damp(target.x, f.target[0], 3.2, dt)
       target.y = damp(target.y, f.target[1], 3.2, dt)
       target.z = damp(target.z, f.target[2], 3.2, dt)
-      camera.position.x = damp(camera.position.x, f.target[0] + pointer.x * 0.06, 3.2, dt)
-      camera.position.y = damp(camera.position.y, f.target[1] + pointer.y * 0.04, 3.2, dt)
+      // Held still while reading: parallax here would tilt the panel's text.
+      camera.position.x = damp(camera.position.x, f.target[0], 3.2, dt)
+      camera.position.y = damp(camera.position.y, f.target[1], 3.2, dt)
       camera.position.z = damp(camera.position.z, f.target[2] + f.dist, 3.2, dt)
     } else if (fixed) {
       // Phones: a set camera, head and shoulders above the stack, with a touch of parallax.

@@ -101,7 +101,10 @@ export function FocusPanel3D() {
   }, [look.glassThick, tintTo])
 
   const anim = useRef({ t: 0 })
-  const turn = f.portrait ? 0 : -0.14
+  // Settled, it faces the camera squarely: turned even a little, the close camera's
+  // perspective keystones it (the far side looms, every line of text slopes).
+  // The turn is only in the flight in and out.
+  const turn = 0
   useFrame((_, dt) => {
     const g = group.current
     if (!g) return
