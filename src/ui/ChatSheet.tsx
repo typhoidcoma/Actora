@@ -1,7 +1,7 @@
 import { agentName } from '../stores/agent'
 import { AnimatePresence, motion, useDragControls, type PanInfo } from 'motion/react'
 import { CopyButton } from './CopyButton'
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { loadEarlier } from '../aelora/client'
 import { useAgent, type ChatBubble } from '../stores/agent'
 import { useMetrics } from '../stores/metrics'
@@ -170,7 +170,13 @@ function Transcript() {
   const streaming = useAgent((s) => s.streaming)
   const awaiting = useAgent((s) => s.awaitingTurn || s.turnId !== null)
   const ref = useRef<HTMLDivElement>(null)
+  const body = useRef<HTMLDivElement>(null)
   const first = useRef(true)
+  // Pinned to the latest message until the reader scrolls up; growth after a render
+  // (lazy markdown, bubbles animating in, the sheet opening) keeps it pinned.
+  const stuck = useRef(true)
+  const lastTop = useRef(0)
+  const [away, setAway] = useState(false)
 
   const history = useAgent((s) => s.history)
   const newest = messages.at(-1)?.id
@@ -189,9 +195,10 @@ function Transcript() {
     } else {
       // Follow her words only if the reader is at (or near) the bottom: scrolling up to
       // re-read mid-answer isn't yanked back. Their own new message always scrolls.
-      const nearBottom = p.height - el.scrollTop - el.clientHeight < 120
       const mine = messages.at(-1)?.role === 'user' && newest !== p.newest
-      if (first.current || nearBottom || mine || waiting) {
+      if (first.current || stuck.current || mine || waiting) {
+        stuck.current = true
+        setAway(false)
         el.scrollTo({ top: el.scrollHeight, behavior: first.current || streaming ? 'auto' : 'smooth' })
       }
     }
@@ -199,47 +206,109 @@ function Transcript() {
     prev.current = { newest, oldest, height: el.scrollHeight }
   }, [messages, streaming, newest, oldest, waiting])
 
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const pin = () => {
+      if (stuck.current) el.scrollTop = el.scrollHeight
+    }
+    const ro = new ResizeObserver(pin)
+    ro.observe(el)
+    if (body.current) ro.observe(body.current)
+    // Only the reader scrolling up unpins (scrolls toward the end never do, so our own
+    // smooth scroll to the bottom can't); reaching the bottom pins again.
+    const onScroll = () => {
+      const gap = el.scrollHeight - el.scrollTop - el.clientHeight
+      if (gap < 24) stuck.current = true
+      else if (el.scrollTop < lastTop.current - 1) stuck.current = false
+      lastTop.current = el.scrollTop
+      setAway(!stuck.current && gap > 120)
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      ro.disconnect()
+      el.removeEventListener('scroll', onScroll)
+    }
+  }, [])
+
+  const toLatest = () => {
+    const el = ref.current
+    if (!el) return
+    stuck.current = true
+    setAway(false)
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+  }
+
   return (
-    <div ref={ref} className="scroll-y min-h-0 flex-1 px-5 pt-1 pb-4">
-      {history.hasMore && (
-        <div className="mb-3 flex justify-center">
-          <motion.button
-            whileTap={press}
-            onClick={loadEarlier}
-            className="glass-pill h-10 rounded-[8px] px-4 text-[14px] font-medium text-muted"
-          >
-            Load earlier
-          </motion.button>
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div ref={ref} className="scroll-y min-h-0 flex-1 px-5 pt-1 pb-4">
+        {history.hasMore && (
+          <div className="mb-3 flex justify-center">
+            <motion.button
+              whileTap={press}
+              onClick={loadEarlier}
+              className="glass-pill h-10 rounded-[8px] px-4 text-[14px] font-medium text-muted"
+            >
+              Load earlier
+            </motion.button>
+          </div>
+        )}
+        {messages.length === 0 && !awaiting && (
+          <p className="display pt-10 text-center text-2xl text-muted">Tap anything below to start.</p>
+        )}
+        <div ref={body} className="mx-auto flex w-full max-w-[780px] flex-col gap-3">
+          {messages.map((b) => (
+            <Bubble key={b.id} bubble={b} />
+          ))}
+          {awaiting && (
+            <motion.div
+              layout
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={glide}
+              className="max-w-[88%] self-start"
+            >
+              {streaming ? (
+                <div className="selectable text-text">
+                  <Markdown text={stableMarkdown(streaming)} />
+                  <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-[3px] animate-pulse bg-accent" />
+                </div>
+              ) : (
+                <div className="chat-activity text-[17px] font-semibold text-strong">
+                  <Activity compact />
+                </div>
+              )}
+            </motion.div>
+          )}
         </div>
-      )}
-      {messages.length === 0 && !awaiting && (
-        <p className="display pt-10 text-center text-2xl text-muted">Tap anything below to start.</p>
-      )}
-      <div className="mx-auto flex w-full max-w-[780px] flex-col gap-3">
-        {messages.map((b) => (
-          <Bubble key={b.id} bubble={b} />
-        ))}
-        {awaiting && (
-          <motion.div
-            layout
+      </div>
+      <AnimatePresence>
+        {away && (
+          <motion.button
+            key="latest"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
             transition={glide}
-            className="max-w-[88%] self-start"
+            whileTap={press}
+            onClick={toLatest}
+            aria-label="Jump to the latest message"
+            className="glass-pill absolute bottom-3 left-1/2 flex h-9 -translate-x-1/2 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium text-strong"
           >
-            {streaming ? (
-              <div className="selectable text-text">
-                <Markdown text={stableMarkdown(streaming)} />
-                <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-[3px] animate-pulse bg-accent" />
-              </div>
-            ) : (
-              <div className="chat-activity text-[17px] font-semibold text-strong">
-                <Activity compact />
-              </div>
-            )}
-          </motion.div>
+            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
+              <path
+                d="M8 3v10M4 9l4 4 4-4"
+                stroke="currentColor"
+                strokeWidth={1.6}
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Latest
+          </motion.button>
         )}
-      </div>
+      </AnimatePresence>
     </div>
   )
 }
