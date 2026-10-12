@@ -79,7 +79,7 @@ function stageFor(aspect: number): Stage {
       },
       line: { position: [0, 1.82, 0.08], rotation: [0, 0, 0], scale: 1, w: 1.45, size: 0.048, grow: 'up' },
       // Centred on screen, at her shins.
-      rail: { position: [centerX, 0.42, 0.55] },
+      rail: { position: [centerX, 0.5, 0.55] },
       her: [0, 0, 0],
       // Room under the cards for the 2D rail (up to two rows) and the message box.
       // Headroom above her for her line and her thinking (the Activity, which grows upward).

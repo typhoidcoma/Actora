@@ -14,7 +14,9 @@ import { ChatSheet } from '@actora/ui/ChatSheet'
 import { DateSheet } from '@actora/ui/DateSheet'
 import { KeyboardSheet } from '@actora/ui/KeyboardSheet'
 import { MenuButton } from '@actora/ui/Menu'
-import { say } from '@actora/options/run'
+import { say, toggleVoice } from '@actora/options/run'
+import { useOptionsStore } from '@actora/stores/options'
+import { jelly } from '@actora/ui/motion'
 import { agentName } from '@actora/stores/agent'
 import { OptionRail } from '@actora/ui/OptionRail'
 import { PastChats } from '@actora/ui/PastChats'
@@ -103,8 +105,33 @@ export function Overlay() {
           animate={{ opacity: focused || !ready ? 0 : 1, y: ready ? 0 : 10 }}
           transition={{ delay: focused ? 0 : 0.6, duration: 0.4 }}
         >
-          <OptionRail contextKey={key} trailing={<MenuButton onSignOut={onSignOut} />} />
-          {!phone && <MessageBox />}
+          {/* Wide: the rail is just its pills; chat, mic and menu sit beside the message box. */}
+          <div className={phone ? '' : 'home-rail'}>
+            <OptionRail contextKey={key} trailing={<MenuButton onSignOut={onSignOut} />} />
+          </div>
+          {!phone && (
+            <div className="home-actions mx-auto flex w-full max-w-[780px] items-center gap-2">
+              <MessageBox />
+              <MicButton />
+              <motion.button
+                whileTap={jelly}
+                onClick={ui.openChat}
+                aria-label="Open the conversation"
+                className="glass-pill grid h-11 w-11 shrink-0 place-items-center rounded-[8px] text-muted"
+              >
+                <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden>
+                  <path
+                    d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v6a2.5 2.5 0 0 1-2.5 2.5H11l-4 3.5V15h0a2 2 0 0 1-2-2z"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinejoin="round"
+                    fill="none"
+                  />
+                </svg>
+              </motion.button>
+              <MenuButton onSignOut={onSignOut} />
+            </div>
+          )}
         </motion.div>
         <Thinking hidden={focused || !ready} />
         {host.el && createPortal(<FocusContent focused={focused} />, host.el)}
@@ -177,7 +204,7 @@ function MessageBox() {
       }}
       placeholder={`Say something to ${agentName()}`}
       aria-label="Message"
-      className="glass-pill mx-auto h-11 w-full max-w-[640px] rounded-full px-5 text-[15px] text-strong outline-none placeholder:text-muted"
+      className="glass-pill h-11 min-w-0 flex-1 rounded-full px-5 text-[15px] text-strong outline-none placeholder:text-muted"
     />
   )
 }
@@ -205,5 +232,30 @@ function Thinking({ hidden }: { hidden: boolean }) {
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+/** Speech to text: tap to talk, tap again to stop; what she hears is sent as a turn (the rail shows it live). */
+function MicButton() {
+  const listening = useOptionsStore((s) => s.listening)
+  return (
+    <motion.button
+      whileTap={jelly}
+      onClick={toggleVoice}
+      aria-label={listening ? 'Stop listening' : 'Talk'}
+      aria-pressed={listening}
+      className={`glass-pill grid h-11 w-11 shrink-0 place-items-center rounded-[8px] ${listening ? 'text-urgent' : 'text-muted'}`}
+    >
+      <motion.svg
+        viewBox="0 0 24 24"
+        className="h-[18px] w-[18px]"
+        aria-hidden
+        animate={listening ? { scale: [1, 1.15, 1], opacity: [1, 0.65, 1] } : { scale: 1, opacity: 1 }}
+        transition={listening ? { duration: 1.1, repeat: Infinity } : { duration: 0.2 }}
+      >
+        <rect x="9" y="3" width="6" height="11" rx="3" fill={listening ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.6" />
+        <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none" />
+      </motion.svg>
+    </motion.button>
   )
 }
