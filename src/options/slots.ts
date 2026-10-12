@@ -9,9 +9,12 @@ import type { Option } from './types'
 export function placeInSlots(prev: Array<Option | null>, next: Option[], n: number): Array<Option | null> {
   const top = next.slice(0, n)
   const ids = new Set(top.map((o) => o.id))
+  const answers = top.filter((o) => o.answer)
   const slots: Array<Option | null> = Array.from({ length: n }, (_, i) => {
+    // Answers to her question take the first slots, in order.
+    if (i < answers.length) return answers[i]
     const kept = prev[i]
-    return kept && ids.has(kept.id) ? (top.find((o) => o.id === kept.id) ?? null) : null
+    return kept && ids.has(kept.id) && !kept.answer ? (top.find((o) => o.id === kept.id) ?? null) : null
   })
   const placed = new Set(slots.filter(Boolean).map((o) => (o as Option).id))
   const rest = top.filter((o) => !placed.has(o.id))

@@ -38,6 +38,11 @@ export interface Option {
   pin?: boolean
   /** A stand-in: only fills space the agent's options leave (even if it's a direct action). */
   alt?: boolean
+  /**
+   * A direct answer to what she just asked (yes / no / the choices she offered):
+   * the likeliest tap, so it leads the rail, even when it arrives after the rest.
+   */
+  answer?: boolean
 }
 
 /** A tap that says something. The label is shortened for the pill; `say` keeps every word. */

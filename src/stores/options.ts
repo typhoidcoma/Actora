@@ -136,10 +136,13 @@ export function mergeOptions(
     agent = []
     says.length = 0
   }
-  const lead = [...pushed, ...agent].filter(keep)
+  // Direct answers to her question lead, wherever they came from and however late.
+  const answers = [...pushed, ...agent].filter((o) => o.answer)
+  if (answers.filter((o) => o.say).length >= 2) says.length = 0
+  const lead = [...answers, ...[...pushed, ...agent].filter((o) => !o.answer)].filter(keep)
   const anchors = acts.filter(keep)
   const reserve = Math.min(anchors.length, 2)
-  pick(lead.slice(0, Math.max(pushed.length, 3)), room - reserve)
+  pick(lead.slice(0, Math.max(pushed.length, answers.length, 3)), room - reserve)
   pick(anchors)
   pick(lead)
   pick(says.filter(keep))

@@ -294,4 +294,17 @@ describe('freshness', () => {
     const told = snap({}, { line: 'reply', messages: [{ id: '1', role: 'assistant', text: 'Done, it is moved.' }] })
     expect(localOptions('home', told).map((o) => o.label)).toEqual(['Tell me more', 'What else?'])
   })
+
+  it('leads with answers to her question, even when they come in last', () => {
+    const local = [sayOption('Ease me in'), sayOption('One big win')]
+    const fromAgent = [
+      sayOption('Tell me more', 'Tell me more', 'agent'),
+      { ...sayOption('Yes please', 'Yes please', 'agent'), answer: true },
+      { ...sayOption('Not right now', 'Not right now', 'agent'), answer: true },
+    ]
+    const out = mergeOptions(local, fromAgent, []).map((o) => o.label)
+    expect(out.slice(0, 2)).toEqual(['Yes please', 'Not right now'])
+    // Generic suggestions sit out while she's waiting on an answer.
+    expect(out).not.toContain('Ease me in')
+  })
 })

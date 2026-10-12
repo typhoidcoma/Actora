@@ -20,4 +20,16 @@ describe('phone tile slots', () => {
     const first = placeInSlots([], [o('A'), o('B'), o('C'), o('D')], 4)
     expect(labels(placeInSlots(first, [o('E'), o('C'), o('F'), o('G'), o('H')], 4))).toEqual(['E', 'F', 'C', 'G'])
   })
+
+  it('puts answers to her question in the first slots, even arriving last', () => {
+    const first = placeInSlots([], [o('Ease me in'), o('One big win')], 4)
+    const yes = { ...o('Yes please'), answer: true }
+    const no = { ...o('Not right now'), answer: true }
+    expect(labels(placeInSlots(first, [o('Ease me in'), o('One big win'), yes, no], 4))).toEqual([
+      'Yes please',
+      'Not right now',
+      'Ease me in',
+      'One big win',
+    ])
+  })
 })

@@ -366,13 +366,14 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
         .map((o) => (o && typeof o === 'object' ? (o as { label?: unknown; say?: unknown }) : null))
         .filter((o): o is { label: unknown; say?: unknown } => !!o && typeof o.label === 'string' && !!o.label.trim())
         .slice(0, 5)
-        .map((o) =>
-          sayOption(
+        .map((o) => ({
+          ...sayOption(
             String(o.label),
             (typeof o.say === 'string' && o.say.trim() ? o.say.trim() : String(o.label)).slice(0, 160),
             'pushed',
           ),
-        )
+          answer: true,
+        }))
       // 2–5 answers; a lone option isn't a choice, so keep the current ones instead.
       if (options.length >= 2) optionsStore.push(contextKeyOf(useUi.getState()), options)
       return

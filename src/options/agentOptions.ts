@@ -438,7 +438,9 @@ export function startAgentOptions(): () => void {
         ? await (await import('../aelora/mock')).mockLlm(req, ctrl.signal)
         : await llm(req, ctrl.signal)
       if (ctrl.signal.aborted) return
-      const options = parseAgentOptions(text)
+      // Written as answers to a question she just asked: they lead the rail.
+      const asked = req.prompt.includes('\nQUESTION. ')
+      const options = parseAgentOptions(text).map((o) => (asked ? { ...o, answer: true } : o))
       cache.set(sig, { at: Date.now(), options })
       // Only apply if the user is still where we generated for.
       if (contextKeyOf(useUi.getState()) === key) optionsStore.setAgent(key, options)

@@ -111,5 +111,5 @@ export function approvalOptions(p: PendingAction | undefined): Option[] {
     sayOption(p.status === 'retryable' ? 'Try again' : k.yes, `Yes, go ahead (action ${p.id}).`, 'pushed'),
     sayOption('Change it', "Let's change that before it goes.", 'pushed'),
     sayOption('Discard', `Discard that (action ${p.id}).`, 'pushed'),
-  ].map((o) => ({ ...o, id: `approve:${p.id}:${o.label}` }))
+  ].map((o) => ({ ...o, id: `approve:${p.id}:${o.label}`, answer: true }))
 }
