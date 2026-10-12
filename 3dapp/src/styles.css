@@ -79,3 +79,19 @@ button[aria-label='Type instead'] {
   height: 44px;
   width: 44px;
 }
+
+/*
+ * In focus mode the 2D panel sits inside the 3D glass: its own hairline and
+ * shadow drew a second rounded edge above the options strip. One clean edge,
+ * on the outer glass, instead.
+ */
+.focus-host .glass::before {
+  display: none;
+}
+.focus-host .glass,
+.focus-host .glass-thick {
+  box-shadow: none;
+}
+.focus-host {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--t-strong) 11%, transparent);
+}
