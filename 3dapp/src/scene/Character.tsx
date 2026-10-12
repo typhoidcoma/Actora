@@ -99,14 +99,25 @@ function Animated({ gltf }: { gltf: GLTF }) {
     anim.setPhase(useAgent.getState().phase)
     let lastReaction = useAgent.getState().reaction
     let lastEmoji = lastReact(useAgent.getState().messages)
+    let lastOpen = openingEmoji(useAgent.getState())
+    let emotedAt = 0
+    const act = (emoji: string) => {
+      // One gesture per reply, however the emoji arrives (on your message, or left in her text).
+      if (performance.now() - emotedAt < 2500) return
+      emotedAt = performance.now()
+      anim.emote(gestureFor(emoji))
+    }
     const off = useAgent.subscribe((s) => {
       anim.setPhase(s.phase)
       if (s.reaction && s.reaction !== lastReaction) anim.react(s.reaction.bus, s.reaction.intensity, s.reaction.holdMs)
       lastReaction = s.reaction
       // Her emoji on your message (her "got it"): she acts it out, then carries on.
       const emoji = lastReact(s.messages)
-      if (emoji.key !== lastEmoji.key && emoji.react) anim.emote(gestureFor(emoji.react))
+      if (emoji.key !== lastEmoji.key && emoji.react) act(emoji.react)
       lastEmoji = emoji
+      const open = openingEmoji(s)
+      if (open.key !== lastOpen.key && open.emoji) act(open.emoji)
+      lastOpen = open
     })
     return () => {
       off()
@@ -169,6 +180,19 @@ function Animated({ gltf }: { gltf: GLTF }) {
 function lastReact(messages: Array<{ id: string; react?: string }>): { key: string; react?: string } {
   const m = messages.findLast((x) => x.react)
   return { key: m ? `${m.id}:${m.react}` : '', react: m?.react }
+}
+
+/**
+ * An emoji opening her current reply (streaming, else her newest message), if it
+ * was left in her text rather than split off as a reaction: past any markdown,
+ * quotes or invisible characters in front of it.
+ */
+function openingEmoji(s: { streaming: string | null; messages: Array<{ id: string; role: string; text: string }> }): { key: string; emoji?: string } {
+  const last = s.messages.findLast((m) => m.role === 'assistant')
+  const text = s.streaming ?? last?.text ?? ''
+  const key = s.streaming !== null ? 'live' : (last?.id ?? '')
+  const m = /^[\s*_>#~`"'\u200B-\u200F\u2060\uFEFF-]*(\p{Extended_Pictographic})/u.exec(text)
+  return { key: m ? `${key}:${m[1]}` : key, emoji: m?.[1] }
 }
 
 /** How far she has wandered from her spot (read by the camera rig). */
