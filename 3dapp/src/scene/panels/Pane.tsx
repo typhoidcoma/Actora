@@ -12,7 +12,7 @@ import { parseCss, useLook } from '../../look/theme'
 /** How far the glass blurs the room behind it, in screen UV (the 2D pills' backdrop blur). */
 const BLUR = 0.02
 
-export interface PaneProps {
+interface PaneProps {
   width: number
   height: number
   /** Corner radius (world units). */
@@ -33,13 +33,16 @@ export interface PaneProps {
   onPress?: (uv: { x: number; y: number }) => void
   /** Uniform scale of the whole panel (the phone stack is drawn at canonical size, then fitted). */
   size?: number
+  /** Set to a function that repaints the face now, without a React render (animated faces). */
+  repaint?: { current: (() => void) | null }
 }
 
 export function roundedRect(w: number, h: number, r: number): THREE.ShapeGeometry {
   const s = new THREE.Shape()
   const x = -w / 2
   const y = -h / 2
-  r = Math.min(r, w / 2, h / 2)
+  // A hair of radius at least: a zero-radius arc leaves duplicate points for the triangulator.
+  r = Math.max(0.0005, Math.min(r, w / 2, h / 2))
   s.moveTo(x + r, y)
   s.lineTo(x + w - r, y)
   s.absarc(x + w - r, y + r, r, -Math.PI / 2, 0, false)
@@ -64,7 +67,7 @@ export function roundedRect(w: number, h: number, r: number): THREE.ShapeGeometr
  * the type). No body, so no edge. The 2D motion: scale in with a little
  * overshoot, ease out, glide to a new spot, lift on hover; an alarm breathes.
  */
-export function Pane({ width, height, radius = 0.06, position, rotation, paint, deps, bare, ring, present = true, onGone, delay = 0, onPress, size = 1 }: PaneProps) {
+export function Pane({ width, height, radius = 0.06, position, rotation, paint, deps, bare, ring, present = true, onGone, delay = 0, onPress, size = 1, repaint }: PaneProps) {
   const look = useLook()
   const fonts = useFonts((s) => s.ready)
   const pw = Math.round(width * PPU)
@@ -127,6 +130,22 @@ export function Pane({ width, height, radius = 0.06, position, rotation, paint, 
   // keeps the old face and fades to the new one; content changes are immediate.
   const lookKey = `${look.day}|${look.glass}|${look.strong}|${look.text}|${look.role.accent}`
   const lastLook = useRef(lookKey)
+  const paintRef = useRef(paint)
+  paintRef.current = paint
+  useEffect(() => {
+    if (!repaint) return
+    repaint.current = () => {
+      const ctx = face.canvas.getContext('2d')!
+      ctx.clearRect(0, 0, pw, ph)
+      ctx.save()
+      paintRef.current(ctx, pw, ph)
+      ctx.restore()
+      face.texture.needsUpdate = true
+    }
+    return () => {
+      repaint.current = null
+    }
+  }, [repaint, face, pw, ph])
   useEffect(() => {
     const ctx = face.canvas.getContext('2d')!
     if (lastLook.current !== lookKey) {

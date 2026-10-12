@@ -17,7 +17,7 @@ export interface RoomMaterials {
   cove: Strip
 }
 
-export interface Strip {
+interface Strip {
   material: THREE.MeshBasicNodeMaterial
   color: { value: THREE.Color }
   strength: { value: number }

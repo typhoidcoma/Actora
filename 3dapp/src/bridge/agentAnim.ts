@@ -5,9 +5,17 @@ import { GESTURES, HOLDS, POSED_BONES, PoseLayer, type Pose } from './poses'
 
 const FADE = 0.4
 
+/** Clips by lowercase name, built once per clip list. */
+const indexes = new WeakMap<THREE.AnimationClip[], Map<string, THREE.AnimationClip>>()
 function pick(clips: THREE.AnimationClip[], names: readonly string[]): THREE.AnimationClip | undefined {
+  let index = indexes.get(clips)
+  if (!index) {
+    index = new Map()
+    for (const c of clips) if (!index.has(c.name.toLowerCase())) index.set(c.name.toLowerCase(), c)
+    indexes.set(clips, index)
+  }
   for (const name of names) {
-    const hit = clips.find((c) => c.name.toLowerCase() === name.toLowerCase())
+    const hit = index.get(name.toLowerCase())
     if (hit) return hit
   }
   return undefined
@@ -31,6 +39,9 @@ export class AgentAnimator {
   /** A clip that overrides the phase loop while she's doing something (walking, a phone clip). */
   private activity: THREE.AnimationAction | null = null
   private activityName: string | null = null
+  private activityKind: 'walk' | 'phone' | 'think' | null | undefined = undefined
+  /** Pending fade-outs of reaction emotes, so a quick second one isn't cut short, and none fire after dispose. */
+  private fades = new Map<THREE.AnimationAction, ReturnType<typeof setTimeout>>()
   private clips: THREE.AnimationClip[]
   /** Metres per second the walk clip's feet travel over the floor (so she doesn't slide). */
   walkSpeed = 0.75
@@ -103,11 +114,12 @@ export class AgentAnimator {
    * the phase loop). Without a clip for it, phone and think are procedural poses.
    */
   setActivity(kind: 'walk' | 'phone' | 'think' | null): void {
+    if (kind === this.activityKind && !devHold()) return
+    this.activityKind = kind
     const names =
       kind === 'walk' ? character.busy.walk : kind === 'phone' ? character.busy.phone : kind === 'think' ? character.busy.think : null
-    const clipFor = names ? pick(this.clips, names) : undefined
-    if (!devHold()) this.hold.set(kind === 'phone' && !clipFor ? HOLDS.phone : kind === 'think' && !clipFor ? HOLDS.think : null)
     const clip = names ? pick(this.clips, names) : undefined
+    if (!devHold()) this.hold.set(kind === 'phone' && !clip ? HOLDS.phone : kind === 'think' && !clip ? HOLDS.think : null)
     const name = clip?.name ?? null
     if (name === this.activityName) return
     this.activityName = name
@@ -148,7 +160,14 @@ export class AgentAnimator {
     if (!action) return
     action.reset().setEffectiveWeight(Math.max(0.2, Math.min(1, intensity))).fadeIn(0.2).play()
     // Hold it, then ease back to the base pose.
-    window.setTimeout(() => action.fadeOut(0.5), Math.max(400, holdMs))
+    clearTimeout(this.fades.get(action))
+    this.fades.set(
+      action,
+      setTimeout(() => {
+        this.fades.delete(action)
+        action.fadeOut(0.5)
+      }, Math.max(400, holdMs)),
+    )
   }
 
   update(dt: number, energy: number): void {
@@ -269,6 +288,8 @@ export class AgentAnimator {
   }
 
   dispose(): void {
+    for (const t of this.fades.values()) clearTimeout(t)
+    this.fades.clear()
     this.mixer.stopAllAction()
     this.mixer.uncacheRoot(this.mixer.getRoot())
   }

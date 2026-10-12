@@ -7,7 +7,7 @@ server {
   root /usr/share/nginx/html;
 
   gzip on;
-  gzip_types text/css application/javascript application/json image/svg+xml application/manifest+json;
+  gzip_types text/css application/javascript application/json image/svg+xml application/manifest+json model/gltf-binary;
   gzip_min_length 1024;
 
   # Hashed build output: cache forever.
@@ -33,6 +33,13 @@ server {
   location /3d/assets/ {
     try_files $uri =404;
     add_header Cache-Control "public, max-age=31536000, immutable" always;
+  }
+  # Models change rarely (a new character is a new deploy): cached for a day, revalidated after.
+  location /3d/models/ {
+    try_files $uri =404;
+    # (nginx's mime map has no .glb: typed here, so gzip and the browser know it.)
+    default_type model/gltf-binary;
+    add_header Cache-Control "public, max-age=86400, stale-while-revalidate=604800" always;
   }
   location /3d/ {
     try_files $uri $uri/ /3d/index.html;

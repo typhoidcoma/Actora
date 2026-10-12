@@ -1,45 +1,63 @@
 import { AnimatePresence, LayoutGroup, motion, MotionConfig } from 'motion/react'
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useShallow } from 'zustand/react/shallow'
 import { signOut } from '@actora/auth/supabase'
 import { config } from '@actora/config'
 import { useContextKey } from '@actora/options/useOptions'
 import { useMetrics } from '@actora/stores/metrics'
 import { ui, useUi, type TileId } from '@actora/stores/ui'
-import { ItemPanel } from '@actora/ui/cards/ItemPanel'
-import { FindsPanel } from '@actora/ui/cards/FindsPanel'
 import { Panel } from '@actora/ui/cards/Panel'
-import { VaultPanel } from '@actora/ui/cards/VaultPanel'
 import { ChatSheet } from '@actora/ui/ChatSheet'
-import { DateSheet } from '@actora/ui/DateSheet'
-import { KeyboardSheet } from '@actora/ui/KeyboardSheet'
 import { MenuButton } from '@actora/ui/Menu'
 import { say, toggleVoice } from '@actora/options/run'
 import { useOptionsStore } from '@actora/stores/options'
 import { jelly } from '@actora/ui/motion'
 import { agentName } from '@actora/stores/agent'
 import { OptionRail } from '@actora/ui/OptionRail'
-import { PastChats } from '@actora/ui/PastChats'
 import { Toaster } from '@actora/ui/Toast'
-import { CALENDAR_ACCENT, CalendarDetail } from '@actora/ui/tiles/Calendar'
-import { GOALS_ACCENT, GoalsDetail } from '@actora/ui/tiles/Goals'
-import { INBOX_ACCENT, InboxDetail } from '@actora/ui/tiles/Inbox'
-import { TASKS_ACCENT, TasksDetail } from '@actora/ui/tiles/Tasks'
+import { ROLE } from '@actora/ui/brand'
 import { useFocused } from '../look/focus'
 import { FOCUS_RADIUS, FOCUS_RAIL, useFocusHost } from '../look/focusHost'
 import { anchorRef } from '../scene/Anchor'
-import { useDraft } from '../scene/draft'
+import { useDraft } from '../look/draft'
 import { useReady } from '../look/ready'
 import { useCaption } from '../look/caption'
 import { Loader } from './Loader'
 import { Activity } from '@actora/ui/Activity'
 import { useAgent } from '@actora/stores/agent'
 
-const LISTS: Record<TileId, { label: string; accent: string; Detail: () => React.ReactNode }> = {
-  tasks: { label: 'Tasks', accent: TASKS_ACCENT, Detail: TasksDetail },
-  calendar: { label: 'Calendar', accent: CALENDAR_ACCENT, Detail: CalendarDetail },
-  goals: { label: 'Goals', accent: GOALS_ACCENT, Detail: GoalsDetail },
-  inbox: { label: 'Inbox', accent: INBOX_ACCENT, Detail: InboxDetail },
+// Panels shown only once something is opened: their own chunks, fetched on idle
+// after the scene is revealed (prefetchPanels), so opening one is still instant.
+const panels = {
+  item: () => import('@actora/ui/cards/ItemPanel'),
+  finds: () => import('@actora/ui/cards/FindsPanel'),
+  vault: () => import('@actora/ui/cards/VaultPanel'),
+  calendar: () => import('@actora/ui/tiles/Calendar'),
+  goals: () => import('@actora/ui/tiles/Goals'),
+  inbox: () => import('@actora/ui/tiles/Inbox'),
+  tasks: () => import('@actora/ui/tiles/Tasks'),
+  date: () => import('@actora/ui/DateSheet'),
+  keyboard: () => import('@actora/ui/KeyboardSheet'),
+  past: () => import('@actora/ui/PastChats'),
+}
+const ItemPanel = lazy(() => panels.item().then((m) => ({ default: m.ItemPanel })))
+const FindsPanel = lazy(() => panels.finds().then((m) => ({ default: m.FindsPanel })))
+const VaultPanel = lazy(() => panels.vault().then((m) => ({ default: m.VaultPanel })))
+const DateSheet = lazy(() => panels.date().then((m) => ({ default: m.DateSheet })))
+const KeyboardSheet = lazy(() => panels.keyboard().then((m) => ({ default: m.KeyboardSheet })))
+const PastChats = lazy(() => panels.past().then((m) => ({ default: m.PastChats })))
+function prefetchPanels(): void {
+  const go = () => Object.values(panels).forEach((load) => void load().catch(() => {}))
+  if ('requestIdleCallback' in window) window.requestIdleCallback(go, { timeout: 4000 })
+  else setTimeout(go, 1500)
+}
+
+const LISTS: Record<TileId, { label: string; accent: string; Detail: React.LazyExoticComponent<() => React.ReactNode> }> = {
+  tasks: { label: 'Tasks', accent: ROLE.kind.task, Detail: lazy(() => panels.tasks().then((m) => ({ default: m.TasksDetail }))) },
+  calendar: { label: 'Calendar', accent: ROLE.kind.event, Detail: lazy(() => panels.calendar().then((m) => ({ default: m.CalendarDetail }))) },
+  goals: { label: 'Goals', accent: ROLE.kind.goal, Detail: lazy(() => panels.goals().then((m) => ({ default: m.GoalsDetail }))) },
+  inbox: { label: 'Inbox', accent: ROLE.kind.notification, Detail: lazy(() => panels.inbox().then((m) => ({ default: m.InboxDetail }))) },
 }
 
 const onSignOut = config.mock ? undefined : () => void signOut()
@@ -83,6 +101,10 @@ function useHostMetrics(w: number, h: number, portrait: boolean) {
 export function Overlay() {
   const focused = useFocused()
   const ready = useReady((s) => s.ready)
+  const sheets = useSheetsWanted()
+  useEffect(() => {
+    if (ready) prefetchPanels()
+  }, [ready])
   const host = useFocusHost()
   const phone = window.innerWidth / window.innerHeight < 0.8
   const key = useContextKey()
@@ -162,9 +184,11 @@ export function Overlay() {
         <FocusCaption />
         {host.el && createPortal(<FocusContent focused={focused} />, host.el)}
       </LayoutGroup>
-      <KeyboardSheet />
-      <PastChats />
-      <DateSheet />
+      <Suspense fallback={null}>
+        {sheets.keyboard && <KeyboardSheet />}
+        {sheets.past && <PastChats />}
+        {sheets.date && <DateSheet />}
+      </Suspense>
       <Toaster />
       <Loader />
     </MotionConfig>
@@ -173,7 +197,7 @@ export function Overlay() {
 
 /** The open thing, filling the in-scene panel; its options below it, never cut off. */
 function FocusContent({ focused }: { focused: boolean }) {
-  const m = useMetrics()
+  const m = useMetrics(useShallow((s) => ({ panel: s.panel, rail: s.rail })))
   const key = useContextKey()
   const chatOpen = useUi((s) => s.chatOpen)
   const focus = useUi((s) => s.focus)
@@ -186,10 +210,26 @@ function FocusContent({ focused }: { focused: boolean }) {
     <>
       <div className="absolute" style={{ left: m.panel.x, top: m.panel.y, width: m.panel.w, height: m.panel.h }}>
         <AnimatePresence>
-          {focus && <ListPanel key={`list-${focus}`} id={focus} />}
-          {item && <ItemPanel key={`item-${item.kind}:${item.id}`} item={item} />}
-          {finds && <FindsPanel key="finds" />}
-          {vault && <VaultPanel key="vault" />}
+          {focus && (
+            <Suspense key={`list-${focus}`} fallback={null}>
+              <ListPanel id={focus} />
+            </Suspense>
+          )}
+          {item && (
+            <Suspense key={`item-${item.kind}:${item.id}`} fallback={null}>
+              <ItemPanel item={item} />
+            </Suspense>
+          )}
+          {finds && (
+            <Suspense key="finds" fallback={null}>
+              <FindsPanel />
+            </Suspense>
+          )}
+          {vault && (
+            <Suspense key="vault" fallback={null}>
+              <VaultPanel />
+            </Suspense>
+          )}
         </AnimatePresence>
       </div>
       {focused && !chatOpen && (
@@ -342,4 +382,13 @@ function FocusCaption() {
       )}
     </AnimatePresence>
   )
+}
+
+/** Which of the screen-level sheets have been wanted yet: each mounts on first use and stays. */
+function useSheetsWanted(): { keyboard: boolean; past: boolean; date: boolean } {
+  const now = useUi(useShallow((s) => ({ keyboard: s.keyboardOpen, past: s.pastChats, date: s.picking !== null })))
+  const [seen, setSeen] = useState(now)
+  if ((now.keyboard && !seen.keyboard) || (now.past && !seen.past) || (now.date && !seen.date))
+    setSeen({ keyboard: seen.keyboard || now.keyboard, past: seen.past || now.past, date: seen.date || now.date })
+  return seen
 }

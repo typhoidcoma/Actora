@@ -5,7 +5,7 @@ import { builtinAOContext, depthPass, mix, pass, screenUV, uniform } from 'three
 import { dof } from 'three/addons/tsl/display/DepthOfFieldNode.js'
 import { useFocused } from '../look/focus'
 import { damp } from '../look/motion'
-import { herOffset } from './Character'
+import { herOffset } from '../look/her'
 import { intro } from '../look/intro'
 import { bloom } from 'three/addons/tsl/display/BloomNode.js'
 import { ao } from 'three/addons/tsl/display/GTAONode.js'

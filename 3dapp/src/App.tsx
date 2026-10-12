@@ -1,5 +1,5 @@
 import type { Session, SupabaseClient } from '@supabase/supabase-js'
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { reconnectAelora, startAelora } from '@actora/aelora/client'
 import { startGreeting } from '@actora/aelora/greeting'
 import { getSupabase, signInWithGoogle } from '@actora/auth/supabase'
@@ -11,7 +11,7 @@ import { startRanking } from '@actora/priority/rank'
 import { useAgent } from '@actora/stores/agent'
 import { useThemeSync } from '@actora/ui/Theme'
 import { startLongAnswers } from './look/longAnswers'
-import { World } from './scene/World'
+import { loadWorld } from './look/loadWorld'
 import { Loader } from './dom/Loader'
 import { markReady } from './look/ready'
 import { useEntities } from '@actora/stores/entities'
@@ -101,6 +101,9 @@ function Connected({ sb, userId }: { sb: SupabaseClient; userId: string }) {
   return <Live />
 }
 
+/** The scene and everything 3D: its own chunk, already loading (main.tsx starts it). */
+const World = lazy(() => loadWorld().then((m) => ({ default: m.World })))
+
 /** The same background loops the 2D Stage runs, minus the ones that only drive DOM panels. */
 function Live() {
   // data-theme on <html>: the 2D panels' CSS tokens follow day/dusk.
@@ -125,5 +128,9 @@ function Live() {
       clearTimeout(t)
     }
   }, [])
-  return <World />
+  return (
+    <Suspense fallback={<Loader />}>
+      <World />
+    </Suspense>
+  )
 }

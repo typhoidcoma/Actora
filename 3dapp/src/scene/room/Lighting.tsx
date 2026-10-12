@@ -26,7 +26,7 @@ const LOW = new THREE.Color('#ffb067')
 
 /** Minutes past local midnight of "YYYY-MM-DDTHH:MM" (Open-Meteo's sunrise/sunset), or null. */
 const minuteOf = (iso?: string | null): number | null => {
-  const m = iso ? /T(d{2}):(d{2})/.exec(iso) : null
+  const m = iso ? /T(\d{2}):(\d{2})/.exec(iso) : null
   return m ? Number(m[1]) * 60 + Number(m[2]) : null
 }
 
@@ -142,16 +142,26 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
   }, [pmrem, scene])
 
   const live = useMemo(() => ({ dir: new THREE.Vector3(), color: new THREE.Color(), intensity: 0 }), [])
+  // The real sun moves a degree in four minutes: recomputed once a second, not per frame.
+  const sunAt = useRef(-Infinity)
+  const scratch = useMemo(() => new THREE.Vector3(), [])
+  // Her mood's colour and strength, recomputed only when the mood, the emotion or the scheme changes.
+  const moodMemo = useRef<{ mood: unknown; emotion: unknown; scheme: unknown; c1: [number, number, number]; intensity: number } | null>(null)
   const first = useRef(true)
   useFrame(({ clock }, dt) => {
     const k = first.current ? 1 : 1 - Math.exp(-dt * 1.6)
     first.current = false
     // Following the sun: the real one. A chosen Day or Dusk keeps its fixed look.
-    const s = useUi.getState().theme === 'auto' ? (realSun(live), live) : look.day ? SUN.day : SUN.dusk
+    const auto = useUi.getState().theme === 'auto'
+    if (auto && clock.elapsedTime - sunAt.current >= 1) {
+      sunAt.current = clock.elapsedTime
+      realSun(live)
+    }
+    const s = auto ? live : look.day ? SUN.day : SUN.dusk
 
     if (sun.current) {
       to.dir.copy(s.dir)
-      const p = sun.current.position.clone().sub(SUN_TARGET).normalize().lerp(to.dir, k).normalize()
+      const p = scratch.copy(sun.current.position).sub(SUN_TARGET).normalize().lerp(to.dir, k).normalize()
       sun.current.position.copy(SUN_TARGET).addScaledVector(p, 18)
       sun.current.color.lerp(s.color, k)
       sun.current.intensity = damp(sun.current.intensity, s.intensity, 1.6, dt)
@@ -166,11 +176,17 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
     // Her mood: the cove and the wall wash.
     const { mood, emotion, phase } = useAgent.getState()
     const offline = phase === 'offline'
-    const [c1] = orbColors(mood, emotion, useScheme.getState().scheme)
+    const scheme = useScheme.getState().scheme
+    let mm = moodMemo.current
+    if (!mm || mm.mood !== mood || mm.emotion !== emotion || mm.scheme !== scheme) {
+      const [c1] = orbColors(mood, emotion, scheme)
+      mm = moodMemo.current = { mood, emotion, scheme, c1: [c1[0], c1[1], c1[2]], intensity: moodIntensity(mood, emotion) }
+    }
+    const c1 = mm.c1
     to.mood.setRGB(c1[0], c1[1], c1[2], THREE.SRGBColorSpace)
     // Architectural light is warm white (about 3000 K); her mood only tints it.
     to.mood.lerp(WARM, 0.78)
-    const glow = offline ? 0.15 : 0.45 + moodIntensity(mood, emotion) * 0.55
+    const glow = offline ? 0.15 : 0.45 + mm.intensity * 0.55
     const pulse = 0.5 + 0.5 * Math.sin(clock.elapsedTime * 4.2)
 
     const coveColor = alarm ? to.urgent : to.mood

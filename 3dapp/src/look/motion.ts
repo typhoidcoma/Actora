@@ -11,7 +11,7 @@ export const backOut = (t: number) => {
   return 1 + (c + 1) * x * x * x + c * x * x
 }
 
-export interface Presence<T> {
+interface Presence<T> {
   key: string
   item: T
   /** False once it has left the list: play the exit, then call done(). */

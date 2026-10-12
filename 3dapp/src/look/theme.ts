@@ -1,11 +1,10 @@
-import { useMemo } from 'react'
-import { useShallow } from 'zustand/react/shallow'
+import { create } from 'zustand'
 import * as THREE from 'three/webgpu'
 import type { Role } from '@actora/color/scheme'
 import { useScheme } from '@actora/stores/scheme'
-import { useTheme } from '@actora/ui/Theme'
+import { useUi } from '@actora/stores/ui'
 import { blobColor } from '@actora/weather/palette'
-import { useSky } from '@actora/weather/sky'
+import { isDaylight, useSky } from '@actora/weather/sky'
 
 /** One CSS colour from the scheme (hex or `rgb(r g b / a)`) as a three colour plus alpha. */
 export function parseCss(css: string, out = new THREE.Color()): { color: THREE.Color; alpha: number } {
@@ -35,17 +34,13 @@ export interface Look {
   sky: string[]
 }
 
-/**
- * The 2D app's live look, in one place for the scene: the theme (day/dusk from the
- * sun or the user's choice), the scheme (brand, or the agent's colors.set) and the
- * weather. Everything here cross-fades in 2D, so the scene eases between values too.
- */
-export function useLook(): Look {
-  const day = useTheme() === 'day'
-  const sky = useSky()
-  const applied = useScheme(useShallow((s) => s.scheme[day ? 'day' : 'dusk']))
+function compute(): Look {
+  const mode = useUi.getState().theme
+  const sky = useSky.getState()
+  const day = mode === 'auto' ? isDaylight(sky) : mode === 'day'
+  const applied = useScheme.getState().scheme[day ? 'day' : 'dusk']
   const s = applied.surface
-  return useMemo(() => ({
+  return {
     day,
     bg: s.bg,
     bg2: s.bg2,
@@ -58,5 +53,59 @@ export function useLook(): Look {
     role: applied.role,
     ink: applied.ink,
     sky: [0, 1, 2, 3].map((slot) => blobColor(sky, slot, day, applied.ambient)),
-  }), [day, sky, applied, s])
+  }
+}
+
+/** True when two looks would paint the same (so a recompute doesn't re-render anyone). */
+function same(a: Look, b: Look): boolean {
+  return (
+    a.day === b.day &&
+    a.bg === b.bg &&
+    a.bg2 === b.bg2 &&
+    a.strong === b.strong &&
+    a.text === b.text &&
+    a.muted === b.muted &&
+    a.line === b.line &&
+    a.glass === b.glass &&
+    a.glassThick === b.glassThick &&
+    a.role === b.role &&
+    a.ink === b.ink &&
+    a.sky.join() === b.sky.join()
+  )
+}
+
+/**
+ * The look, computed once for everyone: from the theme choice, the weather and the
+ * scheme, rechecked each minute (the sun crossing sunrise or sunset). One store and
+ * one timer, instead of one per panel.
+ */
+const useLookStore = create<{ look: Look }>(() => ({ look: compute() }))
+let started = false
+function start(): void {
+  if (started) return
+  started = true
+  const refresh = () => {
+    const next = compute()
+    if (!same(next, useLookStore.getState().look)) useLookStore.setState({ look: next })
+  }
+  useUi.subscribe((s, p) => s.theme !== p.theme && refresh())
+  useSky.subscribe(refresh)
+  useScheme.subscribe(refresh)
+  setInterval(refresh, 60_000)
+}
+
+/**
+ * The 2D app's live look, in one place for the scene: the theme (day/dusk from the
+ * sun or the user's choice), the scheme (brand, or the agent's colors.set) and the
+ * weather. Everything here cross-fades in 2D, so the scene eases between values too.
+ */
+/** The current look, outside React (per-frame code). */
+export function lookNow(): Look {
+  start()
+  return useLookStore.getState().look
+}
+
+export function useLook(): Look {
+  start()
+  return useLookStore((s) => s.look)
 }

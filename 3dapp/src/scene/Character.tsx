@@ -2,15 +2,21 @@ import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three/webgpu'
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js'
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 import { orbSignals, useAgent } from '@actora/stores/agent'
 import { panelOpen, useUi } from '@actora/stores/ui'
 import { AgentAnimator } from '../bridge/agentAnim'
 import { Wander } from '../bridge/wander'
 import { INTRO_FROM, intro } from '../look/intro'
 import { useReady } from '../look/ready'
+import { lookNow } from '../look/theme'
+import { herOffset } from '../look/her'
 import { gestureFor } from '../bridge/poses'
 import { character } from '../character'
 import { markReady } from '../look/ready'
+
+/** A GLTFLoader that reads meshopt-compressed files (the placeholder is packed with it). */
+const gltfLoader = () => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
 
 type Loaded = { gltf: GLTF } | { missing: true } | null
 
@@ -19,7 +25,7 @@ function useCharacterModel(): Loaded {
   const [loaded, setLoaded] = useState<Loaded>(null)
   useEffect(() => {
     let live = true
-    const loader = new GLTFLoader()
+    const loader = gltfLoader()
     ;(character.url ? loader.loadAsync(character.url) : Promise.reject(new Error('no model')))
       .catch(() => loader.loadAsync(character.placeholderUrl))
       .then(async (gltf) => {
@@ -47,7 +53,7 @@ async function extraClips(): Promise<THREE.AnimationClip[]> {
       const name = url.split('/').pop()!.replace(/.[^.]+$/, '').toLowerCase()
       const clips = /.fbx$/i.test(url)
         ? (await new (await import('three/addons/loaders/FBXLoader.js')).FBXLoader().loadAsync(url)).animations
-        : (await new GLTFLoader().loadAsync(url)).animations
+        : (await gltfLoader().loadAsync(url)).animations
       const clip = clips[0]
       if (!clip) continue
       clip.name = name
@@ -161,7 +167,8 @@ function Animated({ gltf }: { gltf: GLTF }) {
       if (!wide) intro.pending = false
       else if (!useReady.getState().ready) {
         m.position.set(INTRO_FROM.x, 0, INTRO_FROM.z)
-        herOffset.set(m.position.x, 0, m.position.z)
+        herOffset.x = m.position.x
+        herOffset.z = m.position.z
         anim.update(dt, 0)
         return
       } else {
@@ -173,10 +180,11 @@ function Animated({ gltf }: { gltf: GLTF }) {
     if (intro.active && !w.walking && Math.hypot(m.position.x, m.position.z) < 0.05) intro.active = false
     lastHeading.current = w.walking ? w.heading : null
     // Her offset from her spot, for the camera to follow (gently) while she wanders.
-    herOffset.set(m.position.x, 0, m.position.z)
+    herOffset.x = m.position.x
+    herOffset.z = m.position.z
     const home = Math.hypot(m.position.x, m.position.z) < 0.05
     anim.setActivity(w.walking ? 'walk' : w.phone ? 'phone' : thinkFor.current > 1.2 && home ? 'think' : null)
-    anim.phoneGlow = document.documentElement.dataset.theme === 'dusk' ? 0.09 : 0.05
+    anim.phoneGlow = lookNow().day ? 0.05 : 0.09
     anim.update(dt, orbSignals.energy)
 
     // Facing: along her path while walking; otherwise toward you (or, with a panel
@@ -212,9 +220,6 @@ function openingEmoji(s: { streaming: string | null; messages: Array<{ id: strin
   const m = /^[\s*_>#~`"'\u200B-\u200F\u2060\uFEFF-]*(\p{Extended_Pictographic})/u.exec(text)
   return { key: m ? `${key}:${m[1]}` : key, emoji: m?.[1] }
 }
-
-/** How far she has wandered from her spot (read by the camera rig). */
-export const herOffset = new THREE.Vector3()
 
 /** Eases an angle along the short way round. */
 function dampAngle(from: number, to: number, lambda: number, dt: number): number {

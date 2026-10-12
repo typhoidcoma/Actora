@@ -1,6 +1,6 @@
 import { useAgent } from '@actora/stores/agent'
 import { panelOpen, ui, useUi } from '@actora/stores/ui'
-import { herOffset } from '../scene/Character'
+import { herOffset } from './her'
 
 /** A turn this long (or with this many steps: searches, lookups) gets the close-up chat. */
 const LONG_MS = 6000

@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import { NoWebGPU } from './NoWebGPU'
+import { loadWorld } from './look/loadWorld'
 import { restoreLocalTheme } from '@actora/stores/appearance'
 import { initScheme } from '@actora/stores/scheme'
 import { sayPolicy } from '@actora/options/run'
@@ -46,4 +47,8 @@ async function webgpuReady(): Promise<boolean> {
 }
 
 const root = createRoot(document.getElementById('root')!)
-void webgpuReady().then((ok) => root.render(<StrictMode>{ok ? <App /> : <NoWebGPU />}</StrictMode>))
+void webgpuReady().then((ok) => {
+  // Start downloading the scene now, so it arrives while sign-in and the socket come up.
+  if (ok) void loadWorld()
+  root.render(<StrictMode>{ok ? <App /> : <NoWebGPU />}</StrictMode>)
+})

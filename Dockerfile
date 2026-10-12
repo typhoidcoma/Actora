@@ -9,6 +9,11 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
+# The 3D app's dependencies and its stand-in character (not in git), before the
+# sources: these layers stay cached until its package files or scripts change.
+COPY 3dapp/package.json 3dapp/package-lock.json 3dapp/
+COPY 3dapp/scripts 3dapp/scripts
+RUN cd 3dapp && npm ci --no-audit --no-fund && npm run placeholder
 COPY . .
 ARG VITE_AELORA_BASE_URL=https://aelora-312386972258.us-west1.run.app
 ARG VITE_SUPABASE_URL=
@@ -20,11 +25,8 @@ ENV VITE_AELORA_BASE_URL=$VITE_AELORA_BASE_URL \
 RUN npm run build
 
 # The 3D app (3dapp/), served beside it at /3d/. It reuses the 2D code in src/
-# (and so the root node_modules above); its stand-in character is fetched here
-# since it isn't in git.
-WORKDIR /app/3dapp
-RUN npm ci --no-audit --no-fund && npm run placeholder && npm run build
-WORKDIR /app
+# (and so the root node_modules above).
+RUN cd 3dapp && npm run build
 
 FROM nginx:1.27-alpine
 # The official image renders /etc/nginx/templates/*.template with envsubst at

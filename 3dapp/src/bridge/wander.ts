@@ -21,7 +21,7 @@ const HOME: Spot = { x: 0, z: 0 }
 /** How long she has to be working before she gets up to do something. */
 const START_AFTER = 1.8
 
-export interface WanderFrame {
+interface WanderFrame {
   /** Walking right now (play the walk clip). */
   walking: boolean
   /** Checking her phone. */

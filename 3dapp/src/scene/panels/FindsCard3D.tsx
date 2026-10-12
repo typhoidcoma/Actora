@@ -52,7 +52,8 @@ function useShown(find: Find | null): { find: Find | null; img: HTMLImageElement
 /** The fourth card: the agent's fun finds, rotating, dark like its photo. Tap to open them all. */
 export function FindsCard3D({ corner, present }: { corner: number; present: boolean }) {
   const look = useLook()
-  const { items, status } = useFinds()
+  const items = useFinds((s) => s.items)
+  const status = useFinds((s) => s.status)
   const [index, setIndex] = useState(0)
   useEffect(() => {
     if (items.length < 2) return

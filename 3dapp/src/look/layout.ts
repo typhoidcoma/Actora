@@ -130,7 +130,7 @@ export function useStage(): Stage {
   return useMemo(() => stageFor(key), [key])
 }
 
-export interface FocusLayout {
+interface FocusLayout {
   portrait: boolean
   /** The open panel's box, as fractions of the screen (0,0 top-left). */
   rect: { x0: number; y0: number; x1: number; y1: number }
@@ -149,7 +149,19 @@ export interface FocusLayout {
  * up on the left, and the thing fills a full panel on the right. On a narrow
  * screen she stays at the top, head and shoulders, and the panel takes the rest.
  */
+const focusCache = new Map<number, FocusLayout>()
+/** Memoised per aspect: the camera rig reads it every frame while a panel is open. */
 export function focusLayout(aspect: number): FocusLayout {
+  let hit = focusCache.get(aspect)
+  if (!hit) {
+    if (focusCache.size > 16) focusCache.clear()
+    hit = computeFocusLayout(aspect)
+    focusCache.set(aspect, hit)
+  }
+  return hit
+}
+
+function computeFocusLayout(aspect: number): FocusLayout {
   const portrait = aspect < 0.8
   // She's the star: wide, the camera is in close (half the distance it was), her
   // head and shoulders beside the panel, for a more intimate conversation.

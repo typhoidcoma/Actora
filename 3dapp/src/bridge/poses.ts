@@ -150,14 +150,25 @@ export const POSED_BONES = [
  * in and out; switching poses eases the old one out first. Undo() before the
  * mixer writes, apply() after.
  */
+/** A pose resolved against the skeleton: its bones, their offsets and wiggles, and a quaternion each. */
+interface Entry {
+  bone: THREE.Object3D
+  e: E
+  wiggles: Array<{ axis: 0 | 1 | 2; amp: number; hz: number }>
+  q: THREE.Quaternion
+  applied: boolean
+}
+
 export class PoseLayer {
-  private applied = new Map<THREE.Object3D, THREE.Quaternion>()
   private pose: Pose | null = null
   private next: Pose | null = null
   w = 0
   private target = 0
   private q = new THREE.Quaternion()
   private e = new THREE.Euler()
+  private o: E = [0, 0, 0]
+  private compiled = new WeakMap<Pose, Entry[]>()
+  private last: Entry[] | null = null
 
   private bones: Map<string, THREE.Object3D>
   private speed: number
@@ -189,8 +200,38 @@ export class PoseLayer {
   }
 
   undo(): void {
-    for (const [bone, q] of this.applied) bone.quaternion.multiply(this.q.copy(q).invert())
-    this.applied.clear()
+    if (!this.last) return
+    for (const en of this.last) {
+      if (!en.applied) continue
+      en.bone.quaternion.multiply(this.q.copy(en.q).invert())
+      en.applied = false
+    }
+    this.last = null
+  }
+
+  /** Its bone entries, built the first time the pose is shown. */
+  private entries(pose: Pose): Entry[] {
+    let list = this.compiled.get(pose)
+    if (list) return list
+    const byBone = new Map<string, Entry>()
+    const entry = (name: string): Entry | null => {
+      const bone = this.bones.get(name)
+      if (!bone) return null
+      let en = byBone.get(name)
+      if (!en) {
+        en = { bone, e: [0, 0, 0], wiggles: [], q: new THREE.Quaternion(), applied: false }
+        byBone.set(name, en)
+      }
+      return en
+    }
+    for (const [name, v] of Object.entries(pose.bones)) {
+      const en = entry(name)
+      if (en) en.e = [v[0], v[1], v[2]]
+    }
+    for (const wg of pose.wiggle ?? []) entry(wg.bone)?.wiggles.push({ axis: wg.axis, amp: wg.amp, hz: wg.hz })
+    list = [...byBone.values()]
+    this.compiled.set(pose, list)
+    return list
   }
 
   apply(dt: number, t: number, scale = 1): void {
@@ -206,18 +247,17 @@ export class PoseLayer {
     const pose = this.pose
     const w = this.w * scale
     if (!pose || w < 0.002) return
-    const offsets = new Map<string, E>(Object.entries(pose.bones).map(([k, v]) => [k, [...v] as E]))
-    for (const wg of pose.wiggle ?? []) {
-      const o = offsets.get(wg.bone) ?? [0, 0, 0]
-      o[wg.axis] += Math.sin(t * wg.hz * Math.PI * 2) * wg.amp
-      offsets.set(wg.bone, o)
+    const list = this.entries(pose)
+    const o = this.o
+    for (const en of list) {
+      o[0] = en.e[0]
+      o[1] = en.e[1]
+      o[2] = en.e[2]
+      for (const wg of en.wiggles) o[wg.axis] += Math.sin(t * wg.hz * Math.PI * 2) * wg.amp
+      en.q.identity().slerp(this.q.setFromEuler(this.e.set(o[0], o[1], o[2])), w)
+      en.bone.quaternion.multiply(en.q)
+      en.applied = true
     }
-    for (const [name, o] of offsets) {
-      const bone = this.bones.get(name)
-      if (!bone) continue
-      const q = new THREE.Quaternion().slerp(this.q.setFromEuler(this.e.set(o[0], o[1], o[2])), w)
-      bone.quaternion.multiply(q)
-      this.applied.set(bone, q)
-    }
+    this.last = list
   }
 }

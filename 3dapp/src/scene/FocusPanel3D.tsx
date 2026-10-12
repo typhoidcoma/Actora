@@ -55,6 +55,7 @@ export function FocusPanel3D() {
     const onWheel = (e: WheelEvent) => {
       const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY
       for (let el = e.target as HTMLElement | null; el && el !== css.el.parentElement; el = el.parentElement) {
+        if (el.scrollHeight <= el.clientHeight + 1) continue
         const oy = getComputedStyle(el).overflowY
         if (!/(auto|scroll)/.test(oy) || el.scrollHeight <= el.clientHeight + 1) continue
         const max = el.scrollHeight - el.clientHeight
@@ -129,12 +130,25 @@ export function FocusPanel3D() {
     css.obj.position.copy(g.position)
     css.obj.quaternion.copy(g.quaternion)
     css.obj.scale.setScalar(unit)
-    css.el.style.opacity = String(Math.min(1, k * 1.25))
-    css.el.style.pointerEvents = focused && k > 0.9 ? 'auto' : 'none'
-    css.el.style.visibility = k > 0 ? 'visible' : 'hidden'
+    const opacity = String(Math.round(Math.min(1, k * 1.25) * 1000) / 1000)
+    const pointer = focused && k > 0.9 ? 'auto' : 'none'
+    const visibility = k > 0 ? 'visible' : 'hidden'
+    const st = css.el.style
+    if (st.opacity !== opacity) st.opacity = opacity
+    if (st.pointerEvents !== pointer) st.pointerEvents = pointer
+    if (st.visibility !== visibility) st.visibility = visibility
+    hidden.current = k === 0
   })
   // After the WebGPU pipeline has drawn (priority 1), place the DOM layer for the same camera.
-  useFrame(() => css.renderer.render(css.scene, camera), 2)
+  // Placed for the same camera after the WebGPU pipeline draws; once hidden, rendered
+  // one last time (to hide it) and then left alone until it shows again.
+  const hidden = useRef(false)
+  const renderedHidden = useRef(false)
+  useFrame(() => {
+    if (hidden.current && renderedHidden.current) return
+    css.renderer.render(css.scene, camera)
+    renderedHidden.current = hidden.current
+  }, 2)
 
   return (
     <group ref={group} visible={false}>

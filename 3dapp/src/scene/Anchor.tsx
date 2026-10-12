@@ -27,6 +27,7 @@ export function Anchor({
 }) {
   const ref = useRef<THREE.Group>(null)
   const v = useMemo(() => new THREE.Vector3(), [])
+  const written = useRef('')
   useFrame(({ camera, size }) => {
     const el = els.get(name)
     if (!el || !ref.current) return
@@ -34,7 +35,11 @@ export function Anchor({
     const x = ((v.x + 1) / 2) * size.width
     const y = ((1 - v.y) / 2) * size.height
     const shift = align === 'top' ? 'translateX(-50%)' : align === 'bottom' ? 'translate(-50%, -100%)' : 'translateY(-50%)'
-    el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) ${shift}`
+    const transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) ${shift}`
+    if (written.current !== transform) {
+      written.current = transform
+      el.style.transform = transform
+    }
   })
   return <group ref={ref} position={position} />
 }

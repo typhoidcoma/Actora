@@ -19,6 +19,13 @@ function firstSentence(text: string): string {
 }
 
 /**
+ * The first sentence of a markdown reply, as plain text. Only its opening is read
+ * (a caption shows three lines at most): a streaming reply grows every token, and
+ * converting all of it each time was quadratic over a long answer.
+ */
+const opening = (md: string) => firstSentence(plainText(md.slice(0, 600)))
+
+/**
  * What she's saying right now, for a caption: her welcome, her reply's first
  * sentence (live while it streams), a reminder, a message, or a lost connection,
  * with its colour. `present` turns false once it has sat still for 10 s (the 2D
@@ -55,10 +62,10 @@ export function useCaption(): { text: string; color: string; present: boolean; l
     if (ring) color = look.ink.urgent
   } else if (a.line === 'message' && a.message) text = a.message
   else if (a.line === 'reply') {
-    if (a.streaming) text = firstSentence(plainText(a.streaming))
+    if (a.streaming) text = opening(a.streaming)
     // Working on it: the animated Activity shows over her head instead.
     else if (a.busy) text = ''
-    else text = firstSentence(plainText(a.last ?? ''))
+    else text = opening(a.last ?? '')
   } else text = a.greeting
 
   const holds = !!a.streaming || a.fatal || a.line === 'notice' || (a.line === 'greeting' && a.checkin)
