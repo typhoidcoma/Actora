@@ -176,7 +176,10 @@ export class AgentAnimator {
     this.gesture.apply(dt, this.t)
     const w = this.hold.current === HOLDS.phone ? this.hold.w * (1 - this.gesture.w) : 0
 
-    if (this.phoneMesh) this.phoneMesh.visible = w > 0.35
+    // Shown and hidden by scale, never by .visible: hiding it would take its light out of
+    // the scene, and a change in the scene's lights recompiles every lit shader (a
+    // third of a second's freeze each time she took her phone out or put it away).
+    if (this.phoneMesh) this.phoneMesh.scale.setScalar(w > 0.35 ? 1 : 0.0001)
     // The screen's glow on her face: fades in with the phone, flickers a touch as she scrolls.
     if (this.phoneLight) this.phoneLight.intensity = w * this.phoneGlow * (1 + Math.sin(this.t * 2.3) * 0.08 + Math.sin(this.t * 7.1) * 0.04)
 
@@ -240,7 +243,7 @@ export class AgentAnimator {
     const [px, py, pz] = character.busy.phoneAt
     phone.position.set(px / s, py / s, pz / s)
     phone.rotation.set(...character.busy.phoneTurn)
-    phone.visible = false
+    phone.scale.setScalar(0.0001)
     phone.castShadow = true
     hand.add(phone)
     this.phoneMesh = phone

@@ -5,6 +5,7 @@ import { CSS3DObject, CSS3DRenderer } from 'three/addons/renderers/CSS3DRenderer
 import { useFocused } from '../look/focus'
 import { FOCUS_RADIUS, useFocusHost } from '../look/focusHost'
 import { focusLayout } from '../look/layout'
+import { useReady } from '../look/ready'
 import { UI_LAYER } from '../look/layers'
 import { damp } from '../look/motion'
 import { parseCss, useLook } from '../look/theme'
@@ -115,7 +116,9 @@ export function FocusPanel3D() {
       f.panel.position[2] - away * 0.6,
     )
     g.rotation.set(f.portrait ? away * 0.5 : 0, turn - away * 0.7, 0)
-    g.visible = k > 0
+    // Drawn (at zero opacity) until the scene is ready, so its glass shader compiles
+    // under the loader, not as the camera first comes in.
+    g.visible = k > 0 || !useReady.getState().ready
     u.appear.value = Math.min(1, k * 1.25)
     u.tint.value.lerp(tintTo.color, 1 - Math.exp(-dt * 2.5))
     u.amount.value = damp(u.amount.value, tintTo.amount, 2.5, dt)

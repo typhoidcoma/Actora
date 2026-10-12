@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import * as THREE from 'three/webgpu'
 import type { Role } from '@actora/color/scheme'
@@ -44,7 +45,7 @@ export function useLook(): Look {
   const sky = useSky()
   const applied = useScheme(useShallow((s) => s.scheme[day ? 'day' : 'dusk']))
   const s = applied.surface
-  return {
+  return useMemo(() => ({
     day,
     bg: s.bg,
     bg2: s.bg2,
@@ -57,5 +58,5 @@ export function useLook(): Look {
     role: applied.role,
     ink: applied.ink,
     sky: [0, 1, 2, 3].map((slot) => blobColor(sky, slot, day, applied.ambient)),
-  }
+  }), [day, sky, applied, s])
 }
