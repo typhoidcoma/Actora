@@ -42,7 +42,7 @@ Don't import from `../src/ui/**` beyond its pure helpers (`markdownText`, `forma
   clip if she has one, otherwise a procedural pose). She walks back to face you
   when her answer starts. Wide screens only.
 
-- **Thinking and emoji** (): a turn with no tools gets a thinking pose (hand
+- **Thinking and emoji** (`bridge/poses.ts`): a turn with no tools gets a thinking pose (hand
   to chin), and searches get the wander. Her emoji on your message is acted out once,
   then she carries on: 👍 a raised fist, 👋 a wave, 🎉 arms up, ❤️ a hand on her heart,
   😂 a laugh, 😮 surprise, 🤷 a shrug, 🤔 a think, 👎 a head shake, anything else a nod.
@@ -59,6 +59,11 @@ It's named after its file. `texting.fbx` becomes the "texting" clip, which the
 phone routine then uses instead of the procedural pose. Any other name can be
 mapped in `character.busy`. The Xbot stand-in and Mixamo characters share the
 skeleton, so clips bind as they are.
+
+A clip named after a gesture (`thumbsup`, `wave`, `celebrate`, `heart`, `laugh`,
+`surprise`, `shrug`, `thinking`) plays instead of its procedural pose. Good Mixamo
+picks are "Thumbs Up", "Waving", "Clapping", "Thinking", "Shrugging", "Laughing"
+and "Surprised".
 
 ## Run
 
