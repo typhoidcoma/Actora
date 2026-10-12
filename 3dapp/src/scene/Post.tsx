@@ -6,6 +6,7 @@ import { dof } from 'three/addons/tsl/display/DepthOfFieldNode.js'
 import { useFocused } from '../look/focus'
 import { damp } from '../look/motion'
 import { herOffset } from './Character'
+import { intro } from '../look/intro'
 import { bloom } from 'three/addons/tsl/display/BloomNode.js'
 import { ao } from 'three/addons/tsl/display/GTAONode.js'
 
@@ -61,7 +62,8 @@ export function Post() {
     lens.focus.value = camera.position.distanceTo(her)
     // In focus mode, full depth of field; at home, a softer one while she's wandering
     // (the camera's following her then), none while she's at her spot.
-    const away = Math.min(1, Math.hypot(herOffset.x, herOffset.z) / 0.35)
+    // No depth of field for the welcome walk-in: the whole room is the point then.
+    const away = intro.pending || intro.active ? 0 : Math.min(1, Math.hypot(herOffset.x, herOffset.z) / 0.35)
     const want = focused ? 1 : away * 0.75
     lens.amount.value = damp(lens.amount.value, want, want > lens.amount.value ? 1.5 : 3, dt)
     // The AO depth pass follows the real camera exactly, minus the UI layer.

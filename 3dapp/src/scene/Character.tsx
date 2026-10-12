@@ -6,6 +6,8 @@ import { orbSignals, useAgent } from '@actora/stores/agent'
 import { panelOpen, useUi } from '@actora/stores/ui'
 import { AgentAnimator } from '../bridge/agentAnim'
 import { Wander } from '../bridge/wander'
+import { INTRO_FROM, intro } from '../look/intro'
+import { useReady } from '../look/ready'
 import { gestureFor } from '../bridge/poses'
 import { character } from '../character'
 import { markReady } from '../look/ready'
@@ -153,7 +155,22 @@ function Animated({ gltf }: { gltf: GLTF }) {
     const busy = wide && working && usingTools
     thinkFor.current = working && !usingTools ? thinkFor.current + dt : 0
     const facing = lastHeading.current === null ? 1 : Math.cos(lastHeading.current - m.rotation.y)
+    // The welcome: on wide screens she waits off to the left under the loader, then
+    // walks in to her spot once the scene is revealed (her walk home, from there).
+    if (intro.pending) {
+      if (!wide) intro.pending = false
+      else if (!useReady.getState().ready) {
+        m.position.set(INTRO_FROM.x, 0, INTRO_FROM.z)
+        herOffset.set(m.position.x, 0, m.position.z)
+        anim.update(dt, 0)
+        return
+      } else {
+        intro.pending = false
+        intro.active = true
+      }
+    }
     const w = wander.update(dt, busy || devBusy(), m.position, anim.walkSpeed, facing)
+    if (intro.active && !w.walking && Math.hypot(m.position.x, m.position.z) < 0.05) intro.active = false
     lastHeading.current = w.walking ? w.heading : null
     // Her offset from her spot, for the camera to follow (gently) while she wanders.
     herOffset.set(m.position.x, 0, m.position.z)
