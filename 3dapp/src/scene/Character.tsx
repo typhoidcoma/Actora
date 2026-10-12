@@ -14,6 +14,7 @@ import { herOffset } from '../look/her'
 import { gestureFor } from '../bridge/poses'
 import { character } from '../character'
 import { markReady } from '../look/ready'
+import { skinMaterial, updateSkin } from '../look/skin'
 
 /** A GLTFLoader that reads meshopt-compressed files (the placeholder is packed with it). */
 const gltfLoader = () => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
@@ -67,6 +68,8 @@ async function extraClips(): Promise<THREE.AnimationClip[]> {
 }
 
 /** Scales to character.height and stands the model on the floor at the origin. */
+let skin: THREE.MeshStandardNodeMaterial | undefined
+
 function fit(root: THREE.Object3D): void {
   // Measure from scratch so fitting twice gives the same result.
   root.scale.setScalar(1)
@@ -79,7 +82,8 @@ function fit(root: THREE.Object3D): void {
   box.setFromObject(root)
   const center = box.getCenter(new THREE.Vector3())
   root.position.set(-center.x, -box.min.y, -center.z)
-  const plain = character.tint ? new THREE.MeshStandardMaterial({ color: character.tint, roughness: 0.6, metalness: 0 }) : null
+  // Her body takes the orb's colours and breathes with her mood (look/skin.ts).
+  const plain = character.tint ? (skin ??= skinMaterial()) : null
   root.traverse((o) => {
     const mesh = o as THREE.Mesh
     if (!mesh.isMesh) return
@@ -146,6 +150,7 @@ function Animated({ gltf }: { gltf: GLTF }) {
     if (!m || !anim) return
     // Each streamed token bumps orbSignals; the 2D orb decays it, so here we do.
     orbSignals.energy *= Math.exp(-dt * 3.2)
+    updateSkin(dt)
 
     // Busy at home (working on a turn, nothing streamed yet): she gets up and
     // does something (wander.ts) instead of standing frozen; back to her spot after.

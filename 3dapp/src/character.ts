@@ -16,7 +16,7 @@ export const character = {
   clips: [] as string[],
   /** World height the model is scaled to (metres), whatever units it was exported in. */
   height: 1.7,
-  /** One plain colour over every material for now (no textures); null keeps the model's own. */
+  /** Her body in the orb's colours (look/skin.ts, resting pink) over every material; null keeps the model's own. */
   tint: '#f52393' as string | null,
 
   /** Looping base clip per agent phase. */
