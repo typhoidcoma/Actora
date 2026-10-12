@@ -36,21 +36,13 @@ export const character = {
   /**
    * What she does while she's off working at home (bridge/wander.ts): her walk
    * clip, a phone clip if the model has one (e.g. Mixamo's "Texting While
-   * Standing"), and otherwise a procedural phone pose: bone-local rotation
-   * offsets (radians) and where the phone sits in her right hand (metres).
+   * Standing") or a thinking clip, otherwise the procedural poses in
+   * bridge/poses.ts; and where the phone sits in her right hand (metres).
    */
   busy: {
     walk: ['walk', 'walking'],
     phone: ['phone', 'texting', 'looking_at_phone'],
-    // Tuned for the Mixamo skeleton (the Xbot stand-in): hand at her chest, palm up, head down.
-    // Dev: `__actora3d = { pose: {...}, at: [...], turn: [...], phone: true }` retunes live.
-    pose: {
-      RightArm: [0, 0.3, 0.4],
-      RightForeArm: [0, 1.7, 0],
-      RightHand: [0, -1.2, 0],
-      Spine2: [0.1, 0, 0],
-      Head: [0.5, 0, 0],
-    } as Record<string, [number, number, number]>,
+    think: ['thinking', 'think'],
     phoneAt: [0, -0.05, 0.02] as [number, number, number],
     phoneTurn: [0, 0, 0] as [number, number, number],
   },

@@ -42,6 +42,12 @@ Don't import from `../src/ui/**` beyond its pure helpers (`markdownText`, `forma
   clip if she has one, otherwise a procedural pose). She walks back to face you
   when her answer starts. Wide screens only.
 
+- **Thinking and emoji** (): a turn with no tools gets a thinking pose (hand
+  to chin), and searches get the wander. Her emoji on your message is acted out once,
+  then she carries on: 👍 a raised fist, 👋 a wave, 🎉 arms up, ❤️ a hand on her heart,
+  😂 a laugh, 😮 surprise, 🤷 a shrug, 🤔 a think, 👎 a head shake, anything else a nod.
+  These are procedural poses on the Mixamo skeleton.
+
 ### Extra clips (Mixamo)
 
 1. On mixamo.com, pick an animation (e.g. "Texting While Standing").

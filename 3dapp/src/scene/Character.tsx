@@ -6,6 +6,7 @@ import { orbSignals, useAgent } from '@actora/stores/agent'
 import { panelOpen, useUi } from '@actora/stores/ui'
 import { AgentAnimator } from '../bridge/agentAnim'
 import { Wander } from '../bridge/wander'
+import { gestureFor } from '../bridge/poses'
 import { character } from '../character'
 
 type Loaded = { gltf: GLTF } | { missing: true } | null
@@ -97,10 +98,15 @@ function Animated({ gltf }: { gltf: GLTF }) {
     animator.current = anim
     anim.setPhase(useAgent.getState().phase)
     let lastReaction = useAgent.getState().reaction
+    let lastEmoji = lastReact(useAgent.getState().messages)
     const off = useAgent.subscribe((s) => {
       anim.setPhase(s.phase)
       if (s.reaction && s.reaction !== lastReaction) anim.react(s.reaction.bus, s.reaction.intensity, s.reaction.holdMs)
       lastReaction = s.reaction
+      // Her emoji on your message (her "got it"): she acts it out, then carries on.
+      const emoji = lastReact(s.messages)
+      if (emoji.key !== lastEmoji.key && emoji.react) anim.emote(gestureFor(emoji.react))
+      lastEmoji = emoji
     })
     return () => {
       off()
@@ -113,6 +119,7 @@ function Animated({ gltf }: { gltf: GLTF }) {
   const mover = useRef<THREE.Group>(null)
   const wander = useMemo(() => new Wander(), [])
   const lastHeading = useRef<number | null>(null)
+  const thinkFor = useRef(0)
   useFrame(({ camera, size }, dt) => {
     const m = mover.current
     const anim = animator.current
@@ -125,15 +132,21 @@ function Animated({ gltf }: { gltf: GLTF }) {
     const ui = useUi.getState()
     const open = ui.chatOpen || panelOpen(ui)
     const a = useAgent.getState()
+    // Working on a turn at home (nothing streamed yet). With tools running (a search,
+    // a lookup) she gets up and wanders; just thinking, she stands in a thinking pose.
     // Phones frame her head and shoulders: wandering would only walk her out of shot.
     const wide = size.width / size.height >= 0.8
-    const busy = wide && !open && (a.awaitingTurn || a.turnId !== null) && !a.streaming
+    const working = !open && (a.awaitingTurn || a.turnId !== null) && !a.streaming
+    const usingTools = a.steps.length > 0
+    const busy = wide && working && usingTools
+    thinkFor.current = working && !usingTools ? thinkFor.current + dt : 0
     const facing = lastHeading.current === null ? 1 : Math.cos(lastHeading.current - m.rotation.y)
     const w = wander.update(dt, busy || devBusy(), m.position, anim.walkSpeed, facing)
     lastHeading.current = w.walking ? w.heading : null
     // Her offset from her spot, for the camera to follow (gently) while she wanders.
     herOffset.set(m.position.x, 0, m.position.z)
-    anim.setActivity(w.walking ? 'walk' : w.phone ? 'phone' : null)
+    const home = Math.hypot(m.position.x, m.position.z) < 0.05
+    anim.setActivity(w.walking ? 'walk' : w.phone ? 'phone' : thinkFor.current > 1.2 && home ? 'think' : null)
     anim.phoneGlow = document.documentElement.dataset.theme === 'dusk' ? 0.09 : 0.05
     anim.update(dt, orbSignals.energy)
 
@@ -150,6 +163,12 @@ function Animated({ gltf }: { gltf: GLTF }) {
       <primitive object={gltf.scene} />
     </group>
   )
+}
+
+/** The emoji on the latest message she reacted to, keyed so the same emoji on a new message counts. */
+function lastReact(messages: Array<{ id: string; react?: string }>): { key: string; react?: string } {
+  const m = messages.findLast((x) => x.react)
+  return { key: m ? `${m.id}:${m.react}` : '', react: m?.react }
 }
 
 /** How far she has wandered from her spot (read by the camera rig). */

@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu'
 import type { ReactionBus } from '@actora/aelora/protocol'
 import { character, type Phase } from '../character'
+import { GESTURES, HOLDS, POSED_BONES, PoseLayer, type Pose } from './poses'
 
 const FADE = 0.4
 
@@ -33,12 +34,13 @@ export class AgentAnimator {
   private clips: THREE.AnimationClip[]
   /** Metres per second the walk clip's feet travel over the floor (so she doesn't slide). */
   walkSpeed = 0.75
-  /** The procedural phone pose: bones, their offsets, how far in (0..1), and the phone itself. */
-  private pose: Array<{ bone: THREE.Object3D; off: THREE.Quaternion; applied: THREE.Quaternion }> = []
-  private poseW = 0
-  private phoneTarget = 0
+  /** Held poses while she's busy (phone, thinking) and one-shot gestures (her emoji), over the clips. */
+  private hold: PoseLayer
+  private gesture: PoseLayer
+  private gestureLeft = 0
+  /** A downloaded gesture clip playing instead of a procedural gesture. */
+  private gestureClip: THREE.AnimationAction | null = null
   private phoneMesh: THREE.Object3D | null = null
-  private handScale = 1
   private phoneLight: THREE.PointLight | null = null
   /** How bright the screen's glow is: a touch more at dusk, when the room is darker (set by the scene). */
   phoneGlow = 0.06
@@ -52,7 +54,21 @@ export class AgentAnimator {
       if (!this.head && character.headBone.test(o.name)) this.head = o
     })
     this.phoneClip = pick(clips, character.busy.phone)
-    if (!this.phoneClip) this.buildPhonePose(root)
+    const bones = new Map<string, THREE.Object3D>()
+    root.traverse((o) => {
+      // Names arrive as 'mixamorigRightArm' (the loader drops the colon): match the ending, longest first.
+      const short = POSED_BONES.filter((b) => o.name.endsWith(b)).sort((p, q) => q.length - p.length)[0]
+      if (short && !bones.has(short)) bones.set(short, o)
+    })
+    this.hold = new PoseLayer(bones, 4)
+    this.gesture = new PoseLayer(bones, 7)
+    this.mixer.addEventListener('finished', (e) => {
+      if (e.action === this.gestureClip) {
+        this.gestureClip.fadeOut(0.35)
+        this.gestureClip = null
+      }
+    })
+    if (!this.phoneClip) this.buildPhone(root)
     this.walkSpeed = this.measureWalk(root)
 
     const used = new Set<THREE.AnimationClip>()
@@ -82,12 +98,14 @@ export class AgentAnimator {
   }
 
   /**
-   * What she's doing beyond her phase: 'walk', 'phone', or null (back to the
-   * phase loop). A phone without a phone clip is the procedural pose instead.
+   * What she's doing beyond her phase: 'walk', 'phone', 'think', or null (back to
+   * the phase loop). Without a clip for it, phone and think are procedural poses.
    */
-  setActivity(kind: 'walk' | 'phone' | null): void {
-    this.phoneTarget = kind === 'phone' && !this.phoneClip ? 1 : 0
-    const names = kind === 'walk' ? character.busy.walk : kind === 'phone' ? character.busy.phone : null
+  setActivity(kind: 'walk' | 'phone' | 'think' | null): void {
+    const names =
+      kind === 'walk' ? character.busy.walk : kind === 'phone' ? character.busy.phone : kind === 'think' ? character.busy.think : null
+    const clipFor = names ? pick(this.clips, names) : undefined
+    if (!devHold()) this.hold.set(kind === 'phone' && !clipFor ? HOLDS.phone : kind === 'think' && !clipFor ? HOLDS.think : null)
     const clip = names ? pick(this.clips, names) : undefined
     const name = clip?.name ?? null
     if (name === this.activityName) return
@@ -104,6 +122,26 @@ export class AgentAnimator {
     this.current = next
   }
 
+  /**
+   * Her emoji, acted out: a downloaded clip named after the gesture if she has one
+   * (e.g. "thumbsup.fbx"), played once over whatever she's doing; otherwise the
+   * procedural gesture, eased in, held, and eased back out.
+   */
+  emote(name: string): void {
+    const clip = pick(this.clips, [name, name.replace(/([A-Z])/g, '_$1')])
+    if (clip) {
+      const a = this.mixer.clipAction(clip)
+      a.reset().setLoop(THREE.LoopOnce, 1).setEffectiveWeight(1).fadeIn(0.3).play()
+      a.clampWhenFinished = false
+      this.gestureClip = a
+      return
+    }
+    const pose: Pose | undefined = GESTURES[name]
+    if (!pose) return
+    this.gesture.set(pose)
+    this.gestureLeft = 0.35 + (pose.hold ?? 1.2)
+  }
+
   react(bus: ReactionBus, intensity: number, holdMs: number): void {
     const action = this.emotes.get(bus)
     if (!action) return
@@ -116,23 +154,28 @@ export class AgentAnimator {
     this.t += dt
     // Undo last frame's nod and pose before the mixer writes this one (a clip may not animate those bones).
     if (this.head) this.head.rotation.x -= this.nod
-    for (const p of this.pose) p.bone.quaternion.multiply(p.applied.clone().invert())
+    this.gesture.undo()
+    this.hold.undo()
     this.mixer.update(dt)
 
-    // Dev: `__actora3d.pose = { RightArm: [x, y, z], … }` retunes the pose live.
-    const dev = import.meta.env.DEV ? (window as unknown as { __actora3d?: { pose?: Record<string, [number, number, number]>; phone?: boolean } }).__actora3d : undefined
-    if (dev?.pose) for (const p of this.pose) { const e = dev.pose[p.bone.name.replace(/^mixamorig/, '')]; if (e) p.off.setFromEuler(new THREE.Euler(e[0], e[1], e[2])) }
-    if (dev?.phone !== undefined) this.phoneTarget = dev.phone ? 1 : 0
-    const devAt = (dev as { at?: [number, number, number]; turn?: [number, number, number] } | undefined)
-    if (this.phoneMesh && devAt?.at) this.phoneMesh.position.set(...devAt.at).divideScalar(this.handScale)
-    if (this.phoneMesh && devAt?.turn) this.phoneMesh.rotation.set(...devAt.turn)
-    // The phone pose eases in and out (about half a second), the phone with it.
-    this.poseW += (this.phoneTarget - this.poseW) * (1 - Math.exp(-dt * 5))
-    const w = this.poseW < 0.002 ? 0 : this.poseW
-    for (const p of this.pose) {
-      p.applied.identity().slerp(p.off, w)
-      p.bone.quaternion.multiply(p.applied)
+    // Dev: __actora3d = { hold: 'think' | 'phone', gesture: 'wave', poses: { wave: {...} } }.
+    const dev = devHooks()
+    if (dev?.poses) Object.assign(GESTURES, dev.poses)
+    if (dev?.hold !== undefined) this.hold.set(dev.hold ? (dev.poses?.[dev.hold] ?? HOLDS[dev.hold] ?? null) : null)
+    if (dev?.gesture) {
+      this.emote(dev.gesture)
+      dev.gesture = undefined
     }
+
+    // A gesture runs its course, then eases out; the held pose steps aside meanwhile.
+    if (this.gestureLeft > 0) {
+      this.gestureLeft -= dt
+      if (this.gestureLeft <= 0) this.gesture.set(null)
+    }
+    this.hold.apply(dt, this.t, 1 - this.gesture.w)
+    this.gesture.apply(dt, this.t)
+    const w = this.hold.current === HOLDS.phone ? this.hold.w * (1 - this.gesture.w) : 0
+
     if (this.phoneMesh) this.phoneMesh.visible = w > 0.35
     // The screen's glow on her face: fades in with the phone, flickers a touch as she scrolls.
     if (this.phoneLight) this.phoneLight.intensity = w * this.phoneGlow * (1 + Math.sin(this.t * 2.3) * 0.08 + Math.sin(this.t * 7.1) * 0.04)
@@ -180,25 +223,16 @@ export class AgentAnimator {
     return Math.min(1.6, Math.max(0.35, speed))
   }
 
-  /** Bone-local offsets for "looking at her phone" (character.busy.pose), and a phone in her hand. */
-  private buildPhonePose(root: THREE.Object3D): void {
-    const find = (re: RegExp) => {
-      let hit: THREE.Object3D | null = null
-      root.traverse((o) => {
-        if (!hit && re.test(o.name)) hit = o
-      })
-      return hit as THREE.Object3D | null
-    }
-    for (const [name, e] of Object.entries(character.busy.pose)) {
-      const bone = find(new RegExp(`${name}$`))
-      if (!bone) continue
-      this.pose.push({ bone, off: new THREE.Quaternion().setFromEuler(new THREE.Euler(e[0], e[1], e[2])), applied: new THREE.Quaternion() })
-    }
-    const hand = find(/RightHand$/)
-    if (!hand) return
+  /** A phone in her right hand for the procedural phone pose (bridge/poses.ts), with its screen's light. */
+  private buildPhone(root: THREE.Object3D): void {
+    let found: THREE.Object3D | null = null
+    root.traverse((o) => {
+      if (!found && /RightHand$/.test(o.name)) found = o
+    })
+    if (!found) return
+    const hand = found as THREE.Object3D
     root.updateMatrixWorld(true)
     const s = hand.getWorldScale(new THREE.Vector3()).x || 1
-    this.handScale = s
     const phone = new THREE.Mesh(
       new THREE.BoxGeometry(0.072 / s, 0.15 / s, 0.009 / s),
       new THREE.MeshStandardMaterial({ color: '#1d1d22', roughness: 0.35, metalness: 0.4 }),
@@ -222,3 +256,9 @@ export class AgentAnimator {
     this.mixer.uncacheRoot(this.mixer.getRoot())
   }
 }
+
+type DevHooks = { hold?: string | null; gesture?: string; poses?: Record<string, Pose> }
+/** Dev only: window.__actora3d, for trying poses and gestures live. */
+const devHooks = (): DevHooks | undefined =>
+  import.meta.env.DEV ? (window as unknown as { __actora3d?: DevHooks }).__actora3d : undefined
+const devHold = () => devHooks()?.hold !== undefined
