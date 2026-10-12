@@ -10,6 +10,7 @@ import { startAgentOptions } from '@actora/options/agentOptions'
 import { startRanking } from '@actora/priority/rank'
 import { useAgent } from '@actora/stores/agent'
 import { useThemeSync } from '@actora/ui/Theme'
+import { startLongAnswers } from './look/longAnswers'
 import { World } from './scene/World'
 
 type Auth =
@@ -105,5 +106,6 @@ function Live() {
   useEffect(() => startRanking(), [])
   useEffect(() => startGreeting(), [])
   useEffect(() => startCheckins(), [])
+  useEffect(() => startLongAnswers(), [])
   return <World />
 }
