@@ -4,8 +4,10 @@
  * back to idle. Rename here when the real character's clips arrive.
  */
 export const character = {
-  url: import.meta.env.VITE_CHARACTER_URL?.trim() || '/models/character.glb',
-  placeholderUrl: '/models/placeholder.glb',
+  // Her converted model (public/models/character.glb, say): set VITE_CHARACTER_URL to it.
+  // Unset, she's the stand-in, without a 404 on every load asking for a file that isn't there.
+  url: import.meta.env.VITE_CHARACTER_URL?.trim() || null,
+  placeholderUrl: `${import.meta.env.BASE_URL}models/placeholder.glb`,
   /**
    * Extra clips to load onto her (GLB or FBX, e.g. Mixamo downloads "Without Skin"),
    * named after their files: `/models/clips/texting.fbx` becomes the "texting" clip,

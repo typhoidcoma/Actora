@@ -19,10 +19,18 @@ ENV VITE_AELORA_BASE_URL=$VITE_AELORA_BASE_URL \
     VITE_AELORA_MOCK=0
 RUN npm run build
 
+# The 3D app (3dapp/), served beside it at /3d/. It reuses the 2D code in src/
+# (and so the root node_modules above); its stand-in character is fetched here
+# since it isn't in git.
+WORKDIR /app/3dapp
+RUN npm ci --no-audit --no-fund && npm run placeholder && npm run build
+WORKDIR /app
+
 FROM nginx:1.27-alpine
 # The official image renders /etc/nginx/templates/*.template with envsubst at
 # start, filling in ${PORT} (Cloud Run sets it; 8080 by default).
 ENV PORT=8080
 COPY deploy/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/3dapp/dist /usr/share/nginx/html/3d
 EXPOSE 8080

@@ -85,6 +85,6 @@ USD is the source and GLB is what runs, because three.js can't play UsdSkel anim
 2. `npm run usd -- assets-src/character.usdz public/models/character.glb` (needs Blender on PATH).
 3. Map clip names in [src/character.ts](src/character.ts). Each phase (`idle`, `thinking`, `tool`, `speaking`, `offline`) gets a looping clip. Reactions (`positive`, `negative`, `cognitive`) get one-shot emotes, layered additively.
 
-The loader tries `character.glb`, then `placeholder.glb`, and finally falls back to a capsule.
+Point `VITE_CHARACTER_URL` at it (e.g. `/models/character.glb`, or `/3d/models/character.glb` deployed). Without it she's the stand-in (`placeholder.glb`), and without that a capsule.
 
 **What the USD should contain:** a skinned mesh with at least `idle`, `talk` and `think` clips, plus a few emotes. A head bone matching `/head$/i` lets speech nod along with the token stream. Viseme blendshapes are optional and only matter once there's a TTS voice to sync them to.

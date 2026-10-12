@@ -23,7 +23,7 @@ const TYPES: Record<string, string> = {
  * manifest) served and shipped here too: the shared push code registers /sw.js
  * and its notifications point at /icons/. This app's own public (models) wins.
  */
-function sharedPublic(): Plugin {
+function sharedPublic(underRoot: boolean): Plugin {
   let outDir = ''
   return {
     name: 'actora-shared-public',
@@ -41,15 +41,19 @@ function sharedPublic(): Plugin {
       })
     },
     closeBundle() {
-      if (outDir) cpSync(rootPublic, outDir, { recursive: true, force: false })
+      // Deployed under the 2D app, these already live at the site root.
+      if (outDir && !underRoot) cpSync(rootPublic, outDir, { recursive: true, force: false })
     },
   }
 }
 
 // The 3D client of Actora. It renders its own scene but runs on the 2D app's
 // framework-free code (../src/aelora, ../src/stores, …), imported as @actora/*.
-export default defineConfig({
-  plugins: [react(), tailwindcss(), sharedPublic()],
+export default defineConfig(({ command }) => ({
+  // Deployed beside the 2D app on the same site, under /3d/ (same origin: the
+  // same sign-in, session and Aelora CORS). Dev serves it at the root.
+  base: command === 'build' ? '/3d/' : '/',
+  plugins: [react(), tailwindcss(), sharedPublic(command === 'build')],
   // The root .env: same backend, Supabase and mock settings as the 2D app.
   envDir: '..',
   resolve: {
@@ -62,4 +66,4 @@ export default defineConfig({
   // http://localhost:5173, so sign-in works here too. Run one app at a time.
   server: { host: true, port: 5173, strictPort: true, fs: { allow: ['..'] } },
   preview: { port: 5173, strictPort: true },
-})
+}))

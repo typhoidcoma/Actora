@@ -29,6 +29,18 @@ server {
     add_header Cache-Control "no-cache" always;
   }
 
+  # The 3D app (3dapp/), its own single-page shell under /3d/.
+  location /3d/assets/ {
+    try_files $uri =404;
+    add_header Cache-Control "public, max-age=31536000, immutable" always;
+  }
+  location /3d/ {
+    try_files $uri $uri/ /3d/index.html;
+    add_header Cache-Control "no-cache" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+  }
+
   # Single-page app: every other path is the app shell, always revalidated.
   location / {
     try_files $uri $uri/ /index.html;

@@ -18,8 +18,7 @@ function useCharacterModel(): Loaded {
   useEffect(() => {
     let live = true
     const loader = new GLTFLoader()
-    loader
-      .loadAsync(character.url)
+    ;(character.url ? loader.loadAsync(character.url) : Promise.reject(new Error('no model')))
       .catch(() => loader.loadAsync(character.placeholderUrl))
       .then(async (gltf) => {
         gltf.animations.push(...(await extraClips()))

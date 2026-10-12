@@ -7,4 +7,5 @@ dist
 .vscode
 .idea
 coverage
-3dapp
+3dapp/node_modules
+3dapp/dist
