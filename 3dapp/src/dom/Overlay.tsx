@@ -97,10 +97,16 @@ export function Overlay() {
     <MotionConfig reducedMotion="user">
       <LayoutGroup>
         {/* Home: the 2D rail (glass option pills, chat, keyboard, menu), pinned in the room by the scene's Anchor. */}
-        <motion.div
+        {/* Pinned (the scene writes the outer element's transform every frame) and faded
+            (motion animates the inner one): two elements, so the fade's own transform
+            can never replace the pin and fling the rail to the top-left corner. */}
+        <div
           ref={anchorRef('rail')}
-          className="fixed top-0 left-0 z-30 flex flex-col items-stretch gap-2.5"
+          className="fixed top-0 left-0 z-30"
           style={{ width: railWidth(), pointerEvents: focused || !ready ? 'none' : 'auto' }}
+        >
+        <motion.div
+          className="flex flex-col items-stretch gap-2.5"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: focused || !ready ? 0 : 1, y: ready ? 0 : 10 }}
           transition={{ delay: focused ? 0 : 0.6, duration: 0.4 }}
@@ -133,6 +139,7 @@ export function Overlay() {
             </div>
           )}
         </motion.div>
+        </div>
         <Thinking hidden={focused || !ready} />
         {host.el && createPortal(<FocusContent focused={focused} />, host.el)}
       </LayoutGroup>
@@ -167,7 +174,10 @@ function FocusContent({ focused }: { focused: boolean }) {
         </AnimatePresence>
       </div>
       {focused && !chatOpen && (
-        <div className="absolute flex items-center border-t border-line px-5 pb-1" style={{ left: m.rail.x, top: m.rail.y, width: m.rail.w, height: m.rail.h }}>
+        <div
+          className="absolute flex items-center border-t border-line px-5 pb-1"
+          style={{ left: m.rail.x, top: m.rail.y, width: m.rail.w, height: m.rail.h }}
+        >
           <OptionRail className="w-full" contextKey={key} trailing={<MenuButton onSignOut={onSignOut} />} />
         </div>
       )}
@@ -217,7 +227,11 @@ function MessageBox() {
 function Thinking({ hidden }: { hidden: boolean }) {
   const show = useAgent((s) => (s.awaitingTurn || s.turnId !== null) && !s.streaming && s.line === 'reply')
   return (
-    <div ref={anchorRef('thinking')} className="pointer-events-none fixed top-0 left-0 z-20" style={{ paddingBottom: 6 }}>
+    <div
+      ref={anchorRef('thinking')}
+      className="pointer-events-none fixed top-0 left-0 z-20"
+      style={{ paddingBottom: 6 }}
+    >
       <AnimatePresence>
         {show && !hidden && (
           <motion.div
@@ -253,8 +267,23 @@ function MicButton() {
         animate={listening ? { scale: [1, 1.15, 1], opacity: [1, 0.65, 1] } : { scale: 1, opacity: 1 }}
         transition={listening ? { duration: 1.1, repeat: Infinity } : { duration: 0.2 }}
       >
-        <rect x="9" y="3" width="6" height="11" rx="3" fill={listening ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.6" />
-        <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none" />
+        <rect
+          x="9"
+          y="3"
+          width="6"
+          height="11"
+          rx="3"
+          fill={listening ? 'currentColor' : 'none'}
+          stroke="currentColor"
+          strokeWidth="1.6"
+        />
+        <path
+          d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          fill="none"
+        />
       </motion.svg>
     </motion.button>
   )
