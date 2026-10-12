@@ -57,12 +57,12 @@ function Rig() {
       camera.position.z = damp(camera.position.z, fixed.position[2], 3, dt)
     } else {
       const t = Math.tan(((FOV / 2) * Math.PI) / 180)
-      // While she wanders, the camera follows a third of the way and eases in a
-      // touch (up to ~8%), slowly, so it reads as a camera operator, not a jump.
-      const away = Math.min(1, Math.hypot(herOffset.x, herOffset.z) / 0.6)
-      follow.x = damp(follow.x, herOffset.x * 0.35, 1.4, dt)
-      follow.z = damp(follow.z, herOffset.z * 0.35, 1.4, dt)
-      zoom.v = damp(zoom.v, 1 - away * 0.08, 1.2, dt)
+      // While she wanders, the camera pushes in on her (up to ~18%) and follows
+      // most of her move, slowly, like a camera operator; it settles back after.
+      const away = Math.min(1, Math.hypot(herOffset.x, herOffset.z) / 0.35)
+      follow.x = damp(follow.x, herOffset.x * 0.6, 1.2, dt)
+      follow.z = damp(follow.z, herOffset.z * 0.6, 1.2, dt)
+      zoom.v = damp(zoom.v, 1 - away * 0.18, 0.9, dt)
       const dist = Math.max(frame.h / 2 / t, frame.w / 2 / (t * aspect)) * zoom.v
       target.x = damp(target.x, frame.center[0] + follow.x, 3, dt)
       target.y = damp(target.y, frame.center[1], 3, dt)

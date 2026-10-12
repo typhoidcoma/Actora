@@ -5,6 +5,7 @@ import { builtinAOContext, depthPass, mix, pass, screenUV, uniform } from 'three
 import { dof } from 'three/addons/tsl/display/DepthOfFieldNode.js'
 import { useFocused } from '../look/focus'
 import { damp } from '../look/motion'
+import { herOffset } from './Character'
 import { bloom } from 'three/addons/tsl/display/BloomNode.js'
 import { ao } from 'three/addons/tsl/display/GTAONode.js'
 
@@ -55,8 +56,14 @@ export function Post() {
 
   useEffect(() => () => pipeline.dispose(), [pipeline])
   useFrame((_, dt) => {
+    // Focus on her wherever she is: her head in a close-up, her chest at home.
+    her.set(herOffset.x, focused ? 1.5 : 1.25, herOffset.z)
     lens.focus.value = camera.position.distanceTo(her)
-    lens.amount.value = damp(lens.amount.value, focused ? 1 : 0, focused ? 2.5 : 6, dt)
+    // In focus mode, full depth of field; at home, a softer one while she's wandering
+    // (the camera's following her then), none while she's at her spot.
+    const away = Math.min(1, Math.hypot(herOffset.x, herOffset.z) / 0.35)
+    const want = focused ? 1 : away * 0.75
+    lens.amount.value = damp(lens.amount.value, want, want > lens.amount.value ? 1.5 : 3, dt)
     // The AO depth pass follows the real camera exactly, minus the UI layer.
     aoCamera.copy(camera as THREE.PerspectiveCamera, false)
     aoCamera.layers.set(0)
