@@ -4,12 +4,16 @@ import App from './App'
 import { NoWebGPU } from './NoWebGPU'
 import { restoreLocalTheme } from '@actora/stores/appearance'
 import { initScheme } from '@actora/stores/scheme'
+import { sayPolicy } from '@actora/options/run'
 import './look/fonts'
 import './styles.css'
 
 // The saved colour scheme and theme choice, as the 2D app restores them.
 initScheme()
 restoreLocalTheme()
+// A long question doesn't jump to the chat: she plays out her thinking first, and
+// the chat opens once a long answer is in (look/longAnswers.ts).
+sayPolicy.openChatForLargeQuestions = false
 
 // Dev only: drive the agent and the stores from the console, as the 2D app's __actora,
 // e.g. __actora.ui('chat.open'), __actora.chat('plan my day'), __actora.stores.ui.getState().

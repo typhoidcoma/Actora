@@ -53,6 +53,12 @@ export function toggleVoice(): void {
   })
 }
 
+/**
+ * How say() behaves, per app. The 3D app turns openChatForLargeQuestions off:
+ * she plays out her thinking first, and the chat opens once a long answer is in.
+ */
+export const sayPolicy = { openChatForLargeQuestions: true }
+
 /** Send a user turn. Off the chat screen, the agent answers in the line above the grid. */
 export function say(text: string): boolean {
   const u = useUi.getState()
@@ -67,7 +73,7 @@ export function say(text: string): boolean {
   const sent = chat(text)
   // A big question opens the chat straight away, so the whole answer can be
   // read (and replied to) as it streams in.
-  if (sent && !u.chatOpen && isLargeQuestion(text)) ui.openChat()
+  if (sent && !u.chatOpen && sayPolicy.openChatForLargeQuestions && isLargeQuestion(text)) ui.openChat()
   return sent
 }
 
