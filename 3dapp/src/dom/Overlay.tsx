@@ -27,6 +27,8 @@ import { useFocused } from '../look/focus'
 import { FOCUS_RADIUS, FOCUS_RAIL, useFocusHost } from '../look/focusHost'
 import { anchorRef } from '../scene/Anchor'
 import { useDraft } from '../scene/draft'
+import { useReady } from '../look/ready'
+import { Loader } from './Loader'
 import { Activity } from '@actora/ui/Activity'
 import { useAgent } from '@actora/stores/agent'
 
@@ -77,6 +79,7 @@ function useHostMetrics(w: number, h: number, portrait: boolean) {
  */
 export function Overlay() {
   const focused = useFocused()
+  const ready = useReady((s) => s.ready)
   const host = useFocusHost()
   const phone = window.innerWidth / window.innerHeight < 0.8
   const key = useContextKey()
@@ -95,20 +98,22 @@ export function Overlay() {
         <motion.div
           ref={anchorRef('rail')}
           className="fixed top-0 left-0 z-30 flex flex-col items-stretch gap-2.5"
-          style={{ width: railWidth(), pointerEvents: focused ? 'none' : 'auto' }}
-          animate={{ opacity: focused ? 0 : 1 }}
-          transition={{ delay: focused ? 0 : 0.5, duration: 0.25 }}
+          style={{ width: railWidth(), pointerEvents: focused || !ready ? 'none' : 'auto' }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: focused || !ready ? 0 : 1, y: ready ? 0 : 10 }}
+          transition={{ delay: focused ? 0 : 0.6, duration: 0.4 }}
         >
           <OptionRail contextKey={key} trailing={<MenuButton onSignOut={onSignOut} />} />
           {!phone && <MessageBox />}
         </motion.div>
-        <Thinking hidden={focused} />
+        <Thinking hidden={focused || !ready} />
         {host.el && createPortal(<FocusContent focused={focused} />, host.el)}
       </LayoutGroup>
       <KeyboardSheet />
       <PastChats />
       <DateSheet />
       <Toaster />
+      <Loader />
     </MotionConfig>
   )
 }

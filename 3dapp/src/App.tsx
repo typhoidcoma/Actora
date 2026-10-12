@@ -12,6 +12,9 @@ import { useAgent } from '@actora/stores/agent'
 import { useThemeSync } from '@actora/ui/Theme'
 import { startLongAnswers } from './look/longAnswers'
 import { World } from './scene/World'
+import { Loader } from './dom/Loader'
+import { markReady } from './look/ready'
+import { useEntities } from '@actora/stores/entities'
 
 type Auth =
   | { status: 'loading' }
@@ -68,7 +71,7 @@ function AuthedApp() {
     }
   }, [])
 
-  if (auth.status === 'loading') return null
+  if (auth.status === 'loading') return <Loader />
   if (auth.status === 'signed-out')
     return (
       <div className="notice">
@@ -107,5 +110,20 @@ function Live() {
   useEffect(() => startGreeting(), [])
   useEffect(() => startCheckins(), [])
   useEffect(() => startLongAnswers(), [])
+  // Their data is in once tasks or the calendar have loaded (or the backend's
+  // gone quiet for a few seconds: the scene doesn't wait on it forever).
+  useEffect(() => {
+    const check = () => {
+      const h = useEntities.getState().hydrated
+      if (h.tasks || h.events) markReady('data')
+    }
+    check()
+    const off = useEntities.subscribe(check)
+    const t = setTimeout(() => markReady('data'), 6000)
+    return () => {
+      off()
+      clearTimeout(t)
+    }
+  }, [])
   return <World />
 }

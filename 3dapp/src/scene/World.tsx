@@ -1,4 +1,6 @@
-import { Canvas, extend, useFrame, type ThreeToJSXElements } from '@react-three/fiber'
+import { Canvas, extend, useFrame, useThree, type ThreeToJSXElements } from '@react-three/fiber'
+import { useEffect, useRef } from 'react'
+import { markReady, useReady } from '../look/ready'
 import * as THREE from 'three/webgpu'
 import { useFocused } from '../look/focus'
 import { FOV, focusLayout, useStage } from '../look/layout'
@@ -12,6 +14,7 @@ import { FocusPanel3D } from './FocusPanel3D'
 import { ui } from '@actora/stores/ui'
 import { Overlay } from '../dom/Overlay'
 import { Post } from './Post'
+import { Pane } from './panels/Pane'
 import { Anchor } from './Anchor'
 
 declare module '@react-three/fiber' {
@@ -91,6 +94,61 @@ function RailAnchor() {
   )
 }
 
+/**
+ * Once the character and the room's reflections are in, compiles every shader
+ * up front (otherwise each one compiles the first time it's seen: the hitches),
+ * then lets a few frames settle before the loader lifts.
+ */
+function Warmup() {
+  const gl = useThree((s) => s.gl) as unknown as THREE.WebGPURenderer
+  const scene = useThree((s) => s.scene)
+  const camera = useThree((s) => s.camera)
+  const { model, env, compiled } = useReady()
+  const frames = useRef(-1)
+  useEffect(() => {
+    if (!model || !env || compiled || frames.current >= 0) return
+    frames.current = 0
+    void gl.compileAsync(scene, camera).catch(() => {}).finally(() => (frames.current = 1))
+  }, [gl, scene, camera, model, env, compiled])
+  useFrame(() => {
+    if (frames.current < 1) return
+    if (++frames.current > 4) {
+      frames.current = -2
+      markReady('compiled')
+    }
+  })
+  return null
+}
+
+/**
+ * Under the loader, one glass panel and one bare text panel, so their shaders
+ * compile before the reveal (the real cards then reuse them: no hitch as they
+ * make their entrance). Gone once the scene is ready.
+ */
+function WarmPanes() {
+  const ready = useReady((s) => s.ready)
+  if (ready) return null
+  const noop = () => {}
+  return (
+    <>
+      <Pane width={0.2} height={0.1} position={[0, 1.2, 0.5]} paint={noop} deps={[]} />
+      <Pane width={0.2} height={0.1} position={[0, 1.4, 0.5]} paint={noop} deps={[]} bare />
+    </>
+  )
+}
+
+/** The UI makes its entrance once the scene is ready (the loader fading over it). */
+function Entrance() {
+  const ready = useReady((s) => s.ready)
+  if (!ready) return null
+  return (
+    <>
+      <AgentLine3D />
+      <Grid3D />
+    </>
+  )
+}
+
 /** She stands where the stage says. */
 function Her() {
   const { her } = useStage()
@@ -127,8 +185,9 @@ export function World() {
         <Post />
         <Environment />
         <Her />
-        <AgentLine3D />
-        <Grid3D />
+        <WarmPanes />
+        <Warmup />
+        <Entrance />
         <RailAnchor />
         <FocusPanel3D />
       </Canvas>

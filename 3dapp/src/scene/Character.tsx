@@ -8,6 +8,7 @@ import { AgentAnimator } from '../bridge/agentAnim'
 import { Wander } from '../bridge/wander'
 import { gestureFor } from '../bridge/poses'
 import { character } from '../character'
+import { markReady } from '../look/ready'
 
 type Loaded = { gltf: GLTF } | { missing: true } | null
 
@@ -97,6 +98,7 @@ function Animated({ gltf }: { gltf: GLTF }) {
     const anim = new AgentAnimator(gltf.scene, gltf.animations)
     animator.current = anim
     anim.setPhase(useAgent.getState().phase)
+    markReady('model')
     let lastReaction = useAgent.getState().reaction
     let lastEmoji = lastReact(useAgent.getState().messages)
     let lastOpen = openingEmoji(useAgent.getState())
@@ -209,6 +211,7 @@ const devBusy = () => import.meta.env.DEV && !!(window as unknown as { __actora3
 
 /** No model on disk yet: a capsule that still breathes with her phase. */
 function StandIn() {
+  useEffect(() => markReady('model'), [])
   const [mesh, setMesh] = useState<THREE.Mesh | null>(null)
   useFrame(({ clock }, dt) => {
     if (!mesh) return

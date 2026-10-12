@@ -10,6 +10,7 @@ import { useScheme } from '@actora/stores/scheme'
 import { moodIntensity, orbColors } from '@actora/ui/palette'
 import { useNow } from '@actora/ui/tiles/data'
 import { damp } from '../../look/motion'
+import { markReady } from '../../look/ready'
 import { parseCss, useLook } from '../../look/theme'
 import type { RoomMaterials } from './materials'
 import { ROOM } from './Room'
@@ -135,7 +136,8 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
       scene.environment = pmrem.fromScene(scene, 0.035, 0.1, 60, { position: new THREE.Vector3(0, 1.6, 2.5) }).texture
       prev?.dispose()
       if (s) s.intensity = was
-    }, 1200)
+      markReady('env')
+    }, 600)
     return () => clearTimeout(t)
   }, [pmrem, scene])
 
