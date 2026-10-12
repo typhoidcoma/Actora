@@ -250,7 +250,9 @@ export class AgentAnimator {
       new THREE.PlaneGeometry((tw - 0.012) / s, (th - 0.012) / s),
       new THREE.MeshBasicMaterial({ color: '#9fd9e6', toneMapped: true }),
     )
-    screen.position.z = 0.0042 / s
+    // The screen is on the side facing her (the tablet's back faces the camera).
+    screen.position.z = -0.0042 / s
+    screen.rotation.y = Math.PI
     phone.add(screen)
     const [px, py, pz] = character.busy.phoneAt
     phone.position.set(px / s, py / s, pz / s)
@@ -261,7 +263,7 @@ export class AgentAnimator {
     this.phoneMesh = phone
     // Its screen lights her face: a soft blue-green point light just above it.
     const light = new THREE.PointLight('#5fe3d0', 0, 0.7, 2)
-    light.position.set(0, 0, 0.08 / s)
+    light.position.set(0, 0, -0.08 / s)
     phone.add(light)
     this.phoneLight = light
   }

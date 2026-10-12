@@ -30,6 +30,7 @@ import { FOCUS_RADIUS, FOCUS_RAIL, useFocusHost } from '../look/focusHost'
 import { anchorRef } from '../scene/Anchor'
 import { useDraft } from '../scene/draft'
 import { useReady } from '../look/ready'
+import { useCaption } from '../look/caption'
 import { Loader } from './Loader'
 import { Activity } from '@actora/ui/Activity'
 import { useAgent } from '@actora/stores/agent'
@@ -158,6 +159,7 @@ export function Overlay() {
         </motion.div>
         </div>
         <Thinking hidden={focused || !ready} />
+        <FocusCaption />
         {host.el && createPortal(<FocusContent focused={focused} />, host.el)}
       </LayoutGroup>
       <KeyboardSheet />
@@ -303,5 +305,41 @@ function MicButton() {
         />
       </motion.svg>
     </motion.button>
+  )
+}
+
+/**
+ * Her words while a card, list or finds is open (the chat shows them itself): a
+ * caption in the free space by her head, left of the panel (on phones, the strip
+ * above her). Plain text, so the close-up's depth of field can't blur it.
+ */
+function FocusCaption() {
+  const focused = useFocused()
+  const chatOpen = useUi((s) => s.chatOpen)
+  const { text, color, present } = useCaption()
+  const phone = window.innerWidth / window.innerHeight < 0.8
+  const show = focused && !chatOpen && present
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          key="focus-caption"
+          className="display pointer-events-none fixed z-20 leading-snug font-semibold"
+          style={{
+            left: phone ? '5%' : '3%',
+            top: phone ? '3%' : '6%',
+            width: phone ? '90%' : '38%',
+            fontSize: phone ? 15 : 19,
+            color,
+            textShadow: '0 1px 12px color-mix(in srgb, var(--t-bg) 70%, transparent)',
+          }}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0, transition: { delay: 0.5, duration: 0.35 } }}
+          exit={{ opacity: 0, transition: { duration: 0.2 } }}
+        >
+          {text}
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
