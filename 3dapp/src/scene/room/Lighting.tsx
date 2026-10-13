@@ -14,6 +14,14 @@ import { markReady } from '../../look/ready'
 import { parseCss, useLook } from '../../look/theme'
 import type { RoomMaterials } from './materials'
 import { ROOM } from './Room'
+import { pcssFilter } from './pcss'
+
+/** The sun's shadow camera: the whole room, from 1 m to 45 m out along its rays. */
+const SHADOW = { left: -11, right: 11, top: 9, bottom: -9, near: 1, far: 45 }
+/** Contact-hardening soft shadows (pcss.ts), for the sun. */
+const SUN_SHADOW = pcssFilter({ width: SHADOW.right - SHADOW.left, depth: SHADOW.far - SHADOW.near })
+/** About 5 mm a texel on a desktop GPU; phones keep the lighter map. */
+const SHADOW_MAP = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches ? 2048 : 4096
 
 /** Where the sun comes from (toward the light), by theme: high and white by day, low and gold at dusk. */
 const SUN = {
@@ -269,15 +277,16 @@ export function Lighting({ mat }: { mat: RoomMaterials }) {
         position={[-14, 14, 6]}
         intensity={3}
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[SHADOW_MAP, SHADOW_MAP]}
+        shadow-filterNode={SUN_SHADOW.filter}
         shadow-bias={-0.0004}
         shadow-normalBias={0.03}
-        shadow-camera-left={-11}
-        shadow-camera-right={11}
-        shadow-camera-top={9}
-        shadow-camera-bottom={-9}
-        shadow-camera-near={1}
-        shadow-camera-far={45}
+        shadow-camera-left={SHADOW.left}
+        shadow-camera-right={SHADOW.right}
+        shadow-camera-top={SHADOW.top}
+        shadow-camera-bottom={SHADOW.bottom}
+        shadow-camera-near={SHADOW.near}
+        shadow-camera-far={SHADOW.far}
       />
       <hemisphereLight ref={hemi} args={['#fff3e4', '#cdbfae', 0.4]} />
       {/* A soft warm key on her from above the camera, so she reads in any light. */}

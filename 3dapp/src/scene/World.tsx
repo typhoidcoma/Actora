@@ -171,7 +171,8 @@ export function World() {
   return (
     <>
       <Canvas
-        shadows
+        // PCF underneath; the sun brings its own filter (room/pcss.ts).
+        shadows="percentage"
         // A tap on the scene itself (not a card or the panel) puts the open thing away.
         onPointerMissed={(e) => {
           // Only a tap on the scene itself (not on a panel or control laid over it).
