@@ -32,6 +32,7 @@ export function ChatSheet() {
 function Sheet() {
   const m = useMetrics()
   const drag = useDragControls()
+  const [typing, setTyping] = useState(false)
   const onDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.y > 110 || info.velocity.y > 700) ui.closeChat()
   }
@@ -78,8 +79,14 @@ function Sheet() {
           <PendingStrip />
           <div className="shrink-0 border-t border-line px-3 pt-1 pb-[max(8px,env(safe-area-inset-bottom))]">
             <div className="mx-auto w-full max-w-[780px]">
-              <OptionRail contextKey="chat" />
-              <div className="pt-2">
+              {/* While typing on a phone the keyboard takes half the screen: give the
+                  tiles' room to the conversation until the box loses focus. */}
+              {!(m.compact && typing) && <OptionRail contextKey="chat" />}
+              <div
+                className={m.compact && typing ? '' : 'pt-2'}
+                onFocus={(e) => e.target instanceof HTMLInputElement && setTyping(true)}
+                onBlur={(e) => e.target instanceof HTMLInputElement && setTyping(false)}
+              >
                 <Composer />
               </div>
             </div>

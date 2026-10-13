@@ -36,8 +36,8 @@ export function Composer() {
         placeholder={
           captureOnly
             ? offline
-              ? 'Offline: jot it down as a task'
-              : `${name}'s answering. Jot it down as a task`
+              ? 'Offline: jot down a task'
+              : `Jot a task while ${name} answers`
             : `Message ${name}`
         }
         aria-label={captureOnly ? 'Save as a task' : `Message ${name}`}
@@ -48,6 +48,8 @@ export function Composer() {
         <motion.button
           whileTap={jelly}
           type="submit"
+          // Keep focus in the box, so the phone keyboard stays up for the next message.
+          onPointerDown={(e) => e.preventDefault()}
           aria-label={captureOnly ? 'Save as task' : 'Send'}
           className="grid h-12 min-w-12 shrink-0 place-items-center rounded-full bg-accent px-3.5 text-[14px] font-semibold text-on-accent"
         >
