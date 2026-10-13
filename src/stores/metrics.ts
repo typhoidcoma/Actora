@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { phone } from './phone'
 
 /**
  * Stage geometry in px. One source of truth for the line, grid, orb notches, rail,
@@ -205,6 +206,7 @@ function measure(): Metrics {
 }
 
 export const useMetrics = create<Metrics>(() => measure())
+phone.compact = () => useMetrics.getState().compact
 
 function writeCssVars(m: Metrics) {
   const s = document.documentElement.style

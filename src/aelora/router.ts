@@ -56,6 +56,7 @@ import { resetColors, setColors, useScheme } from '../stores/scheme'
 import type { FrameBus } from './socket'
 import { actionArgs, AVAILABLE_ACTIONS, strayAction } from './actions'
 import { eventVerdict } from './owner'
+import { phone } from '../stores/phone'
 
 /**
  * ui_action names we accept; advertised in client_state so the agent can drive the
@@ -235,12 +236,35 @@ function pickEmotion(data: Record<string, unknown>): EmotionVector {
   return out
 }
 
+/**
+ * Her UI moves that would put something over the chat. On a phone the chat
+ * fills the screen, so opening a list, a card, the finds or the Vault there
+ * hides what she's saying; while it's open she stays in the conversation.
+ */
+const SCREEN_MOVES = new Set([
+  'home.show',
+  'list.open',
+  'tile.focus',
+  'tile.close',
+  'card.open',
+  'item.focus',
+  'finds.open',
+  'finds.focus',
+  'vault.open',
+  'vault.search',
+])
+
+function keepChat(): boolean {
+  return phone.compact() && useUi.getState().chatOpen
+}
+
 function runCommand(cmd: AgentCommand | undefined): void {
   if (!cmd || typeof cmd !== 'object') return
   switch (cmd.type) {
     case 'open_app': {
       const target = APP_TO_TILE[cmd.id]
       if (target === 'chat') ui.openChat()
+      else if (keepChat()) return
       else if (target === 'vault') ui.openVault()
       else if (target) ui.focus(target)
       return
@@ -286,6 +310,7 @@ function itemExists(kind: ItemKind, id: string): boolean {
 }
 
 export function runUiAction(action: string, args: Record<string, unknown>): void {
+  if (SCREEN_MOVES.has(action) && keepChat()) return
   switch (action) {
     case 'priorities.set': {
       const items = Array.isArray(args.items) ? args.items : []

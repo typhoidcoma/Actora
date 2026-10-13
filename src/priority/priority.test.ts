@@ -165,6 +165,27 @@ describe('Wendy actions', () => {
     expect(useUi.getState().focus).toBeNull()
   })
 
+  it('on a phone, her moves leave an open chat in place', async () => {
+    const { phone } = await import('../stores/phone')
+    const compact = phone.compact
+    phone.compact = () => true
+    try {
+      useEntities.setState({ events: { e1: event('e1', 30) } })
+      useUi.setState({ chatOpen: true })
+      runUiAction('card.open', { kind: 'event', id: 'e1' })
+      runUiAction('list.open', { tile: 'calendar' })
+      runUiAction('vault.open', {})
+      runUiAction('home.show', {})
+      expect(useUi.getState()).toMatchObject({ chatOpen: true, selected: null, focus: null, vault: false })
+      // With the chat closed she can still show things.
+      useUi.setState({ chatOpen: false })
+      runUiAction('card.open', { kind: 'event', id: 'e1' })
+      expect(useUi.getState().selected).toEqual({ kind: 'event', id: 'e1' })
+    } finally {
+      phone.compact = compact
+    }
+  })
+
   it('vault.search opens the Vault filtered, keeping only known categories', async () => {
     const { useVault } = await import('../stores/vault')
     runUiAction('vault.search', { query: ' coffee ', category: 'preference' })
