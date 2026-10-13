@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import { NoWebGPU } from './NoWebGPU'
+import { onWebgpuFailed, webgpuReady } from './gpu'
 import { loadWorld } from './look/loadWorld'
 import { restoreLocalTheme } from '@actora/stores/appearance'
 import { initScheme } from '@actora/stores/scheme'
@@ -38,18 +39,8 @@ if (import.meta.env.DEV) {
   })
 }
 
-/** WebGPU only: no WebGL fallback, so ask for an adapter before mounting anything. */
-async function webgpuReady(): Promise<boolean> {
-  const gpu = (navigator as Navigator & { gpu?: { requestAdapter(): Promise<unknown> } }).gpu
-  if (!gpu) return false
-  try {
-    return (await gpu.requestAdapter()) !== null
-  } catch {
-    return false
-  }
-}
-
 const root = createRoot(document.getElementById('root')!)
+onWebgpuFailed(() => root.render(<NoWebGPU />))
 void webgpuReady().then((ok) => {
   // Start downloading the scene now, so it arrives while sign-in and the socket come up.
   if (ok) void loadWorld()

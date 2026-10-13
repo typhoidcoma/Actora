@@ -18,6 +18,7 @@ import { Overlay } from '../dom/Overlay'
 import { Post } from './Post'
 import { Pane } from './panels/Pane'
 import { Anchor } from './Anchor'
+import { POWER_PREFERENCE, webgpuFailed } from '../gpu'
 
 declare module '@react-three/fiber' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -183,8 +184,20 @@ export function World() {
           raycaster.layers.enable(UI_LAYER)
         }}
         gl={async (props) => {
-          const renderer = new THREE.WebGPURenderer({ ...(props as object), antialias: true })
-          await renderer.init()
+          const renderer = new THREE.WebGPURenderer({
+            ...(props as object),
+            antialias: true,
+            powerPreference: POWER_PREFERENCE,
+          })
+          // three quietly drops to its WebGL2 backend if WebGPU won't start; we'd rather say so.
+          ;(renderer as unknown as { _getFallback: null })._getFallback = null
+          try {
+            await renderer.init()
+            if (!(renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend) throw new Error('not WebGPU')
+          } catch (e) {
+            webgpuFailed()
+            throw e
+          }
           return renderer
         }}
       >
