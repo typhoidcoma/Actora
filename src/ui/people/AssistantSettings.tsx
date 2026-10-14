@@ -6,6 +6,7 @@ import { useSocial } from '../../stores/social'
 import { useAgent } from '../../stores/agent'
 import { press } from '../motion'
 import { Switch } from './Switch'
+import { PictureEditor } from './PictureEditor'
 
 const ABOUT_MAX = 1000
 
@@ -58,6 +59,7 @@ export function AssistantSettings() {
 
       {on && (
         <div className="mt-4 grid gap-5">
+          <PictureEditor kind="assistant" />
           <div>
             <p className="mb-2 text-[13px] text-muted">
               {bot} always knows when you're free or busy, never what or where. Pick what else to share:

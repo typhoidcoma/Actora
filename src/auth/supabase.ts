@@ -3,6 +3,9 @@ import { getPublicConfig } from '../aelora/http'
 import { config } from '../config'
 
 let client: Promise<SupabaseClient> | null = null
+/** The Supabase project's address once known (pictures are served from its storage). */
+let base: string | null = config.supabaseUrl ?? null
+export const supabaseBase = (): string | null => base
 
 /**
  * Supabase client for the same project Aelora verifies JWTs against.
@@ -19,6 +22,7 @@ export function getSupabase(): Promise<SupabaseClient> {
       key = body.supabase?.anonKey ?? null
     }
     if (!url || !key) throw new Error('Supabase is not configured on this Aelora deploy.')
+    base = url.replace(/\/+$/, '')
     // Loaded on demand: mock mode never pays for it.
     const { createClient } = await import('@supabase/supabase-js')
     return createClient(url, key, {

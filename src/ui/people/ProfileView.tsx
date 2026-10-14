@@ -5,6 +5,7 @@ import { useSocial } from '../../stores/social'
 import { press } from '../motion'
 import { AssistantSettings } from './AssistantSettings'
 import { Switch } from './Switch'
+import { PictureEditor } from './PictureEditor'
 
 const HANDLE_SAY: Record<string, string> = {
   handle_taken: 'Someone already has that one.',
@@ -55,6 +56,10 @@ export function ProfileView() {
     <div className="@container">
       <div className="grid grid-cols-[minmax(0,1fr)] gap-x-12 gap-y-8 @2xl:grid-cols-2">
         <div className="grid content-start gap-6">
+          <section>
+            <h3 className="label mb-2">Your picture</h3>
+            <PictureEditor kind="me" />
+          </section>
           <section>
             <h3 className="label mb-2">Your name</h3>
             <form

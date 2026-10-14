@@ -19,7 +19,7 @@ import { useMetrics } from '../../stores/metrics'
 import { ui } from '../../stores/ui'
 import { clockTime, dayLabel } from '../format'
 import { morph, press } from '../motion'
-import { Confirm } from './bits'
+import { AssistantAvatar, Avatar, Confirm } from './bits'
 
 /** What's being edited in a thread (the composer shows it). */
 const editingListeners = new Set<(m: DmMessage | null) => void>()
@@ -51,6 +51,13 @@ export function ThreadBody({ id }: { id: string }) {
   const pendingAll = useSocial((s) => s.pending)
   const loading = useSocial((s) => !!s.loading[id])
   const me = useSocial((s) => s.profile?.userId ?? null)
+  // Whose picture a receptionist wears: the owner chose it (their profile, on your friends list).
+  const friends = useSocial((s) => s.friends)
+  const ownAssistant = useSocial((s) => s.profile?.assistantAvatarPath ?? null)
+  const assistantPicture = (ownerId: string | null | undefined) =>
+    ownerId && ownerId === me
+      ? ownAssistant
+      : (friends.find((f) => f.profile.userId === ownerId)?.profile.assistantAvatarPath ?? null)
   const messages = useMemo(() => messagesFor({ [id]: byThread ?? {} }, id), [byThread, id])
   const pending = useMemo(() => pendingFor(pendingAll, id), [pendingAll, id])
   const [picked, setPicked] = useState<string | null>(null)
@@ -140,16 +147,30 @@ export function ThreadBody({ id }: { id: string }) {
       )}
 
       <div className="mt-auto flex flex-col gap-1.5">
-        {messages.map((m, i) => (
-          <Bubble
-            key={m.seq}
-            m={m}
-            who={speakerOf(m, thread, me)}
-            day={i === 0 || dayLabel(messages[i - 1]!.createdAt) !== dayLabel(m.createdAt)}
-            picked={picked === m.id}
-            onPick={() => setPicked(picked === m.id ? null : m.id)}
-          />
-        ))}
+        {messages.map((m, i) => {
+          const who = speakerOf(m, thread, me)
+          const prev = messages[i - 1]
+          const day = !prev || dayLabel(prev.createdAt) !== dayLabel(m.createdAt)
+          // A face on the first message of each run from the other side.
+          const firstOfRun = day || !prev || prev.senderId !== m.senderId || prev.senderKind !== m.senderKind
+          const face =
+            who.side === 'me' || !firstOfRun ? null : who.agent ? (
+              <AssistantAvatar size={28} path={assistantPicture(thread.ownerId)} />
+            ) : (
+              <Avatar size={28} who={thread.members.find((x) => x.userId === m.senderId) ?? null} />
+            )
+          return (
+            <Bubble
+              key={m.seq}
+              m={m}
+              who={who}
+              day={day}
+              face={face}
+              picked={picked === m.id}
+              onPick={() => setPicked(picked === m.id ? null : m.id)}
+            />
+          )
+        })}
         {pending.map((p) => (
           <PendingBubble key={p.clientMsgId} p={p} />
         ))}
@@ -163,12 +184,15 @@ function Bubble({
   m,
   who,
   day,
+  face,
   picked,
   onPick,
 }: {
   m: DmMessage
   who: Speaker
   day: boolean
+  /** Theirs: who wrote it, on the first of a run; null keeps the gap so a run lines up. */
+  face: React.ReactNode | null
   picked: boolean
   onPick: () => void
 }) {
@@ -178,63 +202,66 @@ function Bubble({
   return (
     <>
       {day && <p className="my-2 text-center text-[12px] text-faint">{dayLabel(m.createdAt)}</p>}
-      <div className={`flex max-w-[80%] flex-col ${mine ? 'self-end items-end' : 'self-start items-start'}`}>
-        {who.label && (
-          <span
-            className={`mb-0.5 px-1 text-[12px] font-semibold ${who.agent ? '' : 'text-muted'}`}
-            style={who.agent ? { color: 'var(--ink-agent)' } : undefined}
-          >
-            {who.label}
-          </span>
-        )}
-        <button
-          onClick={canEdit ? onPick : undefined}
-          disabled={!canEdit}
-          className={`selectable rounded-[6px] px-4 py-2.5 text-left text-[16px] leading-snug whitespace-pre-wrap [overflow-wrap:anywhere] ${
-            who.agent
-              ? `${mine ? 'rounded-br-[3px]' : 'rounded-bl-[3px]'} text-strong`
-              : mine
-                ? 'rounded-br-[3px] bg-accent/25 text-strong'
-                : 'glass-pill rounded-bl-[3px] text-strong'
-          } ${gone ? 'italic text-muted' : ''} disabled:cursor-text`}
-          // An agent's words read differently from a person's: her colour, a hairline edge.
-          style={
-            who.agent
-              ? {
-                  background: `color-mix(in srgb, ${ROLE.agent} 30%, transparent)`,
-                  boxShadow: `inset 0 0 0 1px color-mix(in srgb, var(--ink-agent) 45%, transparent)`,
-                }
-              : undefined
-          }
-        >
-          {gone ? 'Message deleted' : m.body}
-        </button>
-        <span className="mt-0.5 px-1 text-[11px] text-faint">
-          {clockTime(m.createdAt)}
-          {m.editedAt && !gone ? ' · edited' : ''}
-        </span>
-        <AnimatePresence initial={false}>
-          {picked && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={morph}
-              className="flex gap-2 overflow-hidden pt-1"
+      <div className={`flex max-w-[86%] items-start gap-2 ${mine ? 'self-end' : 'self-start'}`}>
+        {!mine && <span className={`w-7 shrink-0 ${who.label ? 'mt-[20px]' : ''}`}>{face}</span>}
+        <div className={`flex min-w-0 flex-col ${mine ? 'items-end' : 'items-start'}`}>
+          {who.label && (
+            <span
+              className={`mb-0.5 px-1 text-[12px] font-semibold ${who.agent ? '' : 'text-muted'}`}
+              style={who.agent ? { color: 'var(--ink-agent)' } : undefined}
             >
-              <button
-                onClick={() => {
-                  setEditing(m)
-                  onPick()
-                }}
-                className="glass-pill h-9 rounded-[8px] px-3 text-[13px] font-semibold text-muted"
-              >
-                Edit
-              </button>
-              <Confirm label="Delete" ask="Delete it?" onConfirm={() => void deleteDm(m.id)} />
-            </motion.div>
+              {who.label}
+            </span>
           )}
-        </AnimatePresence>
+          <button
+            onClick={canEdit ? onPick : undefined}
+            disabled={!canEdit}
+            className={`selectable rounded-[6px] px-4 py-2.5 text-left text-[16px] leading-snug whitespace-pre-wrap [overflow-wrap:anywhere] ${
+              who.agent
+                ? `${mine ? 'rounded-br-[3px]' : 'rounded-bl-[3px]'} text-strong`
+                : mine
+                  ? 'rounded-br-[3px] bg-accent/25 text-strong'
+                  : 'glass-pill rounded-bl-[3px] text-strong'
+            } ${gone ? 'italic text-muted' : ''} disabled:cursor-text`}
+            // An agent's words read differently from a person's: her colour, a hairline edge.
+            style={
+              who.agent
+                ? {
+                    background: `color-mix(in srgb, ${ROLE.agent} 30%, transparent)`,
+                    boxShadow: `inset 0 0 0 1px color-mix(in srgb, var(--ink-agent) 45%, transparent)`,
+                  }
+                : undefined
+            }
+          >
+            {gone ? 'Message deleted' : m.body}
+          </button>
+          <span className="mt-0.5 px-1 text-[11px] text-faint">
+            {clockTime(m.createdAt)}
+            {m.editedAt && !gone ? ' · edited' : ''}
+          </span>
+          <AnimatePresence initial={false}>
+            {picked && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={morph}
+                className="flex gap-2 overflow-hidden pt-1"
+              >
+                <button
+                  onClick={() => {
+                    setEditing(m)
+                    onPick()
+                  }}
+                  className="glass-pill h-9 rounded-[8px] px-3 text-[13px] font-semibold text-muted"
+                >
+                  Edit
+                </button>
+                <Confirm label="Delete" ask="Delete it?" onConfirm={() => void deleteDm(m.id)} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </>
   )

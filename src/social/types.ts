@@ -10,6 +10,8 @@ export interface Profile {
   avatarPath: string | null
   /** Their receptionist takes messages from friends (never says what they share). */
   assistantAvailable?: boolean
+  /** The picture on their receptionist's replies (a path in the avatars bucket). */
+  assistantAvatarPath?: string | null
 }
 
 /** Your own profile, with its privacy switches. */

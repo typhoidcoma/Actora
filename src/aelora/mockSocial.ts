@@ -9,14 +9,32 @@ const ME = 'mock-user'
 const iso = (minsAgo = 0) => new Date(Date.now() - minsAgo * 60_000).toISOString()
 const uid = (): string => crypto.randomUUID()
 
+/** A small picture as inline SVG (the mock has no storage; pictureUrl passes data: through). */
+const svgPicture = (body: string) =>
+  `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>${body}</svg>`)}`
+
 const SAM: Profile = {
   userId: 'sam',
   handle: 'sam',
   displayName: 'Sam Rivera',
-  avatarPath: null,
+  // A mountain at dusk: Sam climbs.
+  avatarPath: svgPicture(
+    "<rect width='64' height='64' fill='#f2a65a'/><circle cx='46' cy='18' r='8' fill='#fff3d6'/><path d='M0 64 L22 28 L34 44 L44 32 L64 64Z' fill='#5b3f8c'/>",
+  ),
   assistantAvailable: true,
+  // Sam's assistant wears a little robot.
+  assistantAvatarPath: svgPicture(
+    "<rect width='64' height='64' fill='#2eddba'/><rect x='16' y='20' width='32' height='26' rx='8' fill='#191832'/><circle cx='26' cy='33' r='4' fill='#2eddba'/><circle cx='38' cy='33' r='4' fill='#2eddba'/><rect x='30' y='10' width='4' height='10' fill='#191832'/>",
+  ),
 }
-const PRIYA: Profile = { userId: 'priya', handle: 'priya_k', displayName: 'Priya', avatarPath: null }
+const PRIYA: Profile = {
+  userId: 'priya',
+  handle: 'priya_k',
+  displayName: 'Priya',
+  avatarPath: svgPicture(
+    "<rect width='64' height='64' fill='#e3425f'/><circle cx='32' cy='26' r='12' fill='#ffd6de'/><rect x='14' y='42' width='36' height='22' rx='11' fill='#ffd6de'/>",
+  ),
+}
 const JO: Profile = { userId: 'jo', handle: 'jo', displayName: null, avatarPath: null }
 const PEOPLE = [SAM, PRIYA, JO]
 const REPLIES = ['Ha, same here', 'Sounds good to me', 'On my way 🙂', 'Can you send me the details?', 'Love that']
@@ -122,6 +140,9 @@ export class MockSocial {
         if (typeof msg.assistantAbout === 'string') p.assistantAbout = msg.assistantAbout.trim().slice(0, 1000) || null
         if (Array.isArray(msg.assistantSharedCategories))
           p.assistantSharedCategories = (msg.assistantSharedCategories as string[]).filter((c) => c in SECTIONS)
+        // Pictures: '' clears (the mock's paths are inline data; the server holds real ones to your folder).
+        if (typeof msg.avatarPath === 'string') p.avatarPath = msg.avatarPath || null
+        if (typeof msg.assistantAvatarPath === 'string') p.assistantAvatarPath = msg.assistantAvatarPath || null
         send({ type: 'profile', profile: p })
         break
       }
@@ -327,7 +348,9 @@ export class MockSocial {
       lastReadSeq: 0,
       muted: false,
       unread: 0,
-      members: [{ userId: p.userId, role: 'member', handle: p.handle, displayName: p.displayName, avatarPath: null }],
+      members: [
+        { userId: p.userId, role: 'member', handle: p.handle, displayName: p.displayName, avatarPath: p.avatarPath },
+      ],
       lastMessage: null,
       ...extra,
     }

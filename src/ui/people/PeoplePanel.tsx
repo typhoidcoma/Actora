@@ -17,12 +17,10 @@ import { Panel } from '../cards/Panel'
 import { ago } from '../format'
 import { morph, press } from '../motion'
 import { AddFriend } from './AddFriend'
-import { Avatar, Confirm } from './bits'
+import { AssistantAvatar, Avatar, Confirm } from './bits'
 import { HandlePicker } from './HandlePicker'
 import { ProfileView } from './ProfileView'
 import { ThreadBody, ThreadComposer } from './PeopleThread'
-
-
 
 /**
  * People: your friends and your conversations with them. Nothing here reaches
@@ -200,12 +198,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Row({
   who,
+  icon,
   name,
   note,
   onClick,
   children,
 }: {
-  who: { displayName: string | null; handle: string | null }
+  who: { displayName: string | null; handle: string | null; avatarPath?: string | null }
+  /** In place of their picture (an assistant conversation shows the assistant's). */
+  icon?: React.ReactNode
   /** In place of their name (an assistant conversation says whose). */
   name?: React.ReactNode
   note?: React.ReactNode
@@ -214,7 +215,7 @@ function Row({
 }) {
   const main = (
     <>
-      <Avatar who={who} />
+      {icon ?? <Avatar who={who} />}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[16px] font-semibold text-strong">{name ?? nameOf(who)}</span>
         <span className="block truncate text-[13px] text-muted">
@@ -248,9 +249,14 @@ function ThreadRow({ t }: { t: Thread }) {
   const last = t.lastMessage
   const line = !last ? 'No messages yet' : last.deletedAt ? 'Message deleted' : last.body
   const who = t.members[0] ?? { displayName: threadName(t), handle: null }
+  // A friend's assistant: the picture its owner chose for it (or the default assistant tile).
+  const assistantPath = useSocial(
+    (s) => s.friends.find((f) => f.profile.userId === t.ownerId)?.profile.assistantAvatarPath ?? null,
+  )
   return (
     <Row
       who={who}
+      icon={t.kind === 'assistant' && t.role !== 'owner' ? <AssistantAvatar path={assistantPath} /> : undefined}
       name={
         t.kind === 'assistant' ? (
           <>

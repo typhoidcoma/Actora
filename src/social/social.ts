@@ -121,6 +121,9 @@ export function updateProfile(p: {
   /** A note she can share ("" clears it; the server cuts it at 1000 characters). */
   assistantAbout?: string
   assistantSharedCategories?: string[]
+  /** Pictures: a path in your folder of the avatars bucket, or "" to clear (pictures.ts). */
+  avatarPath?: string
+  assistantAvatarPath?: string
 }): void {
   social.setError('profile', null)
   out({ type: 'profile.update', ...p })
