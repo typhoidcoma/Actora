@@ -13,7 +13,8 @@ import {
   sendDm,
 } from '../../social/social'
 import type { DmMessage, Pending } from '../../social/types'
-import { messagesFor, pendingFor, threadName, useSocial } from '../../stores/social'
+import { messagesFor, ownerName, pendingFor, speakerOf, threadName, useSocial, type Speaker } from '../../stores/social'
+import { ROLE } from '../brand'
 import { ui } from '../../stores/ui'
 import { clockTime, dayLabel } from '../format'
 import { morph, press } from '../motion'
@@ -92,6 +93,12 @@ export function ThreadBody({ id }: { id: string }) {
 
   return (
     <div className="flex min-h-full flex-col">
+      {thread.kind === 'assistant' && thread.role !== 'owner' && (
+        <p className="mb-3 text-[13px] leading-snug text-muted">
+          You're talking to {ownerName(thread)}'s assistant, an AI. It can check when they're free, share what they've
+          chosen to, and take a message. It can't book or promise anything.
+        </p>
+      )}
       <div className="mb-3 flex flex-wrap gap-2">
         <motion.button
           whileTap={press}
@@ -133,7 +140,7 @@ export function ThreadBody({ id }: { id: string }) {
           <Bubble
             key={m.seq}
             m={m}
-            mine={m.senderId === me}
+            who={speakerOf(m, thread, me)}
             day={i === 0 || dayLabel(messages[i - 1]!.createdAt) !== dayLabel(m.createdAt)}
             picked={picked === m.id}
             onPick={() => setPicked(picked === m.id ? null : m.id)}
@@ -150,28 +157,51 @@ export function ThreadBody({ id }: { id: string }) {
 
 function Bubble({
   m,
-  mine,
+  who,
   day,
   picked,
   onPick,
 }: {
   m: DmMessage
-  mine: boolean
+  who: Speaker
   day: boolean
   picked: boolean
   onPick: () => void
 }) {
   const gone = !!m.deletedAt
+  const mine = who.side === 'me'
+  const canEdit = who.editable && !gone
   return (
     <>
       {day && <p className="my-2 text-center text-[12px] text-faint">{dayLabel(m.createdAt)}</p>}
       <div className={`flex max-w-[80%] flex-col ${mine ? 'self-end items-end' : 'self-start items-start'}`}>
+        {who.label && (
+          <span
+            className={`mb-0.5 px-1 text-[12px] font-semibold ${who.agent ? '' : 'text-muted'}`}
+            style={who.agent ? { color: 'var(--ink-agent)' } : undefined}
+          >
+            {who.label}
+          </span>
+        )}
         <button
-          onClick={mine && !gone ? onPick : undefined}
-          disabled={!mine || gone}
+          onClick={canEdit ? onPick : undefined}
+          disabled={!canEdit}
           className={`selectable rounded-[6px] px-4 py-2.5 text-left text-[16px] leading-snug whitespace-pre-wrap [overflow-wrap:anywhere] ${
-            mine ? 'rounded-br-[3px] bg-accent/25 text-strong' : 'glass-pill rounded-bl-[3px] text-strong'
+            who.agent
+              ? `${mine ? 'rounded-br-[3px]' : 'rounded-bl-[3px]'} text-strong`
+              : mine
+                ? 'rounded-br-[3px] bg-accent/25 text-strong'
+                : 'glass-pill rounded-bl-[3px] text-strong'
           } ${gone ? 'italic text-muted' : ''} disabled:cursor-text`}
+          // An agent's words read differently from a person's: her colour, a hairline edge.
+          style={
+            who.agent
+              ? {
+                  background: `color-mix(in srgb, ${ROLE.agent} 30%, transparent)`,
+                  boxShadow: `inset 0 0 0 1px color-mix(in srgb, var(--ink-agent) 45%, transparent)`,
+                }
+              : undefined
+          }
         >
           {gone ? 'Message deleted' : m.body}
         </button>
@@ -236,6 +266,8 @@ function PendingBubble({ p }: { p: Pending }) {
 export function ThreadComposer({ id }: { id: string }) {
   const editing = useEditing()
   const who = useSocial((s) => (s.threads[id] ? threadName(s.threads[id]) : 'them'))
+  // Your own receptionist's thread: writing here takes over from her for a while.
+  const takeover = useSocial((s) => s.threads[id]?.kind === 'assistant' && s.threads[id]?.role === 'owner')
   const [text, setText] = useState('')
   const input = useRef<HTMLInputElement>(null)
   useEffect(() => {
@@ -256,56 +288,63 @@ export function ThreadComposer({ id }: { id: string }) {
   }
 
   return (
-    <form onSubmit={submit} className="flex items-center gap-2">
-      {editing && (
-        <button
-          type="button"
-          onClick={() => {
-            setEditing(null)
-            setText('')
-          }}
-          aria-label="Stop editing"
-          className="glass-pill h-12 shrink-0 rounded-full px-3 text-[13px] font-semibold text-muted"
-        >
-          Cancel
-        </button>
+    <div>
+      {takeover && (
+        <p className="mb-2 px-1 text-[12px] text-muted">
+          Writing here takes over: your assistant steps back for 10 minutes.
+        </p>
       )}
-      <input
-        ref={input}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        maxLength={4000}
-        placeholder={editing ? 'Edit your message' : 'Message'}
-        aria-label={editing ? 'Edit your message' : `Message ${who}`}
-        // Typing anywhere in this conversation lands here, not in Wendy's box (typeAnywhere).
-        data-type-here
-        enterKeyHint="send"
-        className="glass-pill h-12 min-w-0 flex-1 rounded-full px-5 text-[16px] text-strong placeholder:text-faint focus:outline-none"
-      />
-      <motion.button
-        whileTap={press}
-        type="submit"
-        // Keep focus in the box, so the phone keyboard stays up for the next message.
-        onPointerDown={(e) => e.preventDefault()}
-        disabled={!text.trim()}
-        aria-label={editing ? 'Save edit' : 'Send'}
-        className="grid h-12 min-w-12 shrink-0 place-items-center rounded-full bg-fill px-3.5 text-[14px] font-semibold text-on-accent transition-colors disabled:bg-text/10 disabled:text-faint"
-      >
-        {editing ? (
-          'Save'
-        ) : (
-          <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden>
-            <path
-              d="M8 13V3M3.5 7.5L8 3l4.5 4.5"
-              stroke="currentColor"
-              strokeWidth={1.8}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+      <form onSubmit={submit} className="flex items-center gap-2">
+        {editing && (
+          <button
+            type="button"
+            onClick={() => {
+              setEditing(null)
+              setText('')
+            }}
+            aria-label="Stop editing"
+            className="glass-pill h-12 shrink-0 rounded-full px-3 text-[13px] font-semibold text-muted"
+          >
+            Cancel
+          </button>
         )}
-      </motion.button>
-    </form>
+        <input
+          ref={input}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          maxLength={4000}
+          placeholder={editing ? 'Edit your message' : 'Message'}
+          aria-label={editing ? 'Edit your message' : `Message ${who}`}
+          // Typing anywhere in this conversation lands here, not in Wendy's box (typeAnywhere).
+          data-type-here
+          enterKeyHint="send"
+          className="glass-pill h-12 min-w-0 flex-1 rounded-full px-5 text-[16px] text-strong placeholder:text-faint focus:outline-none"
+        />
+        <motion.button
+          whileTap={press}
+          type="submit"
+          // Keep focus in the box, so the phone keyboard stays up for the next message.
+          onPointerDown={(e) => e.preventDefault()}
+          disabled={!text.trim()}
+          aria-label={editing ? 'Save edit' : 'Send'}
+          className="grid h-12 min-w-12 shrink-0 place-items-center rounded-full bg-fill px-3.5 text-[14px] font-semibold text-on-accent transition-colors disabled:bg-text/10 disabled:text-faint"
+        >
+          {editing ? (
+            'Save'
+          ) : (
+            <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden>
+              <path
+                d="M8 13V3M3.5 7.5L8 3l4.5 4.5"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
+        </motion.button>
+      </form>
+    </div>
   )
 }

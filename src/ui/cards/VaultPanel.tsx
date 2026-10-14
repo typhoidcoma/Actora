@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
-import { forgetFact, loadVault, rememberFact } from '../../aelora/client'
+import { forgetFact, loadVault, rememberFact, setAssistantHidden } from '../../aelora/client'
+import { useSocial } from '../../stores/social'
 import { useAgent } from '../../stores/agent'
 import { ui } from '../../stores/ui'
 import {
@@ -201,6 +202,13 @@ function Highlighted({ text, terms }: { text: string; terms: string[] }) {
 
 function MemoryRow({ entry: e, terms }: { entry: VaultEntry; terms: string[] }) {
   const [confirm, setConfirm] = useState(false)
+  // Only when your receptionist is on and shares this entry's section.
+  const shared = useSocial(
+    (s) =>
+      s.profile?.assistantMode === 'friends' &&
+      !!e.category &&
+      (s.profile.assistantSharedCategories ?? []).includes(e.category),
+  )
   // The "Forget?" state backs off by itself if it isn't confirmed.
   useEffect(() => {
     if (!confirm) return
@@ -217,9 +225,21 @@ function MemoryRow({ entry: e, terms }: { entry: VaultEntry; terms: string[] }) 
       transition={morph}
       className="flex items-start gap-3 border-b border-line py-3 last:border-0"
     >
-      <p className="selectable min-w-0 flex-1 text-[16px] leading-snug text-strong">
-        <Highlighted text={e.content} terms={terms} />
-      </p>
+      <div className="min-w-0 flex-1">
+        <p className="selectable text-[16px] leading-snug text-strong">
+          <Highlighted text={e.content} terms={terms} />
+        </p>
+        {shared && (
+          // Its section is shared with friends' messages to your assistant: this one can stay private.
+          <button
+            onClick={() => void setAssistantHidden(e.id, !e.assistant_hidden)}
+            aria-pressed={!!e.assistant_hidden}
+            className="mt-1 text-[12px] font-medium text-muted underline decoration-line underline-offset-4"
+          >
+            {e.assistant_hidden ? 'Hidden from friends · Share' : 'Friends can hear this · Hide'}
+          </button>
+        )}
+      </div>
       <motion.button
         whileTap={press}
         onClick={() => (confirm ? void forgetFact(e.id) : setConfirm(true))}

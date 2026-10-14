@@ -2,17 +2,19 @@ import type { ServerFrame } from '../aelora/protocol'
 import type { FrameBus } from '../aelora/socket'
 import { useAgent } from '../stores/agent'
 import {
+  baselineOf,
   contiguousTop,
   nameOf,
+  recount,
   social,
-  unreadAfterRead,
   useSocial,
   withMessage,
   type SocialState,
 } from '../stores/social'
+import { useEntities } from '../stores/entities'
 import { toast } from '../stores/toast'
 import { ui, useUi } from '../stores/ui'
-import type { BlockRow, DmMessage, FriendRow, OwnProfile, Pending, Profile, Thread } from './types'
+import type { AssistantPreview, BlockRow, DmMessage, FriendRow, OwnProfile, Pending, Profile, Thread } from './types'
 
 /**
  * Friends and direct messages over the Aelora socket (Aelora docs/SOCIAL.md and
@@ -29,7 +31,9 @@ const timers = new Map<string, ReturnType<typeof setTimeout>>()
 /** The read position last asked for per thread (so a busy thread doesn't resend it). */
 const readSent = new Map<string, number>()
 /** dm.open asked for this person: show the thread when it comes back. */
-let opening: string | null = null
+let opening: { kind: 'dm' | 'assistant'; userId: string } | null = null
+/** The handle last looked up: a slower reply to an earlier lookup is ignored. */
+let lastFind = ''
 /** A DM deep link (/?dm=<id>, a push) waiting for the thread list. */
 let wantThread: string | null = null
 /** Whether the invite being made is a "scan to be friends" one. */
@@ -107,9 +111,38 @@ export function claimHandle(handle: string, displayName?: string): void {
 }
 
 /** Your display name ("" clears it) and who can find you. */
-export function updateProfile(p: { displayName?: string; discoverable?: boolean; emailDiscoverable?: boolean }): void {
+export function updateProfile(p: {
+  displayName?: string
+  discoverable?: boolean
+  emailDiscoverable?: boolean
+  /** Receptionist mode: whether friends can message your agent. */
+  assistantMode?: 'off' | 'friends'
+  /** A note she can share ("" clears it; the server cuts it at 1000 characters). */
+  assistantAbout?: string
+  assistantSharedCategories?: string[]
+}): void {
   social.setError('profile', null)
   out({ type: 'profile.update', ...p })
+}
+
+/** What friends' messages can make your receptionist share: exactly the query she uses. */
+export function loadAssistantPreview(): void {
+  social.setError('preview', null)
+  out({ type: 'assistant.preview' })
+}
+
+/**
+ * Keep one thing from your receptionist even though its section is shared.
+ * Goals come from the goals table (goal.update); everything else is a vault entry.
+ */
+export function hideFromAssistant(id: string, hidden = true): void {
+  const isGoal = !!useEntities.getState().goals[id]
+  out({ type: isGoal ? 'goal.update' : 'vault.update', id, patch: { assistant_hidden: hidden } })
+  // Gone from the preview at once; the fresh preview confirms it.
+  useSocial.setState((s) =>
+    s.preview ? { preview: { ...s.preview, entries: s.preview.entries.filter((e) => e.id !== id) } } : {},
+  )
+  loadAssistantPreview()
 }
 
 /** Exact handle only: a miss is "no one", deliberately the same as hidden or blocked. */
@@ -117,6 +150,7 @@ export function findHandle(handle: string): void {
   const h = handle.trim().replace(/^@/, '').toLowerCase()
   if (!h) return
   social.setError('find', null)
+  lastFind = h
   useSocial.setState({ finding: true, found: null })
   if (!out({ type: 'friends.find', handle: h })) useSocial.setState({ finding: false })
 }
@@ -148,8 +182,18 @@ export function openDmWith(userId: string): void {
     (t) => t.kind === 'dm' && t.members.length === 1 && t.members[0]!.userId === userId,
   )
   if (existing) return ui.openDm(existing.id)
-  opening = userId
+  opening = { kind: 'dm', userId }
   out({ type: 'dm.open', userId })
+}
+
+/** Talk to a friend's receptionist (their agent): an ordinary thread of kind 'assistant'. */
+export function openAssistant(ownerId: string): void {
+  const existing = Object.values(useSocial.getState().threads).find(
+    (t) => t.kind === 'assistant' && t.ownerId === ownerId && t.role !== 'owner',
+  )
+  if (existing) return ui.openDm(existing.id)
+  opening = { kind: 'assistant', userId: ownerId }
+  out({ type: 'assistant.open', userId: ownerId })
 }
 
 /** Open a thread from a link or push: now if it's known, else when the list arrives. */
@@ -258,7 +302,7 @@ function put(list: DmMessage[]): void {
   if (!list.length) return
   useSocial.setState((s) => {
     let next: Pick<SocialState, 'messages' | 'threads'> = { messages: s.messages, threads: s.threads }
-    for (const m of list) next = withMessage(next, m, me())
+    for (const m of list) next = withMessage({ ...next, baselines: s.baselines }, m, me())
     return next
   })
 }
@@ -311,7 +355,9 @@ export function handleSocialFrame(f: ServerFrame, b: FrameBus): boolean {
       useSocial.setState({ blocks: Array.isArray(f.blocks) ? (f.blocks as BlockRow[]) : [] })
       return true
     case 'friends.found': {
+      // query echoes the raw input ({handle} or {email}): an earlier lookup's late reply isn't this one.
       const query = typeof f.query === 'object' && f.query ? String(Object.values(f.query)[0] ?? '') : String(f.query ?? '')
+      if (lastFind && query.replace(/^@/, '').toLowerCase() !== lastFind) return true
       useSocial.setState({ finding: false, found: { query, profile: (f.profile ?? null) as Profile | null } })
       return true
     }
@@ -338,7 +384,11 @@ export function handleSocialFrame(f: ServerFrame, b: FrameBus): boolean {
 
     case 'dm.threads': {
       const list = Array.isArray(f.threads) ? (f.threads as Thread[]) : []
-      useSocial.setState({ threads: Object.fromEntries(list.map((t) => [t.id, t])) })
+      // The server's counts are the truth whenever it sends them: recount from here.
+      useSocial.setState({
+        threads: Object.fromEntries(list.map((t) => [t.id, t])),
+        baselines: Object.fromEntries(list.map((t) => [t.id, baselineOf(t)])),
+      })
       if (wantThread) {
         const id = wantThread
         wantThread = null
@@ -349,8 +399,17 @@ export function handleSocialFrame(f: ServerFrame, b: FrameBus): boolean {
     case 'dm.thread': {
       const t = f.thread as Thread | undefined
       if (!t?.id) return true
-      useSocial.setState((s) => ({ threads: { ...s.threads, [t.id]: t } }))
-      if (opening && t.members.some((m) => m.userId === opening)) {
+      useSocial.setState((s) => ({
+        threads: { ...s.threads, [t.id]: t },
+        baselines: { ...s.baselines, [t.id]: baselineOf(t) },
+      }))
+      const asked = opening
+      const answers =
+        asked &&
+        (asked.kind === 'assistant'
+          ? t.kind === 'assistant' && t.ownerId === asked.userId
+          : t.kind === 'dm' && t.members.some((m) => m.userId === asked.userId))
+      if (answers) {
         opening = null
         if (useUi.getState().people) ui.openDm(t.id)
       }
@@ -408,10 +467,22 @@ export function handleSocialFrame(f: ServerFrame, b: FrameBus): boolean {
         if (typeof f.muted === 'boolean') next.muted = f.muted
         if (typeof f.lastReadSeq === 'number' && f.lastReadSeq > t.lastReadSeq) {
           next.lastReadSeq = f.lastReadSeq
-          next.unread = unreadAfterRead(next, s.messages[threadId], me())
+          next.unread = recount(next, s.messages[threadId], s.baselines[threadId], me())
         }
         return { threads: { ...s.threads, [threadId]: next } }
       })
+      return true
+    }
+
+    // Exactly what a friend's message can make your receptionist share.
+    case 'assistant.preview': {
+      const p: AssistantPreview = {
+        mode: f.mode === 'friends' ? 'friends' : 'off',
+        about: typeof f.about === 'string' ? f.about : null,
+        categories: Array.isArray(f.categories) ? (f.categories as string[]) : [],
+        entries: Array.isArray(f.entries) ? (f.entries as AssistantPreview['entries']) : [],
+      }
+      useSocial.setState({ preview: p })
       return true
     }
 
@@ -427,6 +498,7 @@ const FORM_OF: Record<string, string> = {
   'friends.find': 'find',
   'friends.invite.create': 'invite',
   'friends.invite.redeem': 'redeem',
+  'assistant.preview': 'preview',
 }
 
 const SAY: Record<string, string> = {
@@ -438,7 +510,7 @@ const SAY: Record<string, string> = {
 
 function socialError(f: ServerFrame): boolean {
   const request = typeof f.request === 'string' ? f.request : ''
-  if (!/^(profile|friends|dm)\./.test(request)) return false
+  if (!/^(profile|friends|dm|assistant)\./.test(request)) return false
   const code = String(f.code ?? 'failed')
 
   if (code === 'guest_not_allowed') {
@@ -458,7 +530,7 @@ function socialError(f: ServerFrame): boolean {
     useSocial.setState((s) => ({ loading: { ...s.loading, [id]: false } }))
     return true
   }
-  if (request === 'dm.open') opening = null
+  if (request === 'dm.open' || request === 'assistant.open') opening = null
 
   const form = FORM_OF[request]
   if (form) {

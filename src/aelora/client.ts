@@ -502,6 +502,15 @@ export async function forgetFact(id: string): Promise<boolean> {
   return r !== null
 }
 
+/** Keep a memory from your receptionist (friends), or share it again; optimistic, restored if refused. */
+export async function setAssistantHidden(id: string, hidden: boolean): Promise<boolean> {
+  const before = useVault.getState().entries[id]
+  if (before) vault.upsert({ ...before, assistant_hidden: hidden })
+  const r = await ask({ type: 'vault.update', id, patch: { assistant_hidden: hidden } }, 'vault.updated')
+  if (!r && before) vault.upsert(before)
+  return r !== null
+}
+
 /** "today", "tomorrow", or the date as written ("Mon, Oct 12"). */
 function dayWords(due: string): string {
   const label = dueLabel(due) ?? due

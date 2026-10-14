@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react'
 import { nameOf } from '../../stores/social'
 
 /** A round initial for someone (names come from other users: always text, never markup). */
-export function Avatar({ who, size = 40 }: { who: { displayName: string | null; handle: string | null } | null; size?: number }) {
+export function Avatar({
+  who,
+  size = 40,
+}: {
+  who: { displayName: string | null; handle: string | null } | null
+  size?: number
+}) {
   const name = nameOf(who).replace(/^@/, '')
   const letter = [...name][0]?.toUpperCase() ?? '?'
   // A steady hue per person, so the same friend always looks the same.

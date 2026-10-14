@@ -155,10 +155,10 @@ describe('the four rules', () => {
   })
 
   it('a deleted message keeps its place, and an older copy never undoes the delete', () => {
-    let s: Parameters<typeof withMessage>[0] = { messages: {}, threads: { t1: thread() } }
-    s = withMessage(s, msg(1), ME)
-    s = withMessage(s, msg(1, { body: '', deletedAt: '2026-10-13T11:00:00Z' }), ME)
-    s = withMessage(s, msg(1), ME) // a stale sync copy
+    let s: Parameters<typeof withMessage>[0] = { messages: {}, threads: { t1: thread() }, baselines: {} }
+    s = { ...withMessage(s, msg(1), ME), baselines: {} }
+    s = { ...withMessage(s, msg(1, { body: '', deletedAt: '2026-10-13T11:00:00Z' }), ME), baselines: {} }
+    s = { ...withMessage(s, msg(1), ME), baselines: {} } // a stale sync copy
     expect(messagesFor(s.messages, 't1')).toMatchObject([{ seq: 1, deletedAt: '2026-10-13T11:00:00Z' }])
   })
 })
@@ -282,5 +282,163 @@ describe('messages on the home grid, and Wendy', () => {
     for (const secret of ['secret_handle', 'sam_secret', 'Sam Secret', 'the secret text', 't1']) expect(blob).not.toContain(secret)
     runUiAction('people.close', {})
     expect(useUi.getState().people).toBe(false)
+  })
+})
+
+describe('receptionist mode and the new unread count', () => {
+  const agentMsg = (seq: number, over: Partial<DmMessage> = {}) => msg(seq, { senderKind: 'agent', ...over })
+
+  it('recounts unread: history, live and sync of the same messages never double-count', () => {
+    const { bus, frame } = fakeBus()
+    socialConnected(bus)
+    frame({ type: 'dm.threads', threads: [thread({ lastSeq: 2, unread: 2, lastReadSeq: 0 })] })
+    frame({ type: 'dm.history', threadId: 't1', messages: [msg(2), msg(1)] })
+    frame({ type: 'dm.message', message: msg(3) })
+    frame({ type: 'dm.synced', threads: [{ threadId: 't1', messages: [msg(1), msg(2), msg(3)], more: false }] })
+    expect(useSocial.getState().threads.t1!.unread).toBe(3)
+    // Another device read up to 2: one left.
+    frame({ type: 'dm.state', threadId: 't1', lastReadSeq: 2, muted: false })
+    expect(useSocial.getState().threads.t1!.unread).toBe(1)
+  })
+
+  it('your own message marks the thread read up to it', () => {
+    const { bus, frame } = fakeBus()
+    socialConnected(bus)
+    useSocial.setState({ profile: { userId: ME, handle: 'me', displayName: null, avatarPath: null } })
+    frame({ type: 'dm.threads', threads: [thread({ lastSeq: 1, unread: 1 })] })
+    frame({ type: 'dm.message', message: msg(2, { senderId: ME }) })
+    expect(useSocial.getState().threads.t1).toMatchObject({ lastReadSeq: 2, unread: 0 })
+  })
+
+  it('an agent reply never counts for its owner, but does for the friend', () => {
+    const { bus, frame } = fakeBus()
+    socialConnected(bus)
+    useSocial.setState({ profile: { userId: ME, handle: 'me', displayName: null, avatarPath: null } })
+    // Owner: my assistant answered Sam (senderId is me, as the server sends it).
+    frame({ type: 'dm.threads', threads: [thread({ kind: 'assistant', ownerId: ME, role: 'owner' })] })
+    frame({ type: 'dm.message', message: msg(1, { senderId: 'sam' }) })
+    frame({ type: 'dm.message', message: agentMsg(2, { senderId: ME }) })
+    expect(useSocial.getState().threads.t1).toMatchObject({ unread: 0, lastReadSeq: 2 })
+    // Friend: Sam's assistant answered me.
+    social.reset()
+    useSocial.setState({ profile: { userId: ME, handle: 'me', displayName: null, avatarPath: null } })
+    frame({ type: 'dm.threads', threads: [thread({ kind: 'assistant', ownerId: 'sam', role: 'member' })] })
+    frame({ type: 'dm.message', message: agentMsg(1, { senderId: 'sam' }) })
+    expect(useSocial.getState().threads.t1!.unread).toBe(1)
+  })
+
+  it("labels an agent's words as the assistant's, never as its owner", async () => {
+    const { speakerOf, isMine } = await import('../stores/social')
+    const friendView = thread({ kind: 'assistant', ownerId: 'sam', role: 'member' })
+    const ownerView = thread({ kind: 'assistant', ownerId: ME, role: 'owner' })
+    expect(isMine(agentMsg(1, { senderId: ME }), ME)).toBe(false)
+    expect(speakerOf(agentMsg(1, { senderId: 'sam' }), friendView, ME)).toMatchObject({
+      side: 'them',
+      label: "Sam's assistant (AI)",
+      agent: true,
+      editable: false,
+    })
+    expect(speakerOf(msg(2, { senderId: 'sam' }), friendView, ME)).toMatchObject({ side: 'them', label: 'Sam' })
+    expect(speakerOf(agentMsg(3, { senderId: ME }), ownerView, ME)).toMatchObject({
+      side: 'me',
+      label: 'Your assistant (AI)',
+      editable: true,
+    })
+    expect(speakerOf(msg(4, { senderId: ME }), ownerView, ME)).toMatchObject({ side: 'me', label: null })
+  })
+
+  it("opens a friend's assistant and shows it when it comes back", async () => {
+    const { openAssistant } = await import('./social')
+    const { bus, sent, frame } = fakeBus()
+    socialConnected(bus)
+    useUi.setState({ people: true })
+    openAssistant('sam')
+    expect(sent.at(-1)).toEqual({ type: 'assistant.open', userId: 'sam' })
+    // A plain DM with Sam arriving meanwhile isn't the one asked for.
+    frame({ type: 'dm.thread', thread: thread({ id: 'dm1' }) })
+    expect(useUi.getState().dmThread).toBeNull()
+    frame({ type: 'dm.thread', thread: thread({ id: 'as1', kind: 'assistant', ownerId: 'sam', role: 'member' }) })
+    expect(useUi.getState().dmThread).toBe('as1')
+  })
+
+  it('keeps the preview; Hide picks goal.update for goals and vault.update otherwise', async () => {
+    const { hideFromAssistant } = await import('./social')
+    const { useEntities } = await import('../stores/entities')
+    const { bus, sent, frame } = fakeBus()
+    socialConnected(bus)
+    frame({
+      type: 'assistant.preview',
+      mode: 'friends',
+      about: 'Text after 6',
+      categories: ['goal', 'preference'],
+      entries: [
+        { id: 'g1', category: 'goal', section: 'Goals', content: 'Run a 5K' },
+        { id: 'v1', category: 'preference', section: 'Preferences', content: 'Loves jazz' },
+      ],
+    })
+    expect(useSocial.getState().preview?.entries).toHaveLength(2)
+    useEntities.setState({ goals: { g1: { id: 'g1' } as never } })
+    hideFromAssistant('g1')
+    hideFromAssistant('v1')
+    expect(sent.filter((m) => /\.update$/.test(m.type))).toEqual([
+      { type: 'goal.update', id: 'g1', patch: { assistant_hidden: true } },
+      { type: 'vault.update', id: 'v1', patch: { assistant_hidden: true } },
+    ])
+    expect(useSocial.getState().preview?.entries).toEqual([])
+  })
+
+  it('ignores a late answer to an earlier handle lookup', async () => {
+    const { findHandle } = await import('./social')
+    const { bus, frame } = fakeBus()
+    socialConnected(bus)
+    findHandle('sa')
+    findHandle('sam')
+    frame({ type: 'friends.found', query: { handle: 'sa' }, profile: null })
+    expect(useSocial.getState().found).toBeNull()
+    frame({
+      type: 'friends.found',
+      query: { handle: 'sam' },
+      profile: { userId: 'sam', handle: 'sam', displayName: 'Sam', avatarPath: null },
+    })
+    expect(useSocial.getState().found?.profile?.userId).toBe('sam')
+  })
+
+  it("an assistant error is the social path's, not someone else's", () => {
+    const { frame } = fakeBus()
+    expect(frame({ type: 'error', code: 'not_found', request: 'assistant.open' })).toBe(true)
+  })
+
+  it('her client_state carries nothing from receptionist settings or assistant threads', async () => {
+    const { sendClientState } = await import('../aelora/router')
+    useSocial.setState({
+      profile: {
+        userId: ME,
+        handle: 'h_secret',
+        displayName: 'Me',
+        avatarPath: null,
+        assistantMode: 'friends',
+        assistantAbout: 'about_secret',
+        assistantSharedCategories: ['preference'],
+      },
+      threads: {
+        as1: thread({
+          id: 'as1',
+          kind: 'assistant',
+          ownerId: ME,
+          role: 'owner',
+          lastMessage: msg(1, { body: 'asked_secret' }),
+        }),
+      },
+      preview: {
+        mode: 'friends',
+        about: 'about_secret',
+        categories: ['preference'],
+        entries: [{ id: 'v1', category: 'preference', section: 'Preferences', content: 'preview_secret' }],
+      },
+    })
+    const sent: unknown[] = []
+    sendClientState({ send: (m: unknown) => (sent.push(m), true), subscribe: () => () => {} } as unknown as FrameBus)
+    const blob = JSON.stringify(sent)
+    for (const s of ['h_secret', 'about_secret', 'asked_secret', 'preview_secret', 'as1']) expect(blob).not.toContain(s)
   })
 })

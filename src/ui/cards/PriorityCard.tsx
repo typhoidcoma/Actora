@@ -50,6 +50,8 @@ export function PriorityCard({
   const reminder = useEntities((s) => (item.kind === 'notification' ? s.notifications[item.id] : undefined))
   const now = useNow(15_000)
   const ring = !!reminder && ringing(reminder, now)
+  // A message a friend left with your assistant arrives as a notification: say what it is.
+  const kindLabel = reminder?.origin_type === 'assistant' ? 'Message for you' : kind.label
   const still = useReducedMotion()
   const alarm = 'var(--color-urgent)'
 
@@ -68,7 +70,7 @@ export function PriorityCard({
             transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
           />
         )}
-        <span className="truncate">{ring ? `${kind.label} · now` : kind.label}</span>
+        <span className="truncate">{ring ? `${kindLabel} · now` : kindLabel}</span>
       </span>
       {/* Tasks finish from their panel or by voice; a lone checkbox looked out of place here. */}
       {item.primary && item.primary.act.type !== 'complete' && (
@@ -120,7 +122,7 @@ export function PriorityCard({
       accent={glow}
       hidden={hidden}
       // Screen readers still hear the order, which the layout shows visually.
-      label={`${rank === 1 ? 'Top priority' : `Priority ${rank}`}, ${kind.label}${ring ? ' going off now' : ''}: ${item.title}`}
+      label={`${rank === 1 ? 'Top priority' : `Priority ${rank}`}, ${kindLabel}${ring ? ' going off now' : ''}: ${item.title}`}
       onOpen={() => ui.open({ kind: item.kind, id: item.id, occurrence: item.occurrence })}
     >
       {ring && (

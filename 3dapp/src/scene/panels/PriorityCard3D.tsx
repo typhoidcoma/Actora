@@ -80,7 +80,9 @@ export function PriorityCard3D(p: { item: RankedItem; corner: number; present: b
 
     // Header: kind (with the alarm dot) on one side, the action on the other.
     const kfont = font(700, 0.056)
-    const kick = ring ? `${kind.label} · now` : kind.label
+    // A message a friend left with your assistant arrives as a notification: say what it is.
+    const what = reminder?.origin_type === 'assistant' ? 'Message for you' : kind.label
+    const kick = ring ? `${what} · now` : what
     const headY = bottom ? h - pad - px(BTN_H) : pad
     const midHead = headY + px(BTN_H) / 2
     let kx = x

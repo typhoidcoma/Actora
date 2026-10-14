@@ -42,6 +42,8 @@ export interface Goal {
   status: 'active' | 'completed' | 'paused'
   created_at: string
   updated_at: string
+  /** Kept from your receptionist even when Goals is shared. */
+  assistant_hidden?: boolean
 }
 
 export interface CalendarOccurrence {
@@ -63,7 +65,8 @@ export interface CalendarOccurrence {
 export interface Notification {
   id: string
   user_id?: string
-  origin_type: 'wendy' | 'peer' | 'system'
+  /** 'assistant': a message a friend left through your receptionist (origin_user_id is them). */
+  origin_type: 'wendy' | 'peer' | 'system' | 'assistant'
   origin_user_id?: string | null
   title: string
   body: string | null

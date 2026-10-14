@@ -11,6 +11,9 @@ import { ui, useUi, type Selected } from '../../stores/ui'
 import { ago, clockTime, dayLabel, dueLabel } from '../format'
 import { KIND } from './kinds'
 import { Panel } from './Panel'
+import { motion } from 'motion/react'
+import { nameOf, useSocial } from '../../stores/social'
+import { press } from '../motion'
 
 /** One item, opened from its card (or by the agent). Its actions are on the rail. */
 export function ItemPanel({ item }: { item: Selected }) {
@@ -98,9 +101,17 @@ export function ItemPanel({ item }: { item: Selected }) {
     body = (
       <>
         {n.body && <p className="text-[17px] leading-relaxed text-text">{n.body}</p>}
+        {n.origin_type === 'assistant' && <LeftForYou friendId={n.origin_user_id ?? null} />}
         <Facts
           rows={[
-            ['From', n.origin_type === 'wendy' ? botName : n.origin_type],
+            [
+              'From',
+              n.origin_type === 'wendy'
+                ? botName
+                : n.origin_type === 'assistant'
+                  ? `${friendName(n.origin_user_id ?? null)}, via your assistant`
+                  : n.origin_type,
+            ],
             ['Sent', ago(n.sent_at ?? n.created_at)],
             ['Status', n.read_at ? 'Read' : 'Unread'],
           ]}
@@ -150,7 +161,12 @@ export function ItemPanel({ item }: { item: Selected }) {
     <Panel
       layoutId={`card-${item.kind}:${item.id}`}
       accent={kind.color}
-      kicker={kind.label}
+      kicker={
+        // A message a friend left with your assistant arrives as a notification: say what it is.
+        item.kind === 'notification' && e.notifications[item.id]?.origin_type === 'assistant'
+          ? 'Message for you'
+          : kind.label
+      }
       title={title}
       onClose={close}
       footer={
@@ -324,5 +340,34 @@ function Facts({ rows }: { rows: Array<[string, string] | null> }) {
           </div>
         ))}
     </dl>
+  )
+}
+
+/** Who a friend is, by id (names come from other users: shown as text). */
+function friendName(id: string | null): string {
+  const s = useSocial.getState()
+  const p =
+    s.friends.find((f) => f.profile.userId === id)?.profile ??
+    Object.values(s.threads)
+      .flatMap((t) => t.members)
+      .find((m) => m.userId === id)
+  return nameOf(p ?? null)
+}
+
+/** A message a friend left with your assistant: the conversation it came from, one tap away. */
+function LeftForYou({ friendId }: { friendId: string | null }) {
+  const thread = useSocial((s) =>
+    Object.values(s.threads).find(
+      (t) => t.kind === 'assistant' && t.role === 'owner' && t.members.some((m) => m.userId === friendId),
+    ),
+  )
+  return (
+    <motion.button
+      whileTap={press}
+      onClick={() => ui.openPeople(thread?.id ?? null)}
+      className="glass-pill mt-4 mb-2 h-10 rounded-[8px] px-4 text-[14px] font-medium text-strong"
+    >
+      {thread ? 'Open conversation' : 'Open People'}
+    </motion.button>
   )
 }

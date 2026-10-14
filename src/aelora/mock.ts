@@ -92,6 +92,12 @@ function seed() {
       note('Tempo run today', 'You planned 4 km at threshold pace.', 12),
       note('Design sync in 40 min', 'Bring the tile morph prototype.', 3),
       note('Nice streak', 'Five days in a row on Actora.', 180, true),
+      // A message a friend left with your assistant (receptionist mode).
+      {
+        ...note('Sam left you a message', 'Running 10 minutes late for Friday dinner, save me a seat!', 25),
+        origin_type: 'assistant' as const,
+        origin_user_id: 'sam',
+      },
     ],
   }
 }
@@ -357,6 +363,12 @@ export class MockWebSocket implements WebSocketLike {
         this.reply({ type: 'vault.remembered', content: entry.content })
         return this.reply({ type: 'event', event: 'vault', data: { type: 'vault:created', entry } })
       }
+      case 'vault.update': {
+        const v = MockWebSocket.vault.find((e) => e.id === msg.id)
+        if (!v) return this.reply({ type: 'error', code: 'not_found', message: 'not found' })
+        Object.assign(v, (msg.patch as object) ?? {})
+        return this.reply({ type: 'vault.updated', entry: { ...v } })
+      }
       case 'vault.delete': {
         MockWebSocket.vault = MockWebSocket.vault.filter((e) => e.id !== msg.id)
         this.reply({ type: 'vault.deleted', id: msg.id })
@@ -373,6 +385,7 @@ export class MockWebSocket implements WebSocketLike {
           msg,
           (f) => this.reply(f),
           (ms, make) => this.later(ms, () => this.emit(make())),
+          { vault: MockWebSocket.vault, goals: MockWebSocket.db.goals },
         )
     }
   }

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   blockUser,
   loadBlocks,
+  openAssistant,
   openDmWith,
   removeFriend,
   respondFriend,
@@ -83,7 +84,14 @@ export function PeoplePanel() {
   } else body = <Home onAdd={() => setView('add')} onBlocked={() => setView('blocked')} />
 
   return (
-    <Panel layoutId="people" accent={ROLE.status.ok} kicker={kicker} title={title} onClose={ui.closePeople} footer={footer}>
+    <Panel
+      layoutId="people"
+      accent={ROLE.status.ok}
+      kicker={kicker}
+      title={title}
+      onClose={ui.closePeople}
+      footer={footer}
+    >
       {body}
     </Panel>
   )
@@ -158,12 +166,20 @@ function Home({ onAdd, onBlocked }: { onAdd: () => void; onBlocked: () => void }
         ))}
         {outgoing.map((f) => (
           <Row key={f.profile.userId} who={f.profile} note="Requested">
-            <Confirm label="Cancel" ask="Cancel request?" tone="muted" onConfirm={() => void removeFriend(f.profile.userId)} />
+            <Confirm
+              label="Cancel"
+              ask="Cancel request?"
+              tone="muted"
+              onConfirm={() => void removeFriend(f.profile.userId)}
+            />
           </Row>
         ))}
       </Section>
 
-      <button onClick={onBlocked} className="h-10 justify-self-start text-[14px] font-medium text-muted underline decoration-line underline-offset-4">
+      <button
+        onClick={onBlocked}
+        className="h-10 justify-self-start text-[14px] font-medium text-muted underline decoration-line underline-offset-4"
+      >
         Blocked people
       </button>
     </div>
@@ -183,11 +199,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Row({
   who,
+  name,
   note,
   onClick,
   children,
 }: {
   who: { displayName: string | null; handle: string | null }
+  /** In place of their name (an assistant conversation says whose). */
+  name?: React.ReactNode
   note?: React.ReactNode
   onClick?: () => void
   children?: React.ReactNode
@@ -196,7 +215,7 @@ function Row({
     <>
       <Avatar who={who} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[16px] font-semibold text-strong">{nameOf(who)}</span>
+        <span className="block truncate text-[16px] font-semibold text-strong">{name ?? nameOf(who)}</span>
         <span className="block truncate text-[13px] text-muted">
           {note ?? (who.handle && who.displayName?.trim() ? `@${who.handle}` : '')}
         </span>
@@ -231,6 +250,13 @@ function ThreadRow({ t }: { t: Thread }) {
   return (
     <Row
       who={who}
+      name={
+        t.kind === 'assistant' ? (
+          <>
+            {threadName(t)} <AiTag />
+          </>
+        ) : undefined
+      }
       onClick={() => ui.openDm(t.id)}
       note={<span className={t.unread && !t.muted ? 'font-semibold text-strong' : ''}>{line}</span>}
     >
@@ -255,11 +281,32 @@ function ThreadRow({ t }: { t: Thread }) {
 function FriendItem({ f }: { f: FriendRow }) {
   const [open, setOpen] = useState(false)
   const id = f.profile.userId
+  const assistant = f.profile.assistantAvailable === true
   return (
-    <Row who={f.profile} onClick={() => openDmWith(id)}>
+    <Row
+      who={f.profile}
+      // Their receptionist takes messages from friends: say so where you'd look for it.
+      note={assistant ? `@${f.profile.handle} · has an assistant` : undefined}
+      onClick={() => openDmWith(id)}
+    >
       <AnimatePresence initial={false} mode="popLayout">
         {open ? (
-          <motion.span key="acts" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex gap-2">
+          <motion.span
+            key="acts"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex gap-2"
+          >
+            {assistant && (
+              <motion.button
+                whileTap={press}
+                onClick={() => openAssistant(id)}
+                className="glass-pill h-9 shrink-0 rounded-[8px] px-3 text-[13px] font-semibold text-strong"
+              >
+                Assistant
+              </motion.button>
+            )}
             <Confirm label="Unfriend" ask="Unfriend?" tone="muted" onConfirm={() => void removeFriend(id)} />
             <Confirm label="Block" ask="Block?" onConfirm={() => void blockUser(id)} />
           </motion.span>
@@ -307,5 +354,17 @@ function Blocked() {
         </Row>
       ))}
     </ul>
+  )
+}
+
+/** Marks an agent (a friend's receptionist), so it's never mistaken for the person. */
+function AiTag() {
+  return (
+    <span
+      className="ml-1 rounded-[4px] px-1 py-px align-middle text-[10px] font-bold tracking-wide"
+      style={{ color: 'var(--ink-agent)', background: `color-mix(in srgb, ${ROLE.agent} 28%, transparent)` }}
+    >
+      AI
+    </span>
   )
 }

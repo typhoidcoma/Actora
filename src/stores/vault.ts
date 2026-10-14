@@ -13,6 +13,8 @@ export interface VaultEntry {
   source: string | null
   created_at: string
   updated_at?: string
+  /** Kept from your receptionist even when its section is shared. */
+  assistant_hidden?: boolean
 }
 
 /** Aelora's 12 categories, in the order the panel shows them, with human names. */
