@@ -229,7 +229,7 @@ function Row({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -24, transition: { duration: 0.2 } }}
       transition={morph}
-      className="flex items-center gap-3 border-b border-line py-2.5 last:border-0"
+      className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line py-2.5 last:border-0"
     >
       {onClick ? (
         <button onClick={onClick} className="flex min-w-0 flex-1 items-center gap-3 text-left">
@@ -289,38 +289,13 @@ function FriendItem({ f }: { f: FriendRow }) {
       note={assistant ? `@${f.profile.handle} · has an assistant` : undefined}
       onClick={() => openDmWith(id)}
     >
-      <AnimatePresence initial={false} mode="popLayout">
-        {open ? (
-          <motion.span
-            key="acts"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex gap-2"
-          >
-            {assistant && (
-              <motion.button
-                whileTap={press}
-                onClick={() => openAssistant(id)}
-                className="glass-pill h-9 shrink-0 rounded-[8px] px-3 text-[13px] font-semibold text-strong"
-              >
-                Assistant
-              </motion.button>
-            )}
-            <Confirm label="Unfriend" ask="Unfriend?" tone="muted" onConfirm={() => void removeFriend(id)} />
-            <Confirm label="Block" ask="Block?" onConfirm={() => void blockUser(id)} />
-          </motion.span>
-        ) : (
-          <motion.button
-            key="msg"
-            whileTap={press}
-            onClick={() => openDmWith(id)}
-            className="glass-pill h-9 shrink-0 rounded-[8px] px-3 text-[13px] font-semibold text-strong"
-          >
-            Message
-          </motion.button>
-        )}
-      </AnimatePresence>
+      <motion.button
+        whileTap={press}
+        onClick={() => openDmWith(id)}
+        className="glass-pill h-9 shrink-0 rounded-[8px] px-3 text-[13px] font-semibold text-strong"
+      >
+        Message
+      </motion.button>
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? 'Fewer options' : `More for ${nameOf(f.profile)}`}
@@ -333,6 +308,31 @@ function FriendItem({ f }: { f: FriendRow }) {
           <circle cx="13" cy="8" r="1.3" fill="currentColor" />
         </svg>
       </button>
+      {/* The extra actions get their own line under the name, so a narrow phone never scrolls sideways. */}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="acts"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={morph}
+            className="flex basis-full flex-wrap gap-2 overflow-hidden pl-[52px]"
+          >
+            {assistant && (
+              <motion.button
+                whileTap={press}
+                onClick={() => openAssistant(id)}
+                className="glass-pill h-9 shrink-0 rounded-[8px] px-3 text-[13px] font-semibold text-strong"
+              >
+                Their assistant
+              </motion.button>
+            )}
+            <Confirm label="Unfriend" ask="Unfriend?" tone="muted" onConfirm={() => void removeFriend(id)} />
+            <Confirm label="Block" ask="Block?" onConfirm={() => void blockUser(id)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Row>
   )
 }

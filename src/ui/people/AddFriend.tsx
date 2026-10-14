@@ -35,7 +35,7 @@ export function AddFriend() {
   }
 
   return (
-    <div className="grid max-w-[520px] gap-6">
+    <div className="grid max-w-[520px] grid-cols-[minmax(0,1fr)] gap-6">
       <section>
         <h3 className="label mb-2 text-muted">By handle</h3>
         <form
@@ -125,14 +125,15 @@ export function AddFriend() {
         </div>
         {errors.invite && <p className="mt-3 text-[15px] text-urgent">Couldn't make an invite just now.</p>}
         {invite && !invite.autoAccept && !qr && (
-          <div className="mt-3 grid gap-2">
+          // minmax(0,1fr): the long link is cut off with "…" instead of widening the panel.
+          <div className="mt-3 grid grid-cols-[minmax(0,1fr)] gap-2">
             <p className="text-[13px] text-muted">
               Anyone with this link can ask to be your friend. It works once, for a week.
             </p>
-            <div className="flex items-center gap-2">
-              <code className="glass-pill selectable min-w-0 flex-1 truncate rounded-[8px] px-3 py-2.5 text-[13px] text-strong">
-                {invite.url}
-              </code>
+            <code className="glass-pill selectable block truncate rounded-[8px] px-3 py-2.5 font-sans text-[13px] text-strong">
+              {invite.url}
+            </code>
+            <div className="flex flex-wrap items-center gap-2">
               <CopyButton text={invite.url} label="Copy link" />
               {typeof navigator !== 'undefined' && 'share' in navigator && (
                 <motion.button

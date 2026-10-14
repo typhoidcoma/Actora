@@ -51,7 +51,7 @@ export function ProfileView() {
   const handleChanged = cleanHandle !== profile.handle
 
   return (
-    <div className="grid max-w-[520px] gap-6">
+    <div className="grid max-w-[520px] grid-cols-[minmax(0,1fr)] gap-6">
       <section>
         <h3 className="label mb-2">Your name</h3>
         <form

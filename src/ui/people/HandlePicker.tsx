@@ -22,7 +22,7 @@ export function HandlePicker() {
 
   return (
     <form
-      className="grid max-w-[460px] gap-3"
+      className="grid max-w-[460px] grid-cols-[minmax(0,1fr)] gap-3"
       onSubmit={(e) => {
         e.preventDefault()
         if (!valid) return
