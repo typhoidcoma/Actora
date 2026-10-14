@@ -327,6 +327,8 @@ export function ThreadComposer({ id }: { id: string }) {
           onPointerDown={(e) => e.preventDefault()}
           disabled={!text.trim()}
           aria-label={editing ? 'Save edit' : 'Send'}
+          // Sending has its own sound (sound.ts), not a tap on top of it.
+          data-sound="none"
           className="grid h-12 min-w-12 shrink-0 place-items-center rounded-full bg-fill px-3.5 text-[14px] font-semibold text-on-accent transition-colors disabled:bg-text/10 disabled:text-faint"
         >
           {editing ? (

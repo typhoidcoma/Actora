@@ -13,6 +13,7 @@ import {
 } from '../stores/social'
 import { useEntities } from '../stores/entities'
 import { toast } from '../stores/toast'
+import { play } from '../sound/sound'
 import { ui, useUi } from '../stores/ui'
 import type { AssistantPreview, BlockRow, DmMessage, FriendRow, OwnProfile, Pending, Profile, Thread } from './types'
 
@@ -228,6 +229,7 @@ export function sendDm(threadId: string, text: string): boolean {
   if (!body || body.length > BODY_MAX) return false
   const p: Pending = { clientMsgId: newId(), threadId, body, state: 'sending', at: Date.now() }
   useSocial.setState((s) => ({ pending: { ...s.pending, [p.clientMsgId]: p } }))
+  play('sent')
   transmit(p)
   return true
 }
@@ -449,6 +451,16 @@ export function handleSocialFrame(f: ServerFrame, b: FrameBus): boolean {
     case 'dm.edited':
     case 'dm.deleted':
       if (isMessage(f.message)) {
+        const m = f.message
+        // A new message from someone else (a friend, or a friend's assistant): a soft tone,
+        // unless that conversation is muted or already open in front of you.
+        if (f.type === 'dm.message' && m.senderId !== me() && !m.deletedAt) {
+          const t = useSocial.getState().threads[m.threadId]
+          const u = useUi.getState()
+          const looking =
+            u.people && u.dmThread === m.threadId && typeof document !== 'undefined' && document.hasFocus()
+          if (!t?.muted && !looking) play('message')
+        }
         put([f.message])
         // Ours from another device (or the echo of this one) clears a matching bubble.
         clearTimer(f.message.clientMsgId)

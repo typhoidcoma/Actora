@@ -58,6 +58,7 @@ import type { FrameBus } from './socket'
 import { actionArgs, AVAILABLE_ACTIONS, strayAction } from './actions'
 import { eventVerdict } from './owner'
 import { phone } from '../stores/phone'
+import { play } from '../sound/sound'
 import { handleSocialFrame, socialConnected } from '../social/social'
 import { setActionRunner } from './chat'
 import { social } from '../stores/social'
@@ -501,6 +502,8 @@ function announce(n: Notification): void {
   if (!due || !fresh || n.read_at) return
   // Not looking at the app? Make it a real OS notification (the server sent no push).
   void notifyInBackground(n)
+  // Looking at it: a gentle tone (silent in the background, where the OS notification speaks).
+  play('reminder')
   if (useUi.getState().chatOpen) return
   agent.showNotice({ notificationId: n.id, title: n.title, body: n.body })
   agent.react('positive', 0.45, 1400)

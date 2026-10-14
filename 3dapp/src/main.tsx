@@ -6,6 +6,7 @@ import { onWebgpuFailed, webgpuReady } from './gpu'
 import { loadWorld } from './look/loadWorld'
 import { restoreLocalTheme } from '@actora/stores/appearance'
 import { initScheme } from '@actora/stores/scheme'
+import { installTapSounds } from '@actora/sound/sound'
 import { sayPolicy } from '@actora/options/run'
 import './look/fonts'
 import './styles.css'
@@ -13,6 +14,8 @@ import './styles.css'
 // The saved colour scheme and theme choice, as the 2D app restores them.
 initScheme()
 restoreLocalTheme()
+// Quiet taps on the overlay's controls, as the 2D app (the scene's own panes are canvas, so they stay silent).
+installTapSounds()
 // A long question doesn't jump to the chat: she plays out her thinking first, and
 // the chat opens once a long answer is in (look/longAnswers.ts).
 sayPolicy.openChatForLargeQuestions = false

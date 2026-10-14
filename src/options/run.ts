@@ -1,3 +1,4 @@
+import { play } from '../sound/sound'
 import {
   ask,
   chat,
@@ -117,6 +118,7 @@ function runAct(act: LocalAct): void {
       ui.select(null)
       return
     case 'markRead': {
+      play('done')
       void markNotificationRead(act.id)
       const a = useAgent.getState()
       if (a.line === 'notice' && a.notice?.notificationId === act.id) agent.showGreeting()

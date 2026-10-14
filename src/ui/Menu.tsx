@@ -17,6 +17,7 @@ import { resetColors, useScheme } from '../stores/scheme'
 import { toast } from '../stores/toast'
 import { usePeopleWaiting } from '../stores/social'
 import { setCheckins, useCheckins } from '../checkins/checkins'
+import { sound, useSound } from '../sound/sound'
 import { connectGoogle, disconnectGoogle, googleHint, googleNeedsAction, syncGoogle, useGoogle } from '../google/google'
 
 function useStatus(): { text: string; tone: 'ok' | 'busy' | 'warn' } {
@@ -109,6 +110,7 @@ function Sheet({
   const compact = useMetrics((m) => m.compact)
   const google = useGoogle((g) => g.status)
   const checkins = useCheckins((c) => c.on)
+  const soundOn = useSound((s) => s.on)
   const agentColors = useScheme((s) => s.source === 'agent')
   const agentUntil = useScheme((s) => s.until)
   const name = useAgent((s) => s.botName)
@@ -199,6 +201,10 @@ function Sheet({
       {/* The agent's now-and-then "how's it going?" while the app is open. */}
       <Item onClick={() => setCheckins(!checkins)} hint={checkins ? 'On' : 'Off'}>
         Check-ins
+      </Item>
+      {/* Quiet UI sounds (SND's Sine kit), remembered on this device. */}
+      <Item onClick={() => sound.setOn(!soundOn)} hint={soundOn ? 'On' : 'Off'}>
+        Sounds
       </Item>
       {/* Phones have no keyboard button on the rail; typing lives here. */}
       {compact && <Item onClick={go(() => ui.keyboard(true))}>Type instead</Item>}

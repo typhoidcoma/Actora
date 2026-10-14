@@ -16,6 +16,7 @@ import { capture } from '../stores/captures'
 import { sessions, useSession } from '../stores/session'
 import { dueLabel } from '../ui/format'
 import { AeloraSocket, type WebSocketLike } from './socket'
+import { play } from '../sound/sound'
 
 let socket: AeloraSocket | null = null
 
@@ -209,6 +210,7 @@ export async function completeTask(id: string): Promise<void> {
   // Leave updated_at alone so the server's row always wins the upsert.
   const optimistic: Task = { ...before, status: 'done', completed_at: new Date().toISOString() }
   useEntities.setState((s) => ({ tasks: { ...s.tasks, [id]: optimistic } }))
+  play('done')
   toast.show(`Done: ${quote(before.title)}`, { undo: () => void reopenTask(id, before.status) })
   const reply = await request(socket, { type: 'task.complete', id }, 'task.completed', { match: about(id) })
   if (!reply) {

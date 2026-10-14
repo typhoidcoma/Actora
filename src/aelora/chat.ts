@@ -1,4 +1,5 @@
 import { CHAT_ERROR_CODES } from './protocol'
+import { play } from '../sound/sound'
 import { orbSignals, useAgent, type ChatBubble } from '../stores/agent'
 import type { MoodState, ServerFrame, TranscriptMessage } from './protocol'
 import type { FrameBus } from './socket'
@@ -124,6 +125,7 @@ export function sendChat(bus: FrameBus, text: string): boolean {
     ? bus.send({ type: 'chat', message, conversationId: target })
     : bus.send({ type: 'conversation.new' })
   if (!sent) return false
+  play('sent')
   if (!target) {
     pendingMessage = message
     pendingBus = bus
@@ -265,6 +267,8 @@ export function handleChatFrame(f: ServerFrame): boolean {
 
     case 'token':
       if (!mine) return true
+      // Her reply starting to arrive: one soft cue per reply.
+      if (!rawReply) play('reply')
       rawReply += String(f.delta ?? '')
       runWrittenActions(rawReply)
       {
