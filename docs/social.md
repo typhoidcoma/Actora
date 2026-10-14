@@ -4,8 +4,11 @@ People is Actora's social feature: handles, friends, direct messages, and a "rec
 can talk to your assistant (Wendy) instead of you. The protocol is Aelora's (`H:\Projects\Aelora\docs\SOCIAL.md`
 and `SOCIAL-CLIENT.md`); this file describes what Actora implements and where.
 
-The one rule that shapes everything: **nothing anyone wrote in People reaches Wendy.** She gets counts and
-names so she can say "Sam wrote", never message text, settings or thread contents.
+The one rule that shapes everything: **nothing anyone wrote in People reaches Wendy unless you ask.** On
+her own she gets counts and names, so she can say "Sam wrote". She doesn't get message text, settings or
+thread contents. When you ask about a conversation ("what did Sam say?", or about the one you have open),
+she reads it with Aelora's `read_messages` tool. When you want to answer, she drafts the reply with
+`draft_message`, and it waits for your OK (see "Her help with your messages" below).
 
 ## What users get
 
@@ -204,9 +207,20 @@ badge, the home message card, a DM push, and the "Message for you" item panel.
 ```
 
 - `view` is present only when open: `conversation` when a thread is open, else the `peopleView`.
-- `unread`, `from`, `requests` come from `waitingSummary`. Counts and names only, never message text, settings,
-  previews or thread ids. `src/aelora/client.ts` resends client state when `people`, `peopleView` or `dmThread`
+- `unread`, `from`, `requests` come from `waitingSummary`. Counts and names only, never message text, settings
+  or previews.
+- `thread: {id, with}` is present while a conversation is open (`openThread` in `router.ts`). It holds the thread
+  id and who it's with, so "what's this about?" or "reply to this" works with `read_messages` / `draft_message`.
+  It never carries what anyone wrote. `src/aelora/client.ts` resends client state when `people`, `peopleView` or `dmThread`
   change, and (debounced 800 ms) when the summary's signature changes.
+- **Her help with your messages** (Aelora `read_messages` / `draft_message`, Aelora PR #291):
+  - She reads a conversation only when you ask, on your own access, and reading doesn't mark it read.
+  - A reply she writes arrives as a `pending_action` of kind `send_dm`. It shows as "Reply ready to send" in box 4,
+    with Send it / Change it / Discard on the pills (`src/stores/pending.ts`). Approving it sends the message as
+    you, and it arrives back as a normal `dm.message`.
+  - What a friend wrote is untrusted. A turn that read messages can't approve anything, so a message can't send
+    itself.
+  - Email, calendar and tasks from a message use her existing tools.
 - Action `people.open` with `{view?}` of `profile`, `add`, `blocked` (anything else falls back to home), and
   `people.close` (`src/aelora/actions.ts`, handled in `router.ts`). She can open a view but can't open a
   specific conversation. The agent-facing description is in `docs/agent-ui.md`.

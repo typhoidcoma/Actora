@@ -497,4 +497,22 @@ describe('what she knows is waiting in People', () => {
     })
     expect(JSON.stringify(summary)).not.toContain('private words')
   })
+
+  it('names the open conversation (so she can read it when asked), never what it says', async () => {
+    const { sendClientState } = await import('../aelora/router')
+    useSocial.setState({
+      threads: {
+        t1: thread({
+          lastMessage: msg(2, { body: 'private words' }),
+          members: [{ userId: 'sam', role: 'member', handle: 'sam', displayName: 'Sam\nRivera', avatarPath: null }],
+        }),
+      },
+    })
+    useUi.setState({ people: true, dmThread: 't1' })
+    const { bus, sent } = fakeBus()
+    sendClientState(bus)
+    const people = (sent[0] as { ui: { screen: { people: Record<string, unknown> } } }).ui.screen.people
+    expect(people).toMatchObject({ open: true, view: 'conversation', thread: { id: 't1', with: 'Sam Rivera' } })
+    expect(JSON.stringify(sent[0])).not.toContain('private words')
+  })
 })

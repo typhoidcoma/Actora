@@ -61,7 +61,7 @@ import { peekThenChat, talkKey } from '../ui/peek'
 import { play } from '../sound/sound'
 import { handleSocialFrame, socialConnected } from '../social/social'
 import { setActionRunner } from './chat'
-import { social, useSocial, waitingSummary } from '../stores/social'
+import { social, spoken, threadName, useSocial, waitingSummary } from '../stores/social'
 
 /**
  * ui_action names we accept; advertised in client_state so the agent can drive the
@@ -107,6 +107,12 @@ const ANIMATIONS = [
   'skeptical',
 ] as const
 
+/** The open conversation in People: its id and who it's with (no message text). */
+function openThread(id: string): { id: string; with: string } {
+  const t = useSocial.getState().threads[id]
+  return { id, with: t ? spoken(threadName(t)) : 'someone' }
+}
+
 /** What the user is looking at, so a persona that reads the ui blob can refer to it. */
 function screen() {
   const u = useUi.getState()
@@ -142,6 +148,9 @@ function screen() {
     people: {
       open: u.people,
       ...(u.people ? { view: u.dmThread ? 'conversation' : u.peopleView } : {}),
+      // The conversation on screen, so "what's this about?" or "reply to this" has a thread_id
+      // for read_messages / draft_message. Who it's with, never what's in it.
+      ...(u.people && u.dmThread ? { thread: openThread(u.dmThread) } : {}),
       ...waitingSummary(useSocial.getState()),
     },
     // The user's Look setting, and what's actually showing now (auto follows the sun).

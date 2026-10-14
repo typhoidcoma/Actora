@@ -41,6 +41,8 @@ const KINDS: Record<string, { label: string; yes: string; done: string }> = {
   create_filter: { label: 'New email filter', yes: 'Create it', done: 'Filter created' },
   delete_filter: { label: 'Delete a filter', yes: 'Delete it', done: 'Filter deleted' },
   set_vacation: { label: 'Out-of-office reply', yes: 'Turn it on', done: 'Auto-reply set' },
+  // A reply to a friend she drafted for you (Aelora draft_message); it goes out as you.
+  send_dm: { label: 'Reply ready to send', yes: 'Send it', done: 'Message sent' },
 }
 export const kindOf = (kind: string) => KINDS[kind] ?? { label: 'Waiting for your OK', yes: 'Go ahead', done: 'Done' }
 

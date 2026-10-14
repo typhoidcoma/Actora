@@ -50,7 +50,8 @@ and hides advertised actions, so a missing entry shows up as raw text in her rep
 unchecked, so Actora checks them: real ids only, lengths capped, colours as hex.
 
 **Private things stay private.** For People she gets counts and names ("2 from Sam", "1 friend request"), never what
-anyone wrote. Generated pills skip the People screen entirely, so no conversation goes into a prompt. Only pill labels are
+anyone wrote, unless you ask her about a conversation. Then she reads that one. She answers only with a draft you
+approve, and nothing a friend wrote can approve it for you. Generated pills skip the People screen entirely, so no conversation goes into a prompt. Only pill labels are
 reported, never the hidden text a pill would send.
 
 ## Phones

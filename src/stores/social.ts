@@ -275,7 +275,7 @@ export function messageCard(threads: Record<string, Thread>, now = Date.now()): 
 }
 
 /** A name as she may hear it: one line, short (names come from other users). */
-const spoken = (s: string) =>
+export const spoken = (s: string) =>
   s
     .replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, ' ')
     .replace(/\s+/g, ' ')
