@@ -97,7 +97,7 @@ export function ThreadBody({ id }: { id: string }) {
           whileTap={press}
           onClick={() => muteThread(id, !thread.muted)}
           aria-pressed={thread.muted}
-          className="glass-pill h-9 rounded-[8px] px-3 text-[13px] text-muted"
+          className="glass-pill h-9 rounded-[8px] px-3 text-[13px] font-semibold text-muted"
         >
           {thread.muted ? 'Unmute' : 'Mute'}
         </motion.button>
@@ -117,7 +117,7 @@ export function ThreadBody({ id }: { id: string }) {
         <button
           onClick={() => loadOlder(id)}
           disabled={loading}
-          className="mx-auto mb-3 text-[13px] text-muted underline-offset-2 hover:underline disabled:opacity-50"
+          className="glass-pill mx-auto mb-3 h-10 rounded-[8px] px-4 text-[14px] font-medium text-muted disabled:opacity-60"
         >
           {loading ? 'Loading…' : 'Load earlier'}
         </button>
@@ -193,7 +193,7 @@ function Bubble({
                   setEditing(m)
                   onPick()
                 }}
-                className="glass-pill h-8 rounded-[8px] px-3 text-[13px] text-muted"
+                className="glass-pill h-9 rounded-[8px] px-3 text-[13px] font-semibold text-muted"
               >
                 Edit
               </button>
@@ -264,7 +264,7 @@ export function ThreadComposer({ id }: { id: string }) {
             setText('')
           }}
           aria-label="Stop editing"
-          className="glass-pill h-12 shrink-0 rounded-full px-3 text-[13px] text-muted"
+          className="glass-pill h-12 shrink-0 rounded-full px-3 text-[13px] font-semibold text-muted"
         >
           Cancel
         </button>
@@ -286,7 +286,7 @@ export function ThreadComposer({ id }: { id: string }) {
         onPointerDown={(e) => e.preventDefault()}
         disabled={!text.trim()}
         aria-label={editing ? 'Save edit' : 'Send'}
-        className="grid h-12 min-w-12 shrink-0 place-items-center rounded-full bg-accent px-3.5 text-[14px] font-semibold text-on-accent disabled:opacity-35"
+        className="grid h-12 min-w-12 shrink-0 place-items-center rounded-full bg-fill px-3.5 text-[14px] font-semibold text-on-accent transition-colors disabled:bg-text/10 disabled:text-faint"
       >
         {editing ? (
           'Save'

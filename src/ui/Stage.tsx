@@ -190,7 +190,7 @@ function FatalCard() {
         </p>
         <button
           onClick={() => window.location.reload()}
-          className="h-12 w-full rounded-full bg-accent font-medium text-on-accent"
+          className="h-12 w-full rounded-full bg-fill font-medium text-on-accent"
         >
           Reload
         </button>

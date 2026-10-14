@@ -297,7 +297,7 @@ function AddMemory({ defaultCategory, onSaved }: { defaultCategory: string | nul
           whileTap={press}
           type="submit"
           disabled={!text.trim() || saving}
-          className="h-11 shrink-0 rounded-[8px] bg-accent px-4 text-[15px] font-semibold text-on-accent transition-opacity disabled:opacity-35"
+          className="h-11 shrink-0 rounded-[8px] bg-fill px-4 text-[15px] font-semibold text-on-accent transition-colors disabled:bg-text/10 disabled:text-faint"
         >
           {saving ? 'Saving…' : 'Save'}
         </motion.button>

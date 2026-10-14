@@ -37,6 +37,8 @@
   --color-on-accent: var(--on-accent);
 
   --color-accent: var(--ink-accent);
+  /* Filled buttons: the fill on-accent is chosen against (ink-accent is for text). */
+  --color-fill: var(--role-accent);
   --color-urgent: var(--ink-urgent);
   --color-calm: var(--ink-calm);
 

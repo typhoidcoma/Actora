@@ -84,7 +84,7 @@ function Sheet() {
               close()
               newThread()
             }}
-            className="h-11 rounded-[8px] bg-accent px-4 text-[14px] font-semibold text-on-accent"
+            className="h-11 rounded-[8px] bg-fill px-4 text-[14px] font-semibold text-on-accent"
           >
             New chat
           </motion.button>

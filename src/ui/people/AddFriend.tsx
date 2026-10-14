@@ -63,7 +63,7 @@ export function AddFriend() {
             whileTap={press}
             type="submit"
             disabled={!q.replace(/^@/, '').trim() || finding}
-            className="h-11 shrink-0 rounded-[8px] bg-accent px-4 text-[15px] font-semibold text-on-accent disabled:opacity-35"
+            className="h-11 shrink-0 rounded-[8px] bg-fill px-4 text-[15px] font-semibold text-on-accent transition-colors disabled:bg-text/10 disabled:text-faint"
           >
             {finding ? 'Looking…' : 'Find'}
           </motion.button>
@@ -90,7 +90,7 @@ export function AddFriend() {
                   setAsked(found.profile!.userId)
                   requestFriend(found.profile!.userId)
                 }}
-                className="h-9 shrink-0 rounded-[8px] bg-accent px-3 text-[14px] font-semibold text-on-accent"
+                className="h-9 shrink-0 rounded-[8px] bg-fill px-3 text-[14px] font-semibold text-on-accent"
               >
                 Add friend
               </motion.button>
@@ -108,7 +108,7 @@ export function AddFriend() {
               setQr(false)
               createInvite(false)
             }}
-            className="glass-pill h-10 rounded-[8px] px-4 text-[14px] text-strong"
+            className="glass-pill h-10 rounded-[8px] px-4 text-[14px] font-medium text-strong"
           >
             Make a link
           </motion.button>
@@ -118,7 +118,7 @@ export function AddFriend() {
               setQr(true)
               createInvite(true)
             }}
-            className="glass-pill h-10 rounded-[8px] px-4 text-[14px] text-strong"
+            className="glass-pill h-10 rounded-[8px] px-4 text-[14px] font-medium text-strong"
           >
             Show a QR code
           </motion.button>
@@ -138,7 +138,7 @@ export function AddFriend() {
                 <motion.button
                   whileTap={press}
                   onClick={() => void share()}
-                  className="h-9 shrink-0 rounded-[8px] bg-accent px-3 text-[14px] font-semibold text-on-accent"
+                  className="h-9 shrink-0 rounded-[8px] bg-fill px-3 text-[14px] font-semibold text-on-accent"
                 >
                   Share
                 </motion.button>

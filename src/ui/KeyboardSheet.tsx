@@ -86,7 +86,7 @@ function Sheet() {
             whileTap={jelly}
             type="submit"
             disabled={!text.trim()}
-            className="h-12 shrink-0 rounded-full bg-accent px-4 text-[14px] font-semibold text-on-accent transition-opacity disabled:opacity-35"
+            className="h-12 shrink-0 rounded-full bg-fill px-4 text-[14px] font-semibold text-on-accent transition-colors disabled:bg-text/10 disabled:text-faint"
           >
             Save as task
           </motion.button>
@@ -96,7 +96,7 @@ function Sheet() {
             type="submit"
             disabled={!text.trim()}
             aria-label="Send"
-            className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-accent text-on-accent transition-opacity disabled:opacity-35"
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-fill text-on-accent transition-colors disabled:bg-text/10 disabled:text-faint"
           >
             <svg viewBox="0 0 16 16" className="h-4 w-4">
               <path

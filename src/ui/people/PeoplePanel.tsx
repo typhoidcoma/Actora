@@ -110,13 +110,13 @@ function Home({ onAdd, onBlocked }: { onAdd: () => void; onBlocked: () => void }
               <motion.button
                 whileTap={press}
                 onClick={() => respondFriend(r.profile.userId, true)}
-                className="h-9 shrink-0 rounded-[8px] bg-accent px-3 text-[13px] font-semibold text-on-accent"
+                className="h-9 shrink-0 rounded-[8px] bg-fill px-3 text-[13px] font-semibold text-on-accent"
               >
                 Accept
               </motion.button>
               <button
                 onClick={() => respondFriend(r.profile.userId, false)}
-                className="glass-pill h-9 shrink-0 rounded-[8px] px-3 text-[13px] text-muted"
+                className="glass-pill h-9 shrink-0 rounded-[8px] px-3 text-[13px] font-semibold text-muted"
               >
                 Decline
               </button>
@@ -147,7 +147,7 @@ function Home({ onAdd, onBlocked }: { onAdd: () => void; onBlocked: () => void }
         ))}
       </Section>
 
-      <button onClick={onBlocked} className="justify-self-start text-[13px] text-muted underline-offset-2 hover:underline">
+      <button onClick={onBlocked} className="h-10 justify-self-start text-[14px] font-medium text-muted underline decoration-line underline-offset-4">
         Blocked people
       </button>
     </div>
@@ -223,7 +223,7 @@ function ThreadRow({ t }: { t: Thread }) {
         {t.unread > 0 ? (
           <span
             className={`num grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-semibold ${
-              t.muted ? 'bg-text/10 text-muted' : 'bg-accent text-on-accent'
+              t.muted ? 'bg-text/10 text-muted' : 'bg-fill text-on-accent'
             }`}
           >
             {t.unread}
@@ -252,7 +252,7 @@ function FriendItem({ f }: { f: FriendRow }) {
             key="msg"
             whileTap={press}
             onClick={() => openDmWith(id)}
-            className="h-9 shrink-0 rounded-[8px] bg-accent/15 px-3 text-[13px] font-semibold text-strong"
+            className="glass-pill h-9 shrink-0 rounded-[8px] px-3 text-[13px] font-semibold text-strong"
           >
             Message
           </motion.button>
@@ -284,7 +284,7 @@ function Blocked() {
         <Row key={b.userId} who={{ displayName: null, handle: b.handle }} note={`Blocked ${ago(b.blockedAt)}`}>
           <button
             onClick={() => unblockUser(b.userId)}
-            className="glass-pill h-9 shrink-0 rounded-[8px] px-3 text-[13px] text-muted"
+            className="glass-pill h-9 shrink-0 rounded-[8px] px-3 text-[13px] font-semibold text-muted"
           >
             Unblock
           </button>

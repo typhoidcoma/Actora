@@ -70,7 +70,7 @@ export function HandlePicker() {
         whileTap={press}
         type="submit"
         disabled={!valid || (sent && !error)}
-        className="h-12 rounded-[8px] bg-accent text-[15px] font-semibold text-on-accent disabled:opacity-35"
+        className="h-12 rounded-[8px] bg-fill text-[15px] font-semibold text-on-accent transition-colors disabled:bg-text/10 disabled:text-faint"
       >
         {sent && !error ? 'Saving…' : 'Claim handle'}
       </motion.button>
