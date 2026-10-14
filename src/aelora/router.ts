@@ -58,6 +58,7 @@ import { actionArgs, AVAILABLE_ACTIONS, strayAction } from './actions'
 import { eventVerdict } from './owner'
 import { phone } from '../stores/phone'
 import { handleSocialFrame, socialConnected } from '../social/social'
+import { setActionRunner } from './chat'
 import { social } from '../stores/social'
 
 /**
@@ -305,6 +306,14 @@ function runCommand(cmd: AgentCommand | undefined): void {
 
 const ITEM_KINDS = new Set<ItemKind>(['task', 'goal', 'event', 'notification'])
 const THEMES = new Set<ThemeMode>(['auto', 'day', 'dusk'])
+const THEME_WORDS: Record<string, ThemeMode> = {
+  dark: 'dusk',
+  night: 'dusk',
+  evening: 'dusk',
+  light: 'day',
+  daylight: 'day',
+  system: 'auto',
+}
 const TILES = new Set<TileId>(TILE_IDS)
 
 function itemExists(kind: ItemKind, id: string): boolean {
@@ -314,6 +323,9 @@ function itemExists(kind: ItemKind, id: string): boolean {
   if (kind === 'notification') return !!e.notifications[id]
   return Object.values(e.events).some((x) => x.id === id)
 }
+
+// Screen actions she writes into a reply instead of calling run through here too (chat.ts).
+setActionRunner((action, args) => runUiAction(action, args))
 
 export function runUiAction(action: string, args: Record<string, unknown>): void {
   if (SCREEN_MOVES.has(action) && keepChat()) return
@@ -420,9 +432,13 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
     case 'message.react':
     case 'reply.react':
       return void reactToMessage(args.emoji)
-    case 'theme.set':
-      if (THEMES.has(args.mode as ThemeMode)) ui.setTheme(args.mode as ThemeMode)
+    case 'theme.set': {
+      // She doesn't always use our words: dark/night are dusk, light is day.
+      const said = String(args.mode ?? args.theme ?? '').trim().toLowerCase()
+      const mode = THEME_WORDS[said] ?? said
+      if (THEMES.has(mode as ThemeMode)) ui.setTheme(mode as ThemeMode)
       return
+    }
     case 'voice.listen':
       // Browsers need a user gesture to start the mic; surface the chip instead.
       optionsStore.push(contextKeyOf(useUi.getState()), [actOption('Tap to talk', { type: 'voice' })])

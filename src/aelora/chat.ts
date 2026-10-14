@@ -3,7 +3,7 @@ import { orbSignals, useAgent, type ChatBubble } from '../stores/agent'
 import type { MoodState, ServerFrame, TranscriptMessage } from './protocol'
 import type { FrameBus } from './socket'
 import { describeTool, describeUiAction, toolDetail, uiActionName } from './activity'
-import { sayLinks, scrubToolLeaks, textOptions } from './scrub'
+import { sayLinks, scrubToolLeaks, textOptions, writtenActions } from './scrub'
 import { strayAction } from './actions'
 import { connectGoogle, isGoogleError } from '../google/google'
 import { toast } from '../stores/toast'
@@ -71,6 +71,29 @@ const GREETING_TIMEOUT_MS = 45_000
 let greetingTimer: ReturnType<typeof setTimeout> | undefined
 const isSystem = (f: ServerFrame) =>
   typeof f.conversationId !== 'string' && typeof f.channelId === 'string' && f.channelId.startsWith('system:')
+
+/** Runs a screen action (the router's runUiAction; set at startup, since the router imports this file). */
+let runAction: ((action: string, args: Record<string, unknown>) => void) | null = null
+export function setActionRunner(fn: (action: string, args: Record<string, unknown>) => void): void {
+  runAction = fn
+}
+/** Written-out actions already run this turn (one run each, mid-stream or at the end). */
+const ranWritten = new Set<string>()
+
+/**
+ * Screen actions she wrote into her reply instead of calling (colors.set{…},
+ * theme.set{…}): hidden from the text by the scrubber, run here as soon as each
+ * one has fully arrived, so what she says she's doing happens right then.
+ * options.set is offered as pills at the end instead (offerSayLinks).
+ */
+function runWrittenActions(raw: string) {
+  if (!runAction) return
+  for (const a of writtenActions(raw)) {
+    if (a.action === 'options.set' || ranWritten.has(a.key)) continue
+    ranWritten.add(a.key)
+    runAction(a.action, a.args)
+  }
+}
 
 /** Answers the agent wrote as say: links go on the pills, as if she'd called options.set. */
 function offerSayLinks(raw: string) {
@@ -180,6 +203,7 @@ function handleSystemFrame(f: ServerFrame): boolean {
       const raw = String(f.text ?? rawGreeting)
       const text = scrubToolLeaks(splitAck(raw).rest)
       offerSayLinks(raw)
+      runWrittenActions(raw)
       set({
         greeting: { ...get().greeting, text, streaming: false },
         greetingPending: false,
@@ -235,12 +259,14 @@ export function handleChatFrame(f: ServerFrame): boolean {
     case 'chat.start':
       if (!cid || !s.awaitingTurn) return true // system_chat or another device's turn
       rawReply = ''
+      ranWritten.clear()
       set({ turnId: cid, conversationId: cid, awaitingTurn: false, streaming: '' })
       return true
 
     case 'token':
       if (!mine) return true
       rawReply += String(f.delta ?? '')
+      runWrittenActions(rawReply)
       {
         // Her opening emoji is her "got it": it goes onto the user's message the moment it arrives.
         const { ack, rest } = splitAck(rawReply)
@@ -285,6 +311,7 @@ export function handleChatFrame(f: ServerFrame): boolean {
         at: new Date().toISOString(),
       }
       offerSayLinks(raw)
+      runWrittenActions(raw)
       // A call that got past the scrubber: log the raw form so the pattern can be fixed.
       if (/[a-z]+_[a-z_]+\W{0,3}[({]/i.test(bubble.text)) console.warn('[scrub] leak survived:', JSON.stringify(raw))
       set({

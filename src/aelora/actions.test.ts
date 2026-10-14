@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { actionArgs, strayAction } from './actions'
+import { actionArgs, looseArgs, strayAction } from './actions'
 
 describe('ui_actions called as tools', () => {
   it('recognises our actions by tool name, not real tools', () => {
@@ -16,6 +16,22 @@ describe('ui_actions called as tools', () => {
     expect(actionArgs('{"action":"theme.set","args":{"mode":"dusk"}}')).toEqual({ mode: 'dusk' })
     expect(actionArgs('')).toEqual({})
     expect(actionArgs('{"seed":"#2ED')).toBeNull()
+  })
+
+  it('reads loose arguments, and keeps what survived a cut-off call', () => {
+    // As she writes them into a reply: keys and words unquoted.
+    expect(looseArgs('seed: #7c3aed, harmony: analogous, hours: 2')).toEqual({
+      seed: '#7c3aed',
+      harmony: 'analogous',
+      hours: 2,
+    })
+    expect(looseArgs("{mode: 'dusk'}")).toEqual({ mode: 'dusk' })
+    // The server trims a call's arguments to 200 characters: every complete pair still counts.
+    expect(actionArgs('{"accent":"#ff0066","urgent":"#ff3300","calm":"#00cc88","task":"#22')).toEqual({
+      accent: '#ff0066',
+      urgent: '#ff3300',
+      calm: '#00cc88',
+    })
   })
 })
 

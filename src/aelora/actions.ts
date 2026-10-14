@@ -59,13 +59,47 @@ export function actionArgs(summary: unknown): Record<string, unknown> | null {
   if (typeof summary !== 'string')
     return summary && typeof summary === 'object' ? (summary as Record<string, unknown>) : null
   if (!summary.trim()) return {}
+  const o = looseArgs(summary)
+  if (!o) return null
+  // Some calls wrap them: {action, args}.
+  return o.args && typeof o.args === 'object' && !Array.isArray(o.args) ? (o.args as Record<string, unknown>) : o
+}
+
+/**
+ * Arguments as the model writes them, read as forgivingly as is safe: strict
+ * JSON; else loose ({seed: #7c3aed, harmony: analogous}, keys and words
+ * unquoted); else, when it was cut off (the server trims a call's arguments to
+ * 200 characters), every complete "key": value pair before the cut. An action
+ * she asked for runs with what arrived, rather than not at all.
+ */
+export function looseArgs(text: string): Record<string, unknown> | null {
+  const t = text.trim()
+  const obj = (v: unknown) => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null)
   try {
-    const v: unknown = JSON.parse(summary)
-    if (!v || typeof v !== 'object' || Array.isArray(v)) return null
-    const o = v as Record<string, unknown>
-    // Some calls wrap them: {action, args}.
-    return o.args && typeof o.args === 'object' && !Array.isArray(o.args) ? (o.args as Record<string, unknown>) : o
+    return obj(JSON.parse(t))
   } catch {
-    return null
+    /* not strict JSON */
   }
+  const body = t.startsWith('{') ? t : `{${t}}`
+  const quoted = body
+    // 'single-quoted' strings first, so the bare-word pass below leaves them alone.
+    .replace(/'([^'"]*)'/g, '"$1"')
+    // Unquoted keys: {seed: …, harmony: …}
+    .replace(/([{,]\s*)([A-Za-z_][\w-]*)\s*:/g, '$1"$2":')
+    // Unquoted values that aren't numbers, booleans, null, strings, objects or lists.
+    .replace(/:\s*(?!-?\d+(?:\.\d+)?\s*[,}\]])(?!true\b|false\b|null\b)([^"{[\s,}\]][^,}\]]*?)\s*(?=[,}\]])/g, ':"$1"')
+  try {
+    return obj(JSON.parse(quoted))
+  } catch {
+    /* cut off or garbled */
+  }
+  const out: Record<string, unknown> = {}
+  for (const m of quoted.matchAll(/"([\w-]+)"\s*:\s*("(?:[^"\\]|\\.)*"|-?\d+(?:\.\d+)?|true|false|null)(?=\s*[,}])/g)) {
+    try {
+      out[m[1]!] = JSON.parse(m[2]!)
+    } catch {
+      /* skip */
+    }
+  }
+  return Object.keys(out).length ? out : null
 }

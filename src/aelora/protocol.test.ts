@@ -129,6 +129,32 @@ describe('chat turn', () => {
     })
   })
 
+  it('a colour or theme change she writes into her reply applies the moment it arrives, once', async () => {
+    const { useScheme, resetColors } = await import('../stores/scheme')
+    const { useUi } = await import('../stores/ui')
+    resetColors()
+    useUi.setState({ theme: 'auto' })
+    sendChat(bus, 'make it purple and dark')
+    frame({ type: 'chat.start', conversationId: cid })
+    frame({ type: 'token', conversationId: cid, delta: 'Done! colors.set{seed: #7c3a' })
+    expect(useScheme.getState().source).toBe('brand') // not all here yet
+    frame({ type: 'token', conversationId: cid, delta: 'ed, harmony: analogous} theme.set{mode: dark} Enjoy.' })
+    // Mid-reply, not next turn: her words, and "dark" read as dusk.
+    expect(useScheme.getState()).toMatchObject({ source: 'agent', input: { seed: '#7c3aed', harmony: 'analogous' } })
+    expect(useUi.getState().theme).toBe('dusk')
+    expect(useAgent.getState().streaming).not.toContain('colors.set')
+    // The same change in the final text doesn't run it again.
+    const before = useScheme.getState()
+    frame({
+      type: 'done',
+      conversationId: cid,
+      text: 'Done! colors.set{seed: #7c3aed, harmony: analogous} theme.set{mode: dark} Enjoy.',
+    })
+    expect(useScheme.getState()).toBe(before)
+    expect(useAgent.getState().messages.at(-1)?.text).toBe('Done! Enjoy.')
+    resetColors()
+  })
+
   it('streams tokens and replaces them with the authoritative done.text', () => {
     expect(sendChat(bus, 'hi')).toBe(true)
     expect(bus.sent[0]).toEqual({ type: 'chat', message: 'hi', conversationId: cid })

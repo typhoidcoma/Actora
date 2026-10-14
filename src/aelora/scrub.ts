@@ -3,7 +3,7 @@
 // server should catch that; until it does, never show it.
 
 /** The agent's tools on Aelora (WEBSOCKET.md → tool catalog). */
-import { ACCEPTED_ACTIONS } from './actions'
+import { ACCEPTED_ACTIONS, looseArgs } from './actions'
 
 const KNOWN_ACTIONS = new Set<string>(ACCEPTED_ACTIONS)
 const ACTION_NAMES: readonly string[] = ACCEPTED_ACTIONS
@@ -149,6 +149,21 @@ function textActions(
     })
   }
   return out
+}
+
+/**
+ * Screen actions she wrote into her reply instead of calling them, complete
+ * ones only (their brackets have closed), with their arguments read loosely.
+ * The scrubber hides them from the text; these run them, so a theme or colour
+ * change happens when she says it, not on some later turn.
+ */
+export function writtenActions(text: string): Array<{ action: string; args: Record<string, unknown>; key: string }> {
+  return textActions(text, false).map((a) => ({
+    action: a.action,
+    args: looseArgs(a.args) ?? {},
+    // Same action, same arguments: one run, whether seen mid-stream or in the final text.
+    key: `${a.action}|${a.args.replace(/\s+/g, '')}`,
+  }))
 }
 
 /**
