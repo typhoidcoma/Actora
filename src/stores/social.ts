@@ -146,3 +146,38 @@ export function threadName(t: Thread): string {
 /** What's waiting in People: unread messages plus friend requests (the menu's badge). */
 export const usePeopleWaiting = () =>
   useSocial((s) => totalUnread(s.threads) + incomingRequests(s.friends).length)
+
+/** A card on the home grid for unread messages: who wrote, never what (anyone can see the screen). */
+export interface MessageCardData {
+  threadId: string
+  from: string
+  /** Unread in that conversation. */
+  count: number
+  /** Other conversations with unread messages too. */
+  more: number
+  at: string
+  /** 0–100, comparable with the priority cards': fresh mail ranks high, then sinks. */
+  score: number
+}
+
+/**
+ * The newest unread conversation (muted ones never count). Fresh within ten
+ * minutes, it ranks with things due soon; over the next hour it sinks to the
+ * level of calm items, and after that it only fills a free slot.
+ */
+export function messageCard(threads: Record<string, Thread>, now = Date.now()): MessageCardData | null {
+  const unread = threadList(threads).filter((t) => !t.muted && t.unread > 0 && t.lastMessageAt)
+  const t = unread[0]
+  if (!t) return null
+  const mins = Math.max(0, (now - Date.parse(t.lastMessageAt!)) / 60_000)
+  const score = mins <= 10 ? 82 : mins <= 60 ? 82 - ((mins - 10) / 50) * 42 : 30
+  const sender = t.members.find((m) => m.userId === t.lastMessage?.senderId) ?? t.members[0]
+  return {
+    threadId: t.id,
+    from: t.title?.trim() || nameOf(sender),
+    count: t.unread,
+    more: unread.length - 1,
+    at: t.lastMessageAt!,
+    score: Math.round(score),
+  }
+}

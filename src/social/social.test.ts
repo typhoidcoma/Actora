@@ -225,3 +225,62 @@ describe('threads and unread', () => {
     expect(useUi.getState().dmThread).toBe('t1')
   })
 })
+
+describe('the message card', () => {
+  const now = Date.parse('2026-10-13T12:00:00Z')
+  const at = (minsAgo: number) => new Date(now - minsAgo * 60_000).toISOString()
+
+  it('shows the newest unread conversation, by name only, and counts the rest', async () => {
+    const { messageCard } = await import('../stores/social')
+    const card = messageCard(
+      {
+        t1: thread({ unread: 2, lastMessageAt: at(3), lastMessage: msg(5, { senderId: 'sam' }) }),
+        t2: thread({ id: 't2', unread: 1, lastMessageAt: at(30) }),
+        t3: thread({ id: 't3', unread: 5, lastMessageAt: at(1), muted: true }),
+      },
+      now,
+    )
+    expect(card).toMatchObject({ threadId: 't1', from: 'Sam', count: 2, more: 1, score: 82 })
+    expect(Object.keys(card!)).not.toContain('body')
+  })
+
+  it('sinks over the hour, then only fills a gap; nothing unread is no card', async () => {
+    const { messageCard } = await import('../stores/social')
+    const score = (m: number) => messageCard({ t1: thread({ unread: 1, lastMessageAt: at(m) }) }, now)!.score
+    expect(score(35)).toBe(61)
+    expect(score(60)).toBe(40)
+    expect(score(240)).toBe(30)
+    expect(messageCard({ t1: thread({ unread: 0, lastMessageAt: at(1) }) }, now)).toBeNull()
+  })
+})
+
+describe('messages on the home grid, and Wendy', () => {
+  it('slots the message card in by score, keeping three cards', async () => {
+    const { cardsWithMessage } = await import('./homeCard')
+    const ranked = [{ key: 'a', score: 95 }, { key: 'b', score: 70 }, { key: 'c', score: 50 }]
+    const card = { threadId: 't1', from: 'Sam', count: 1, more: 0, at: '', score: 82 }
+    expect(cardsWithMessage(ranked, card).map((c) => (c.type === 'message' ? 'dm' : c.item.key))).toEqual(['a', 'dm', 'b'])
+    expect(cardsWithMessage(ranked, { ...card, score: 30 }).map((c) => (c.type === 'message' ? 'dm' : c.item.key))).toEqual(['a', 'b', 'c'])
+    expect(cardsWithMessage([], { ...card, score: 30 })).toHaveLength(1)
+  })
+
+  it('she can open People, and nothing from it is in what she is sent', async () => {
+    const { runUiAction, sendClientState, AVAILABLE_ACTIONS } = await import('../aelora/router')
+    expect(AVAILABLE_ACTIONS).toContain('people.open')
+    useUi.setState({ chatOpen: false })
+    runUiAction('people.open', {})
+    expect(useUi.getState().people).toBe(true)
+
+    useSocial.setState({
+      profile: { userId: ME, handle: 'secret_handle', displayName: 'Me', avatarPath: null },
+      friends: [{ profile: { userId: 'sam', handle: 'sam_secret', displayName: 'Sam Secret', avatarPath: null }, status: 'accepted', direction: null, since: '' }],
+      threads: { t1: thread({ unread: 1, lastMessageAt: new Date().toISOString(), lastMessage: msg(1, { body: 'the secret text' }) }) },
+    })
+    const sent: unknown[] = []
+    sendClientState({ send: (m: unknown) => (sent.push(m), true), subscribe: () => () => {} } as unknown as FrameBus)
+    const blob = JSON.stringify(sent)
+    for (const secret of ['secret_handle', 'sam_secret', 'Sam Secret', 'the secret text', 't1']) expect(blob).not.toContain(secret)
+    runUiAction('people.close', {})
+    expect(useUi.getState().people).toBe(false)
+  })
+})

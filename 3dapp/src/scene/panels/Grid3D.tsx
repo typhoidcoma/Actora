@@ -6,16 +6,27 @@ import { usePresence } from '../../look/motion'
 import { FindsCard3D } from './FindsCard3D'
 import { ListCard3D } from './ListCard3D'
 import { PriorityCard3D } from './PriorityCard3D'
+import { MessageCard3D } from './MessageCard3D'
+import { cardsWithMessage, useMessageCard } from '@actora/social/homeCard'
+import type { MessageCardData } from '@actora/stores/social'
 
-type Slot = { type: 'item'; key: string; item: RankedItem } | { type: 'list'; key: string; tile: TileId }
+type Slot =
+  | { type: 'item'; key: string; item: RankedItem }
+  | { type: 'message'; key: string; card: MessageCardData }
+  | { type: 'list'; key: string; tile: TileId }
 
 const KIND_LIST: Record<ItemKind, TileId> = { task: 'tasks', event: 'calendar', notification: 'inbox', goal: 'goals' }
 const FILL_ORDER: TileId[] = ['calendar', 'tasks', 'inbox', 'goals']
 
-/** The 2D Grid's slots: up to three ranked priorities, then calm list summaries fill the gaps. */
+/** The 2D Grid's slots: up to three ranked priorities (unread messages slotted in), then calm list summaries. */
 function useSlots(): Slot[] {
   const ranked = usePriorities()
-  const slots: Slot[] = ranked.slice(0, 3).map((item) => ({ type: 'item', key: item.key, item }))
+  const message = useMessageCard()
+  const slots: Slot[] = cardsWithMessage(ranked, message).map((c) =>
+    c.type === 'message'
+      ? { type: 'message', key: `dm:${c.card.threadId}`, card: c.card }
+      : { type: 'item', key: c.item.key, item: c.item },
+  )
   const shown = new Set(ranked.map((r) => KIND_LIST[r.kind]))
   for (const pass of [0, 1]) {
     for (const tile of FILL_ORDER) {
@@ -40,6 +51,8 @@ export function Grid3D() {
       {list.map((p) =>
         p.item.type === 'item' ? (
           <PriorityCard3D key={p.key} item={p.item.item} corner={p.index} present={p.present && !focused} onGone={() => done(p.key)} />
+        ) : p.item.type === 'message' ? (
+          <MessageCard3D key={p.key} card={p.item.card} corner={p.index} present={p.present && !focused} onGone={() => done(p.key)} />
         ) : (
           <ListCard3D key={p.key} tile={p.item.tile} corner={p.index} present={p.present && !focused} onGone={() => done(p.key)} />
         ),

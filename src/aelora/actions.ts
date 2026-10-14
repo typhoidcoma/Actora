@@ -16,6 +16,8 @@ export const AVAILABLE_ACTIONS = [
   'vault.open',
   'vault.close',
   'vault.search',
+  'people.open',
+  'people.close',
   'chat.open',
   'chat.close',
   'options.set',

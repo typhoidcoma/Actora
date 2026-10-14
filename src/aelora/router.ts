@@ -74,6 +74,8 @@ import { social } from '../stores/social'
  *   finds.set {items: [{title, blurb, why, url, image, source, tag}]}   the fun finds cards
  *   vault.open · vault.close                               the Vault: what she knows about the user
  *   vault.search {query?, category?}                       open the Vault filtered
+ *   people.open · people.close                             People (friends and messages), opened for the
+ *                                                          user to read; nothing in it is ever sent to her
  *   options.set {options: [{label, say}]}                  replace the tap options here
  *   chat.open · chat.close · reply.show · reply.hide
  *   message.react {emoji}                                  one emoji on the user's message: her "got it"
@@ -255,6 +257,7 @@ const SCREEN_MOVES = new Set([
   'finds.focus',
   'vault.open',
   'vault.search',
+  'people.open',
 ])
 
 function keepChat(): boolean {
@@ -434,6 +437,11 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
       return ui.openVault()
     case 'vault.close':
       return ui.closeVault()
+    // She can bring People up for the user ("show me my messages") but never sees what's in it.
+    case 'people.open':
+      return ui.openPeople()
+    case 'people.close':
+      return ui.closePeople()
     case 'vault.search': {
       const query = typeof args.query === 'string' ? args.query.trim().slice(0, 60) : ''
       const category = CATEGORIES.some((c) => c.id === args.category) ? (args.category as string) : null

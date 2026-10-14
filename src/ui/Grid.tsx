@@ -8,6 +8,9 @@ import { CardShell } from './cards/CardShell'
 import { ItemPanel } from './cards/ItemPanel'
 import { Panel } from './cards/Panel'
 import { PriorityCard } from './cards/PriorityCard'
+import { MessageCard } from './cards/MessageCard'
+import { cardsWithMessage, useMessageCard } from '../social/homeCard'
+import type { MessageCardData } from '../stores/social'
 import { FindsCard } from './cards/FindsCard'
 import { PendingCard } from './cards/PendingCard'
 import { usePendingAction } from '../stores/pending'
@@ -41,17 +44,24 @@ const FILL_ORDER: TileId[] = ['calendar', 'tasks', 'inbox', 'goals']
 
 type Slot =
   | { type: 'item'; key: string; item: RankedItem; rank: number }
+  | { type: 'message'; key: string; card: MessageCardData }
   | { type: 'list'; key: string; tile: TileId }
   | { type: 'finds'; key: 'finds' }
 
 /**
  * Three ranked priority cards (any domain) plus the agent's answer in the bottom
- * right. If there are fewer than three things to tackle, calm domain summaries
- * fill the gaps. Cards glide to their new slot when the ranking changes.
+ * right. Unread messages join by how fresh they are (never part of the ranking
+ * she sees). If there are fewer than three things to tackle, calm domain
+ * summaries fill the gaps. Cards glide to their new slot when the ranking changes.
  */
 function useSlots(): Slot[] {
   const ranked = usePriorities()
-  const slots: Slot[] = ranked.map((item, i) => ({ type: 'item', key: item.key, item, rank: i + 1 }))
+  const message = useMessageCard()
+  const slots: Slot[] = cardsWithMessage(ranked, message).map((c, i) =>
+    c.type === 'message'
+      ? { type: 'message', key: `dm:${c.card.threadId}`, card: c.card }
+      : { type: 'item', key: c.item.key, item: c.item, rank: i + 1 },
+  )
   const shown = new Set(ranked.map((r) => KIND_LIST[r.kind]))
   for (const pass of [0, 1]) {
     for (const tile of FILL_ORDER) {
@@ -106,6 +116,8 @@ export function Grid() {
             ) : (
               <FindsCard key="finds" corner={corner} hidden={panelOpen} />
             )
+          if (slot.type === 'message')
+            return <MessageCard key={slot.key} card={slot.card} corner={corner} hidden={panelOpen} compact={m.compact} />
           if (slot.type === 'item') {
             return (
               <PriorityCard
