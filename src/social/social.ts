@@ -106,6 +106,12 @@ export function claimHandle(handle: string, displayName?: string): void {
   out({ type: 'profile.claim', handle: handle.trim().replace(/^@/, ''), ...(displayName?.trim() ? { displayName: displayName.trim() } : {}) })
 }
 
+/** Your display name ("" clears it) and who can find you. */
+export function updateProfile(p: { displayName?: string; discoverable?: boolean; emailDiscoverable?: boolean }): void {
+  social.setError('profile', null)
+  out({ type: 'profile.update', ...p })
+}
+
 /** Exact handle only: a miss is "no one", deliberately the same as hidden or blocked. */
 export function findHandle(handle: string): void {
   const h = handle.trim().replace(/^@/, '').toLowerCase()
@@ -417,6 +423,7 @@ export function handleSocialFrame(f: ServerFrame, b: FrameBus): boolean {
 
 const FORM_OF: Record<string, string> = {
   'profile.claim': 'claim',
+  'profile.update': 'profile',
   'friends.find': 'find',
   'friends.invite.create': 'invite',
   'friends.invite.redeem': 'redeem',

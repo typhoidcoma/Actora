@@ -18,9 +18,10 @@ import { morph, press } from '../motion'
 import { AddFriend } from './AddFriend'
 import { Avatar, Confirm } from './bits'
 import { HandlePicker } from './HandlePicker'
+import { ProfileView } from './ProfileView'
 import { ThreadBody, ThreadComposer } from './PeopleThread'
 
-type View = 'home' | 'add' | 'blocked'
+type View = 'home' | 'add' | 'blocked' | 'profile'
 
 /**
  * People: your friends and your conversations with them. Nothing here reaches
@@ -41,7 +42,18 @@ export function PeoplePanel() {
     </button>
   )
 
-  let kicker: React.ReactNode = profile ? `@${profile.handle}` : 'Friends and messages'
+  // Your handle, tappable: your name, handle and who can find you.
+  let kicker: React.ReactNode = profile ? (
+    <button
+      onClick={() => setView('profile')}
+      aria-label={`Your profile, @${profile.handle}`}
+      className="underline decoration-current/30 underline-offset-4"
+    >
+      @{profile.handle}
+    </button>
+  ) : (
+    'Friends and messages'
+  )
   let title: React.ReactNode = 'People'
   let body: React.ReactNode
   let footer: React.ReactNode
@@ -60,6 +72,10 @@ export function PeoplePanel() {
     kicker = back('People', () => setView('home'))
     title = 'Add a friend'
     body = <AddFriend />
+  } else if (view === 'profile') {
+    kicker = back('People', () => setView('home'))
+    title = 'Your profile'
+    body = <ProfileView />
   } else if (view === 'blocked') {
     kicker = back('People', () => setView('home'))
     title = 'Blocked'

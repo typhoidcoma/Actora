@@ -60,9 +60,26 @@ export class MockSocial {
         else if (['wendy', 'admin', 'support'].includes(h)) err('handle_reserved')
         else if (PEOPLE.some((p) => p.handle === h)) err('handle_taken')
         else {
-          this.profile = { userId: ME, handle: h, displayName: (msg.displayName as string) || null, avatarPath: null }
+          // A rename keeps the name and switches; a first claim starts them.
+          this.profile = {
+            discoverable: true,
+            emailDiscoverable: false,
+            ...this.profile,
+            userId: ME,
+            handle: h,
+            displayName: (msg.displayName as string) || this.profile?.displayName || null,
+            avatarPath: null,
+          }
           send({ type: 'profile', profile: this.profile })
         }
+        break
+      }
+      case 'profile.update': {
+        const p = this.profile!
+        if (typeof msg.displayName === 'string') p.displayName = msg.displayName.trim().slice(0, 60) || null
+        if (typeof msg.discoverable === 'boolean') p.discoverable = msg.discoverable
+        if (typeof msg.emailDiscoverable === 'boolean') p.emailDiscoverable = msg.emailDiscoverable
+        send({ type: 'profile', profile: p })
         break
       }
       case 'friends.list':
