@@ -4,13 +4,16 @@ import { panelOpen, ui, useUi } from '../stores/ui'
 
 /** A conversation with the agent (the chat) left alone this long goes home. */
 const CHAT_IDLE_MS = 30_000
-/** Any other panel (lists, items, finds, the Vault) left alone this long goes home. */
+/** Any other panel (lists, items, finds, the Vault; never People) left alone this long goes home. */
 const PANEL_IDLE_MS = 6_000
 /** The longest a quiet chat or panel waits for reading time. */
 const READ_CAP_MS = 2 * 60_000
 
 const away = () => {
   const u = useUi.getState()
+  // People (friends, conversations, your profile) stays until you close it: a
+  // conversation with a friend isn't something to whisk away while you wait for a reply.
+  if (u.people) return false
   return panelOpen(u) || u.chatOpen
 }
 const inConversation = () => {

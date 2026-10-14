@@ -41,6 +41,23 @@ describe('idle → home', () => {
     Object.assign(document, { querySelector: undefined })
   })
 
+  it('never closes People: a conversation with a friend stays until you close it', () => {
+    vi.useFakeTimers()
+    const stop = startIdleHome(500, 1000)
+    ui.openPeople('thread-1')
+    vi.advanceTimersByTime(10 * 60_000)
+    expect(useUi.getState()).toMatchObject({ people: true, dmThread: 'thread-1' })
+    ui.openPeople(null, 'profile')
+    vi.advanceTimersByTime(10 * 60_000)
+    expect(useUi.getState()).toMatchObject({ people: true, peopleView: 'profile' })
+    // Closed by hand, the next panel goes home on its usual clock again.
+    ui.closePeople()
+    ui.focus('tasks')
+    vi.advanceTimersByTime(1001)
+    expect(useUi.getState().focus).toBeNull()
+    stop()
+  })
+
   it('closes whatever is open after the idle time', () => {
     vi.useFakeTimers()
     const stop = startIdleHome(500, 1000)
