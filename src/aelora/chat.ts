@@ -470,7 +470,8 @@ export function reactToMessage(emoji: unknown): boolean {
   if (!e || e.length > 16 || !ONE_EMOJI.test(e)) return false
   const s = get()
   const i = s.messages.findLastIndex((m) => m.role === 'user')
-  if (i < 0) return false
+  // The same rule as a reply's opening emoji: no laughing at something that wasn't a joke.
+  if (i < 0 || !ackFits(e, s.messages[i]!.text)) return false
   set({ messages: s.messages.map((m, j) => (j === i ? { ...m, react: e } : m)) })
   return true
 }

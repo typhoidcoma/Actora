@@ -155,6 +155,23 @@ describe('chat turn', () => {
     resetColors()
   })
 
+  it('her early "got it" lands on the message before any reply text, by the same rules', () => {
+    sendChat(bus, 'add a task to buy milk')
+    frame({ type: 'chat.start', conversationId: cid })
+    const react = (emoji: string) =>
+      frame({
+        type: 'event',
+        event: 'agent_command',
+        data: { command: { type: 'ui_action', action: 'message.react', args: { emoji } } },
+      })
+    react('😂') // not a joke: refused
+    expect(useAgent.getState().messages.at(-1)?.role).toBe('user')
+    expect(useAgent.getState().messages.at(-1)?.react).toBeUndefined()
+    react('👍')
+    expect(useAgent.getState().messages.at(-1)).toMatchObject({ role: 'user', react: '👍' })
+    expect(useAgent.getState().streaming).toBe('') // nothing of the reply yet
+  })
+
   it('streams tokens and replaces them with the authoritative done.text', () => {
     expect(sendChat(bus, 'hi')).toBe(true)
     expect(bus.sent[0]).toEqual({ type: 'chat', message: 'hi', conversationId: cid })
