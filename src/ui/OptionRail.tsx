@@ -46,6 +46,14 @@ export function OptionRail({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by the visible ids
   }, [shownIds, busy, loading])
 
+  // The agent hears which pills are up, so "the second one" or a pill she can see means something to her.
+  const shownLabels = (listening ? [] : narrow ? stableSlots.filter((o): o is Option => !!o) : options)
+    .map((o) => o.label)
+    .join('\n')
+  useEffect(() => {
+    optionsStore.setVisible(contextKey, shownLabels ? shownLabels.split('\n') : [])
+  }, [contextKey, shownLabels])
+
   const iconRow = (
     <div className="flex shrink-0 items-center gap-1.5 pr-1">
       {contextKey !== 'chat' && (

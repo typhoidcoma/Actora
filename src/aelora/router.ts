@@ -21,7 +21,7 @@ import { notifyInBackground, resubscribe } from '../push/push'
 import { agent, agentName, rememberAgentName, useAgent, type Reaction } from '../stores/agent'
 import { entities, useEntities } from '../stores/entities'
 import { scoreItems } from '../priority/score'
-import { optionsStore } from '../stores/options'
+import { optionsStore, useOptionsStore } from '../stores/options'
 import { mergePriorities, priorityStore, usePriorityStore } from '../stores/priority'
 import { usePush } from '../stores/push'
 import {
@@ -126,21 +126,6 @@ function screen() {
           : u.focus === 'inbox'
             ? Object.values(e.notifications).map((n) => ({ kind: 'notification', id: n.id, title: n.title }))
             : []
-  const p = usePriorityStore.getState()
-  const priorities = mergePriorities(
-    scoreItems(e, Date.now()),
-    p.agent,
-    p.pushed && p.pushed.until > Date.now() ? p.pushed.entries : null,
-  ).map((i) => ({ key: i.key, title: i.title, why: i.why }))
-  const f = useFinds.getState()
-  const box4 = {
-    type: 'fun finds',
-    open: u.finds,
-    picked: u.find,
-    count: f.items.length,
-    unseen: unseenCount(f),
-    items: f.items.map((x) => ({ id: x.id, title: x.title })),
-  }
   const v = useVault.getState()
   return {
     context: contextKeyOf(u),
@@ -165,12 +150,42 @@ function screen() {
     reminders: usePush.getState().status,
     // Her now-and-then check-ins (the user can turn them off; so can she, when asked).
     checkins: useCheckins.getState().on ? 'on' : 'off',
+    ...homeScreen(),
+    colors: describeScheme(useScheme.getState().scheme, useScheme.getState().source),
+    visible: visible.slice(0, 12),
+  }
+}
+
+/**
+ * The parts of the screen that change without the user moving: the three cards,
+ * box 4, approvals waiting, and the pills. The client resends client_state when
+ * these change (client.ts), so she never talks about cards that have gone.
+ */
+export function homeScreen() {
+  const u = useUi.getState()
+  const e = useEntities.getState()
+  const p = usePriorityStore.getState()
+  const priorities = mergePriorities(
+    scoreItems(e, Date.now()),
+    p.agent,
+    p.pushed && p.pushed.until > Date.now() ? p.pushed.entries : null,
+  ).map((i) => ({ key: i.key, title: i.title, why: i.why }))
+  const f = useFinds.getState()
+  const box4 = {
+    type: 'fun finds',
+    open: u.finds,
+    picked: u.find,
+    count: f.items.length,
+    unseen: unseenCount(f),
+    items: f.items.map((x) => ({ id: x.id, title: x.title })),
+  }
+  return {
     // Prepared actions the user hasn't answered yet (they approve with a tap, in a later turn).
     pending: waiting(usePending.getState().items).map((p) => ({ id: p.id, kind: p.kind })),
     priorities,
     box4,
-    colors: describeScheme(useScheme.getState().scheme, useScheme.getState().source),
-    visible: visible.slice(0, 12),
+    // The pills under the cards (or in the chat), in order: what a tap would say or do.
+    pills: useOptionsStore.getState().visible[contextKeyOf(u)] ?? [],
   }
 }
 

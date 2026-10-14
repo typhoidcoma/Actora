@@ -5,12 +5,15 @@ import { entities, useEntities } from '../stores/entities'
 import { ui, useUi } from '../stores/ui'
 import { useSocial, waitingSummary } from '../stores/social'
 import { abortTurnOnDisconnect, sendChat, sendGreeting } from './chat'
-import { isFindsThread, startFinds } from '../finds/finds'
+import { isFindsThread, startFinds, useFinds } from '../finds/finds'
 import { rememberMain } from './mainThread'
 import { setTokenSource } from './http'
 import type { ClientMessage, Goal, Notification, ServerFrame, Task } from './protocol'
 import { request } from './request'
-import { routeFrame, sendClientState } from './router'
+import { homeScreen, routeFrame, sendClientState } from './router'
+import { usePriorityStore } from '../stores/priority'
+import { usePending } from '../stores/pending'
+import { useOptionsStore } from '../stores/options'
 import { useScheme } from '../stores/scheme'
 import { flushPendingCommits, toast, withUndo } from '../stores/toast'
 import { capture } from '../stores/captures'
@@ -20,6 +23,8 @@ import { AeloraSocket, type WebSocketLike } from './socket'
 import { play } from '../sound/sound'
 
 let socket: AeloraSocket | null = null
+/** How long the cards and pills settle before she hears about a change. */
+const HOME_SETTLE_MS = 1000
 
 interface StartOptions {
   getToken: () => Promise<string | null>
@@ -101,6 +106,29 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
     clearTimeout(waitingTimer)
     waitingTimer = setTimeout(() => sendClientState(sock), 800)
   })
+  // The cards, box 4, approvals and pills change on their own (a reminder read, a
+  // meeting starting, her options landing): she hears the settled result, not a
+  // copy from the last time the user moved. One update per burst; a minute's tick
+  // catches cards that change with the clock alone.
+  let homeSig = JSON.stringify(homeScreen())
+  let homeTimer: ReturnType<typeof setTimeout> | undefined
+  const homeChanged = () => {
+    clearTimeout(homeTimer)
+    homeTimer = setTimeout(() => {
+      const sig = JSON.stringify(homeScreen())
+      if (sig === homeSig) return
+      homeSig = sig
+      sendClientState(sock)
+    }, HOME_SETTLE_MS)
+  }
+  const offHome = [
+    useEntities.subscribe(homeChanged),
+    usePriorityStore.subscribe(homeChanged),
+    useFinds.subscribe(homeChanged),
+    usePending.subscribe(homeChanged),
+    useOptionsStore.subscribe((s, p) => s.visible !== p.visible && homeChanged()),
+  ]
+  const homeTick = setInterval(homeChanged, 60_000)
   const offScheme = useScheme.subscribe((s, p) => s.scheme !== p.scheme && sendClientState(sock))
   // Her welcome landed: she'll know what she asked when the user answers it.
   const offGreeting = useAgent.subscribe(
@@ -133,6 +161,9 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
     offGreeting()
     offSocial()
     clearTimeout(waitingTimer)
+    for (const off of offHome) off()
+    clearTimeout(homeTimer)
+    clearInterval(homeTick)
     // Deletes still inside their Undo window go now, on this user's socket.
     flushPendingCommits()
     sock.stop()

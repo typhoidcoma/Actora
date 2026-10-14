@@ -9,8 +9,10 @@ interface Entry {
 interface OptionsState {
   /** Agent-written options per context key. */
   byKey: Record<string, Entry>
-  /** Options the agent pushed via the options.set ui_action; win until the context changes. */
+  /** Options the agent pushed (options.set, say: links); they last until the next turn. */
   pushed: { key: string; options: Option[] } | null
+  /** The pill labels on screen per context, in order, as the rail shows them (told to the agent). */
+  visible: Record<string, string[]>
   listening: boolean
   interim: string
   /** Short-term memory of what was offered and tapped, so options don't go stale on repeat. */
@@ -27,6 +29,7 @@ export interface OptionHistory {
 export const useOptionsStore = create<OptionsState>(() => ({
   byKey: {},
   pushed: null,
+  visible: {},
   listening: false,
   interim: '',
   history: { tapped: [], shown: {} },
@@ -47,6 +50,12 @@ export const optionsStore = {
     set((s) => ({ byKey: { ...s.byKey, [key]: { agent: s.byKey[key]?.agent ?? [], loading } } })),
   push: (key: string, options: Option[]) => set({ pushed: { key, options } }),
   clearPushed: () => set({ pushed: null }),
+  setVisible: (key: string, labels: string[]) =>
+    set((s) => {
+      const was = s.visible[key]
+      if (was && was.length === labels.length && was.every((l, i) => l === labels[i])) return s
+      return { visible: { ...s.visible, [key]: labels } }
+    }),
   /** A different user: forget what the last one was shown and tapped (and their generated options). */
   resetHistory: () => set({ history: { tapped: [], shown: {} }, byKey: {}, pushed: null }),
   voice: (listening: boolean, interim = '') => set({ listening, interim }),

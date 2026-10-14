@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { Notification, Task } from '../aelora/protocol'
-import { runUiAction } from '../aelora/router'
-import { isStale, mergeOptions, pushedShowsIn, useOptionsStore, type OptionHistory } from '../stores/options'
+import { homeScreen, runUiAction } from '../aelora/router'
+import { isStale, mergeOptions, optionsStore, pushedShowsIn, useOptionsStore, type OptionHistory } from '../stores/options'
 import { stopPeek } from '../ui/peek'
 import { useEntities } from '../stores/entities'
 import { useUi } from '../stores/ui'
@@ -260,6 +260,20 @@ describe('Wendy-driven UI actions', () => {
     expect(pushedShowsIn('item:task:t1', 'item:task:t1')).toBe(true)
     expect(pushedShowsIn('chat', 'tile:tasks')).toBe(false)
     expect(pushedShowsIn('item:task:t1', 'home')).toBe(false)
+  })
+
+  it('the agent is told which pills are showing where the user is, and what the cards are now', () => {
+    useUi.setState({ chatOpen: false, focus: null, selected: null, finds: false, vault: false, people: false })
+    optionsStore.setVisible('home', ['Prep: Design sync', 'Plan my day'])
+    optionsStore.setVisible('chat', ['Yes please'])
+    const before = useOptionsStore.getState().visible
+    optionsStore.setVisible('home', ['Prep: Design sync', 'Plan my day'])
+    expect(useOptionsStore.getState().visible).toBe(before) // unchanged labels: no update, no resend
+    expect(homeScreen().pills).toEqual(['Prep: Design sync', 'Plan my day'])
+    expect(homeScreen().priorities.map((p) => p.key)).toContain('task:t1')
+    // The task is done: it leaves the cards, so the next client_state says so.
+    useEntities.setState({ tasks: { t1: task('t1', { status: 'done' }) } })
+    expect(homeScreen().priorities.map((p) => p.key)).not.toContain('task:t1')
   })
 
   it('theme.set accepts only known modes', () => {

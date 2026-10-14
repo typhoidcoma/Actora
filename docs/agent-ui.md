@@ -50,10 +50,13 @@ The `screen` snapshot looks like this:
     "unseen": 2,
     "items": [{ "id": "…", "title": "…" }]
   },
+  "pills": ["Prep: Standup", "Plan my day", "Got it: Call Sam"],
   "colors": { "source": "brand", "roles": {}, "notes": [] },
   "visible": [{ "kind": "task", "id": "…", "title": "Send the deck" }]
 }
 ```
+
+`pills` are the suggestion buttons on screen, in order (the user may say "the second one"). Don't offer the same thing again with `options.set`. `priorities`, `box4`, `pending` and `pills` are resent within about a second whenever they change, even if the user hasn't moved.
 
 ---
 
