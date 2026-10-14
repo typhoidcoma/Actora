@@ -12,6 +12,7 @@ import { startRanking } from '@actora/priority/rank'
 import { useAgent } from '@actora/stores/agent'
 import { useThemeSync } from '@actora/ui/Theme'
 import { startLongAnswers } from './look/longAnswers'
+import { startThinkAway } from './look/thinkAway'
 import { loadWorld } from './look/loadWorld'
 import { Loader } from './dom/Loader'
 import { markReady } from './look/ready'
@@ -116,6 +117,7 @@ function Live() {
   useEffect(() => startGreeting(), [])
   useEffect(() => startCheckins(), [])
   useEffect(() => startLongAnswers(), [])
+  useEffect(() => startThinkAway(), [])
   // Their data is in once tasks or the calendar have loaded (or the backend's
   // gone quiet for a few seconds: the scene doesn't wait on it forever).
   useEffect(() => {

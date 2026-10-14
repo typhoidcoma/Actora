@@ -8,6 +8,12 @@ const MANY_STEPS = 2
 /** After her answer is in, how long to wait at most for her to be back at her spot. */
 const SETTLE_MAX_MS = 5000
 
+/** This turn was watched from the room because the chat stepped back for it (thinkAway.ts): bring the chat back after. */
+let steppedBack = false
+export const markSteppedBack = (): void => {
+  steppedBack = true
+}
+
 /**
  * After a long search or a long think, her answer is worth reading in full, so
  * the chat (the close-up, camera on her) opens. But only once the turn is over:
@@ -25,11 +31,15 @@ export function startLongAnswers(): () => void {
 
   const off = useAgent.subscribe((s, p) => {
     // A new turn starting: whatever was waiting is moot.
-    if (s.awaitingTurn && !p.awaitingTurn) cancel()
+    if (s.awaitingTurn && !p.awaitingTurn) {
+      cancel()
+      steppedBack = false
+    }
     // The turn just finished (her last words are in).
     const finished = p.turnId !== null && s.turnId === null && !s.streaming
     if (!finished) return
-    const long = (s.turnAt !== null && Date.now() - s.turnAt >= LONG_MS) || s.steps.length >= MANY_STEPS
+    const long = steppedBack || (s.turnAt !== null && Date.now() - s.turnAt >= LONG_MS) || s.steps.length >= MANY_STEPS
+    steppedBack = false
     if (!long) return
     cancel()
     const started = Date.now()
