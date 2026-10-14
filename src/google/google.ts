@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { api } from '../aelora/http'
 import { config } from '../config'
 import { toast } from '../stores/toast'
-import { GOOGLE_SCOPES, rememberGoogleConnected } from '../auth/supabase'
+import { GOOGLE_SCOPES } from '../auth/supabase'
 
 /**
  * The user's Google connection (one account for Calendar and Gmail), through
@@ -47,8 +47,6 @@ export async function refreshGoogle(): Promise<GoogleStatus | null> {
   const r = await api<GoogleStatus>('/api/google/calendar/status').catch(() => null)
   const status = r?.ok ? r.body : null
   useGoogle.setState({ status })
-  // Next sign-in skips Google's permissions screen once it's connected (auth/supabase.ts).
-  if (status) rememberGoogleConnected(!!status.connected && !status.needs_reauth)
   return status
 }
 
@@ -77,7 +75,6 @@ export async function linkGoogleFromSession(session: {
       linked.delete(rt) // let a later sign-in try again
       return
     }
-    rememberGoogleConnected(true)
     const s = await refreshGoogle()
     toast.show(`Google connected${s?.google_email ? ` · ${s.google_email}` : ''}`)
   } catch {

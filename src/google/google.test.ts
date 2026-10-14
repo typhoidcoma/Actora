@@ -1,7 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // A real backend, not the mock (which never talks to Google).
-vi.mock('../config', () => ({ config: { baseUrl: 'https://aelora.test', mock: false, authRedirectUrl: '' } }))
+vi.mock('../config', () => ({
+  config: {
+    baseUrl: 'https://aelora.test',
+    mock: false,
+    authRedirectUrl: '',
+    supabaseUrl: 'https://sb.test',
+    supabaseAnonKey: 'anon',
+  },
+}))
+// The Supabase client, as far as signing in goes.
+const signInWithOAuth = vi.fn((_: unknown) => Promise.resolve({ error: null }))
+vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({ auth: { signInWithOAuth } }) }))
 
 const store = new Map<string, string>()
 beforeEach(() => {
@@ -42,14 +53,13 @@ describe('one-step Google sign-in', () => {
     ok = true
     await linkGoogleFromSession({ access_token: 'jwt', provider_refresh_token: 'rt-1' })
     expect(calls).toHaveLength(2)
-    expect(store.get('actora.google.connected')).toBe('1')
     // Connected: the same token isn't sent again.
     await linkGoogleFromSession({ access_token: 'jwt', provider_refresh_token: 'rt-1' })
     expect(calls.filter((c) => c.url.endsWith('/connect-token'))).toHaveLength(2)
   })
 
-  it('asks for calendar and Gmail, with the permissions screen until Google is connected', async () => {
-    const { GOOGLE_SCOPES, rememberGoogleConnected } = await import('../auth/supabase')
+  it('asks for calendar and Gmail, with the account chooser and permissions screen every time', async () => {
+    const { GOOGLE_SCOPES, signInWithGoogle } = await import('../auth/supabase')
     expect(GOOGLE_SCOPES.split(' ')).toEqual([
       'openid',
       'email',
@@ -57,9 +67,14 @@ describe('one-step Google sign-in', () => {
       'https://www.googleapis.com/auth/gmail.modify',
       'https://www.googleapis.com/auth/gmail.settings.basic',
     ])
-    rememberGoogleConnected(false)
-    expect(store.get('actora.google.connected')).toBe('0')
-    rememberGoogleConnected(true)
-    expect(store.get('actora.google.connected')).toBe('1')
+    await signInWithGoogle()
+    expect(signInWithOAuth).toHaveBeenCalledWith({
+      provider: 'google',
+      options: {
+        redirectTo: 'https://actora.test/',
+        scopes: GOOGLE_SCOPES,
+        queryParams: { access_type: 'offline', prompt: 'consent select_account' },
+      },
+    })
   })
 })

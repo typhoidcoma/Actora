@@ -43,25 +43,6 @@ export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/gmail.settings.basic',
 ].join(' ')
 
-const CONNECTED_KEY = 'actora.google.connected'
-
-/** Whether Google was connected last time we looked (this device). */
-export function rememberGoogleConnected(connected: boolean): void {
-  try {
-    localStorage.setItem(CONNECTED_KEY, connected ? '1' : '0')
-  } catch {
-    /* private mode: the consent screen just shows again */
-  }
-}
-
-function googleWasConnected(): boolean {
-  try {
-    return localStorage.getItem(CONNECTED_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
 export async function signInWithGoogle(): Promise<void> {
   const sb = await getSupabase()
   const { error } = await sb.auth.signInWithOAuth({
@@ -69,13 +50,10 @@ export async function signInWithGoogle(): Promise<void> {
     options: {
       redirectTo: config.authRedirectUrl || `${window.location.origin}${window.location.pathname}`,
       scopes: GOOGLE_SCOPES,
-      // offline: Google hands back a refresh token Aelora keeps for your calendar and Gmail.
-      // It only comes with a fresh consent, so the permissions screen shows until Google is
-      // connected; after that, signing in is just picking the account.
-      queryParams: {
-        access_type: 'offline',
-        prompt: googleWasConnected() ? 'select_account' : 'consent select_account',
-      },
+      // As the Aelora dashboard: the full account chooser and the permissions screen every
+      // time. offline + consent are what make Google hand back a refresh token, so each
+      // sign-in also renews Aelora's access to your calendar and Gmail.
+      queryParams: { access_type: 'offline', prompt: 'consent select_account' },
     },
   })
   if (error) throw error
