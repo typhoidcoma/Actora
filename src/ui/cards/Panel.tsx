@@ -31,6 +31,8 @@ export function Panel({
   // Phones: edge to edge from the top of the screen; the header keeps clear of the status bar.
   const stack = useMetrics((s) => s.stack)
   const inset = useMetrics((s) => s.panelInset)
+  // Typing on a phone (keyboard up): a slimmer header leaves the room to what you're writing in.
+  const typing = useMetrics((s) => s.keyboard)
   const drag = useDragControls()
   const onDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.y > 90 || info.velocity.y > 600) onClose()
@@ -66,7 +68,7 @@ export function Panel({
         layout="position"
         onPointerDown={(e) => drag.start(e)}
         // The orb docks on the left of every panel header (OrbDock), in front of the title.
-        className="flex min-h-[92px] shrink-0 touch-none items-start justify-between gap-4 pt-5 pr-[84px] pb-3 pl-[96px]"
+        className={`flex shrink-0 touch-none items-start justify-between gap-4 pt-5 pr-[84px] pl-[96px] ${typing ? 'min-h-[64px] pb-1' : 'min-h-[92px] pb-3'}`}
         style={inset ? { paddingTop: 20 + inset } : undefined}
       >
         <div className="flex min-h-14 min-w-0 flex-col justify-center">
@@ -75,7 +77,11 @@ export function Panel({
               {kicker}
             </div>
           )}
-          <h2 className="display line-clamp-2 pb-[0.12em] text-[clamp(30px,calc(var(--grid)*0.085),46px)] leading-[1.04] font-bold tracking-[-0.04em] text-strong">
+          <h2
+            className={`display pb-[0.12em] leading-[1.04] font-bold tracking-[-0.04em] text-strong ${
+              typing ? 'line-clamp-1 text-[24px]' : 'line-clamp-2 text-[clamp(30px,calc(var(--grid)*0.085),46px)]'
+            }`}
+          >
             {title}
           </h2>
         </div>

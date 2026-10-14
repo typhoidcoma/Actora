@@ -65,6 +65,7 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
   const key = useContextKey()
   const rail = useMetrics((s) => s.rail)
   const compact = useMetrics((s) => s.compact)
+  const keyboardUp = useMetrics((s) => s.keyboard)
   useThemeSync()
   useTypeAnywhere()
 
@@ -127,7 +128,8 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
       <MoodLight />
       {focus && <div className="fixed inset-0" onClick={() => ui.focus(null)} aria-hidden />}
       <AnimatePresence>
-        {!chatOpen && (
+        {/* A phone keyboard up: her line steps aside too (an open panel fills the screen above the keyboard). */}
+        {!chatOpen && !keyboardUp && (
           <motion.div key="line" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <AgentLine />
           </motion.div>
@@ -140,7 +142,8 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
         <OrbDock />
       </LayoutGroup>
       <AnimatePresence>
-        {!chatOpen && (
+        {/* A phone keyboard up: the pills step aside so what you're typing in gets the room. */}
+        {!chatOpen && !keyboardUp && (
           <motion.div
             key="rail"
             // The band from the cards' bottom to the screen edge; the pills sit centred in it,

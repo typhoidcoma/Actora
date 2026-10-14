@@ -40,6 +40,8 @@ interface Metrics {
   panel: { x: number; y: number; w: number; h: number }
   /** Phones: panels run edge to edge under the status bar; this is how far their content keeps clear of it. */
   panelInset: number
+  /** A phone with its on-screen keyboard up: the option rail steps aside and panels fill what stays visible. */
+  keyboard: boolean
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
@@ -60,9 +62,41 @@ function safeInsets() {
   return out
 }
 
+
+/** The tallest the viewport has been at this width: the phone's height without its keyboard. */
+let tallest = { w: 0, h: 0 }
+
+/** A phone keyboard is up: something editable has focus and the viewport lost a good share of its height. */
+function keyboardUp(vw: number, vh: number): boolean {
+  if (tallest.w !== vw) tallest = { w: vw, h: vh } // turned, or a new window: start again
+  tallest.h = Math.max(tallest.h, vh)
+  const el = typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null
+  const editing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
+  return vw < 640 && editing && vh < tallest.h * 0.8
+}
+
+/**
+ * The layout for this window. With a phone keyboard up the viewport shrinks to
+ * what's above it, which would read as a short, wide screen and switch to the
+ * tablet layout (a small inset panel). Instead: the phone layout at the phone's
+ * own height, with open panels and the chat running down to the keyboard, and
+ * the option rail out of the way.
+ */
 function measure(): Metrics {
   const vw = window.innerWidth
   const vh = window.innerHeight
+  if (!keyboardUp(vw, vh)) return { ...layout(vh), keyboard: false }
+  const m = layout(tallest.h)
+  return {
+    ...m,
+    keyboard: true,
+    panel: { ...m.panel, h: Math.max(0, vh - m.panel.y) },
+    sheet: { ...m.sheet, h: Math.max(0, vh - m.sheet.y) },
+  }
+}
+function layout(vh: number): Omit<Metrics, 'keyboard'> {
+  const vw = window.innerWidth
+
   const safe = safeInsets()
   const short = vh < 520
   const compact = vw < 640

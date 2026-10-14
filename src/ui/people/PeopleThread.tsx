@@ -15,6 +15,7 @@ import {
 import type { DmMessage, Pending } from '../../social/types'
 import { messagesFor, ownerName, pendingFor, speakerOf, threadName, useSocial, type Speaker } from '../../stores/social'
 import { ROLE } from '../brand'
+import { useMetrics } from '../../stores/metrics'
 import { ui } from '../../stores/ui'
 import { clockTime, dayLabel } from '../format'
 import { morph, press } from '../motion'
@@ -83,9 +84,12 @@ export function ThreadBody({ id }: { id: string }) {
     box.addEventListener('scroll', onScroll, { passive: true })
     return () => box.removeEventListener('scroll', onScroll)
   }, [])
+  // Typing on a phone (keyboard up): the intro and Mute/Block step aside, and the newest
+  // messages stay in view as the room shrinks.
+  const typing = useMetrics((s) => s.keyboard)
   useLayoutEffect(() => {
     if (stick.current) end.current?.scrollIntoView({ block: 'end' })
-  }, [messages.length, pending.length, newest])
+  }, [messages.length, pending.length, newest, typing])
 
   if (!thread) return <p className="text-[15px] text-muted">This conversation isn't available.</p>
   const other = thread.members[0]
@@ -94,12 +98,12 @@ export function ThreadBody({ id }: { id: string }) {
   return (
     <div className="flex min-h-full flex-col">
       {thread.kind === 'assistant' && thread.role !== 'owner' && (
-        <p className="mb-3 text-[13px] leading-snug text-muted">
+        <p className={`mb-3 text-[13px] leading-snug text-muted ${typing ? 'hidden' : ''}`}>
           You're talking to {ownerName(thread)}'s assistant, an AI. It can check when they're free, share what they've
           chosen to, and take a message. It can't book or promise anything.
         </p>
       )}
-      <div className="mb-3 flex flex-wrap gap-2">
+      <div className={`mb-3 flex flex-wrap gap-2 ${typing ? 'hidden' : ''}`}>
         <motion.button
           whileTap={press}
           onClick={() => muteThread(id, !thread.muted)}
