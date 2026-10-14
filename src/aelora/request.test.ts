@@ -58,4 +58,13 @@ describe('request correlation', () => {
     emit({ type: 'vault.list', entries: [] })
     expect(await old).toMatchObject({ type: 'vault.list' })
   })
+
+  it("an error naming another request (a failed dm.send) doesn't fail this one", async () => {
+    const { bus, emit } = fakeBus()
+    const p = request(bus, { type: 'task.list' }, 'task.list', 20_000)
+    await tick()
+    emit({ type: 'error', code: 'rate_limited', request: 'dm.send', clientMsgId: 'c1' })
+    emit({ type: 'task.list', tasks: [] })
+    expect(await p).toMatchObject({ type: 'task.list' })
+  })
 })

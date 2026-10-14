@@ -29,6 +29,10 @@ interface UiState {
   find: string | null
   /** The Vault: what the agent knows about the user (Aelora's vault). Opened from the menu. */
   vault: boolean
+  /** People: friends and direct messages (opened from the menu, or a DM push). */
+  people: boolean
+  /** The direct-message thread open inside People (null: the friends/messages list). */
+  dmThread: string | null
   theme: ThemeMode
   /** The open item panel should start by asking to delete it ("Delete…" from a list row). */
   deleting: boolean
@@ -58,6 +62,8 @@ export const useUi = create<UiState>(() => ({
   finds: false,
   find: null,
   vault: false,
+  people: false,
+  dmThread: null,
   theme: 'auto',
   deleting: false,
   back: null,
@@ -78,14 +84,16 @@ const CLOSED = {
   finds: false,
   find: null,
   vault: false,
+  people: false,
+  dmThread: null,
   deleting: false,
   back: null,
   picking: null,
 } as const
 
 /** Is any panel open over the grid (the chat sheet aside)? */
-export const panelOpen = (s: Pick<UiState, 'focus' | 'selected' | 'finds' | 'vault'>) =>
-  s.focus !== null || s.selected !== null || s.finds || s.vault
+export const panelOpen = (s: Pick<UiState, 'focus' | 'selected' | 'finds' | 'vault' | 'people'>) =>
+  s.focus !== null || s.selected !== null || s.finds || s.vault || s.people
 
 export const ui = {
   focus: (id: TileId | null) => useUi.setState({ ...CLOSED, focus: id }),
@@ -119,6 +127,11 @@ export const ui = {
     useUi.setState({ ...CLOSED, vault: true })
   },
   closeVault: () => useUi.setState({ vault: false }),
+  /** People, on its list or straight into one conversation. */
+  openPeople: (threadId: string | null = null) => useUi.setState({ ...CLOSED, people: true, dmThread: threadId }),
+  closePeople: () => useUi.setState({ people: false, dmThread: null }),
+  /** Inside People: a conversation, or back to the list (null). */
+  openDm: (threadId: string | null) => useUi.setState({ dmThread: threadId }),
   /** Toggle which find is selected in Discover. */
   selectFind: (id: string | null) => useUi.setState((s) => ({ find: id && s.find !== id ? id : null })),
   setTheme: (theme: ThemeMode) => useUi.setState({ theme }),
@@ -148,10 +161,11 @@ export function openAppsFor(state: Pick<UiState, 'focus' | 'chatOpen' | 'vault'>
 type ContextKey = string
 
 export function contextKeyOf(
-  state: Pick<UiState, 'focus' | 'chatOpen' | 'selected' | 'finds' | 'find' | 'vault'>,
+  state: Pick<UiState, 'focus' | 'chatOpen' | 'selected' | 'finds' | 'find' | 'vault'> & { people?: boolean },
 ): ContextKey {
   if (state.chatOpen) return 'chat'
   if (state.vault) return 'vault'
+  if (state.people) return 'people'
   if (state.finds) return state.find ? `find:${state.find}` : 'finds'
   if (state.selected) return `item:${state.selected.kind}:${state.selected.id}`
   if (state.focus) return `tile:${state.focus}`

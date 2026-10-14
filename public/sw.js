@@ -29,7 +29,7 @@ self.addEventListener('notificationclick', (event) => {
       const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
       for (const client of windows) {
         if ('focus' in client) {
-          client.postMessage({ type: 'notification-click', notificationId })
+          client.postMessage({ type: 'notification-click', notificationId, url })
           return client.focus()
         }
       }

@@ -57,6 +57,8 @@ import type { FrameBus } from './socket'
 import { actionArgs, AVAILABLE_ACTIONS, strayAction } from './actions'
 import { eventVerdict } from './owner'
 import { phone } from '../stores/phone'
+import { handleSocialFrame, socialConnected } from '../social/social'
+import { social } from '../stores/social'
 
 /**
  * ui_action names we accept; advertised in client_state so the agent can drive the
@@ -212,6 +214,7 @@ function bootstrap(bus: FrameBus): void {
   void resubscribe()
   void refreshGoogle()
   void request(bus, { type: 'session.list' }, 'session.list')
+  socialConnected(bus)
 }
 
 let calendarRefetch: ReturnType<typeof setTimeout> | undefined
@@ -599,6 +602,7 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
   // The fun-finds thread runs its own turns; claim its frames before the user's chat sees them.
   if (handleFindsFrame(f)) return
   if (handleChatFrame(f)) return
+  if (handleSocialFrame(f, bus)) return
 
   switch (f.type) {
     case 'hello': {
@@ -616,6 +620,7 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
         vault.reset()
         pending.clear()
         sessions.clear()
+        social.reset()
         optionsStore.resetHistory()
         toast.dismiss()
       } else if (useUi.getState().vault) {

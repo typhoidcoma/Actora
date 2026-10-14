@@ -4,6 +4,7 @@
 
 import type { CalendarOccurrence, ClientMessage, Goal, Notification, ServerFrame, Task } from './protocol'
 import type { WebSocketLike } from './socket'
+import { MockSocial } from './mockSocial'
 
 const iso = (d: Date) => d.toISOString()
 /** Local calendar date, YYYY-MM-DD (not UTC, or evenings roll into tomorrow). */
@@ -123,6 +124,7 @@ export class MockWebSocket implements WebSocketLike {
   onerror: WebSocketLike['onerror'] = null
 
   private static db = seed()
+  private static social = new MockSocial()
   /** What Wendy "remembers" in the mock (the Vault). */
   private static vault = [
     ['identity', 'Lives in Seattle and works as a front-end engineer'],
@@ -366,6 +368,12 @@ export class MockWebSocket implements WebSocketLike {
         return this.reply({ type: 'push.unsubscribed', endpoint: msg.endpoint })
       case 'push.test':
         return this.reply({ type: 'push.tested', devices: 0, sent: 0, failed: 0, pruned: 0 })
+      default:
+        MockWebSocket.social.handle(
+          msg,
+          (f) => this.reply(f),
+          (ms, make) => this.later(ms, () => this.emit(make())),
+        )
     }
   }
 

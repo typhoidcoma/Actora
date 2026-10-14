@@ -8,7 +8,8 @@ import type { FrameBus } from './socket'
 //    can't resolve the next request of that type (which would put every later
 //    one off by one); a request that knows its item's id also checks it;
 //  - an un-attributed `error` frame fails the most recently sent request, but
-//    only while that request is fresh (a late error can't fail a later one).
+//    only while that request is fresh (a late error can't fail a later one);
+//    an error that names its request type only fails a request of that type.
 
 export interface RequestOptions<T> {
   timeoutMs?: number
@@ -76,6 +77,8 @@ function once<T extends ServerFrame>(
         frame.type === 'error' &&
         !frame.conversationId &&
         !CHAT_ERROR_CODES.has(String(frame.code)) &&
+        // Errors that name their request (social ones do) only fail that kind.
+        (frame.request === undefined || frame.request === msg.type) &&
         inflight[inflight.length - 1] === entry &&
         Date.now() - entry.at < ERROR_WINDOW_MS
       ) {

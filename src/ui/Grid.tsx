@@ -13,6 +13,7 @@ import { PendingCard } from './cards/PendingCard'
 import { usePendingAction } from '../stores/pending'
 import { FindsPanel } from './cards/FindsPanel'
 import { VaultPanel } from './cards/VaultPanel'
+import { PeoplePanel } from './people/PeoplePanel'
 import { glide } from './motion'
 import { CALENDAR_ACCENT, CalendarDetail, CalendarFace } from './tiles/Calendar'
 import type { Corner } from './tiles/Face'
@@ -68,13 +69,14 @@ export function Grid() {
   const selected = useUi((s) => s.selected)
   const finds = useUi((s) => s.finds)
   const memories = useUi((s) => s.vault)
+  const people = useUi((s) => s.people)
   const chatOpen = useUi((s) => s.chatOpen)
   const slots = useSlots()
   const pendingAction = usePendingAction()
 
   const itemPanel = !focus && selected ? selected : null
   const openKey = finds ? 'finds' : itemPanel ? `${itemPanel.kind}:${itemPanel.id}` : focus ? `list:${focus}` : null
-  const panelOpen = openKey !== null || memories
+  const panelOpen = openKey !== null || memories || people
 
   return (
     <motion.div
@@ -142,6 +144,7 @@ export function Grid() {
           {itemPanel && <ItemPanel key={`item-${itemPanel.kind}:${itemPanel.id}`} item={itemPanel} />}
           {finds && <FindsPanel key="finds" />}
           {memories && <VaultPanel key="vault" />}
+          {people && <PeoplePanel key="people" />}
         </AnimatePresence>
       </div>
     </motion.div>

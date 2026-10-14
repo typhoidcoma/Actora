@@ -422,6 +422,8 @@ export function startAgentOptions(): () => void {
     const a = useAgent.getState()
     if (a.connection !== 'open' || a.turnId || a.awaitingTurn) return
     const key = contextKeyOf(useUi.getState())
+    // People is between the user and their friends: nothing there goes to her.
+    if (key === 'people') return
     const sig = signature(key)
     if (sig === lastSig) return
     // Rate-limited: try again when the pause ends (not marked done, so it isn't skipped then).

@@ -1,3 +1,4 @@
+import { showThread } from '../social/social'
 import { agentName } from '../stores/agent'
 import { AnimatePresence, LayoutGroup, motion, MotionConfig } from 'motion/react'
 import { useEffect } from 'react'
@@ -77,7 +78,8 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
   useEffect(() => startCheckins(), [])
   useEffect(() => {
     void initPush()
-    return setNotificationOpener(openNotification)
+    // A reminder opens on its card; a direct message opens its conversation in People.
+    return setNotificationOpener((o) => (o.kind === 'dm' ? showThread(o.id) : openNotification(o.id)))
   }, [])
   // Moving somewhere new returns the agent's line from a finished reply to her greeting.
   // A reminder stays until it's acknowledged ("Got it" or read in the inbox).

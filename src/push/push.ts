@@ -228,20 +228,30 @@ export const INSTALL_HELP =
   'To get reminders on iPad or iPhone: tap Share, then "Add to Home Screen", and open Actora from there.'
 
 // Lock-screen tap while the app is open (service worker postMessage), or a cold
-// start with ?notification=<id>. The handler is set by the app once stores exist.
-let onNotificationOpen: ((id: string) => void) | null = null
-let pendingOpen: string | null =
-  typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('notification')
+// start with ?notification=<id> (a reminder) or ?dm=<threadId> (a direct message).
+// The handler is set by the app once stores exist.
+export type PushOpen = { kind: 'notification' | 'dm'; id: string }
+let onNotificationOpen: ((o: PushOpen) => void) | null = null
+let pendingOpen: PushOpen | null = typeof location === 'undefined' ? null : openFrom(location.search)
 
-export function setNotificationOpener(fn: (id: string) => void): () => void {
+function openFrom(search: string): PushOpen | null {
+  const q = new URLSearchParams(search)
+  const n = q.get('notification')
+  if (n) return { kind: 'notification', id: n }
+  const dm = q.get('dm')
+  return dm ? { kind: 'dm', id: dm } : null
+}
+
+export function setNotificationOpener(fn: (o: PushOpen) => void): () => void {
   onNotificationOpen = fn
   if (pendingOpen) {
-    const id = pendingOpen
+    const o = pendingOpen
     pendingOpen = null
     const url = new URL(location.href)
     url.searchParams.delete('notification')
+    url.searchParams.delete('dm')
     history.replaceState(null, '', url)
-    fn(id)
+    fn(o)
   }
   return () => {
     if (onNotificationOpen === fn) onNotificationOpen = null
@@ -249,9 +259,14 @@ export function setNotificationOpener(fn: (id: string) => void): () => void {
 }
 
 function onWorkerMessage(e: MessageEvent) {
-  const data = e.data as { type?: string; notificationId?: string } | null
-  if (data?.type === 'notification-click' && data.notificationId) {
-    if (onNotificationOpen) onNotificationOpen(data.notificationId)
-    else pendingOpen = data.notificationId
-  }
+  const data = e.data as { type?: string; notificationId?: string; url?: string } | null
+  if (data?.type !== 'notification-click') return
+  const o: PushOpen | null = data.notificationId
+    ? { kind: 'notification', id: data.notificationId }
+    : data.url
+      ? openFrom(new URL(data.url, location.origin).search)
+      : null
+  if (!o) return
+  if (onNotificationOpen) onNotificationOpen(o)
+  else pendingOpen = o
 }

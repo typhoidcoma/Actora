@@ -15,6 +15,7 @@ import { ROLE } from './brand'
 import { useMetrics } from '../stores/metrics'
 import { resetColors, useScheme } from '../stores/scheme'
 import { toast } from '../stores/toast'
+import { usePeopleWaiting } from '../stores/social'
 import { setCheckins, useCheckins } from '../checkins/checkins'
 import { connectGoogle, disconnectGoogle, googleHint, googleNeedsAction, syncGoogle, useGoogle } from '../google/google'
 
@@ -55,6 +56,7 @@ export function MenuButton({ onSignOut, large }: { onSignOut?: () => void; large
   const [open, setOpen] = useState(false)
   const status = useStatus()
   const compact = useMetrics((m) => m.compact)
+  const waiting = usePeopleWaiting()
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export function MenuButton({ onSignOut, large }: { onSignOut?: () => void; large
       <motion.button
         whileTap={jelly}
         onClick={() => setOpen((v) => !v)}
-        aria-label={`Menu · ${status.text}`}
+        aria-label={`Menu · ${status.text}${waiting ? ` · ${waiting} new in People` : ''}`}
         aria-expanded={open}
         className={`glass-pill relative grid place-items-center rounded-[8px] text-muted ${compact || large ? 'h-[44px] w-11' : 'h-10 w-10'}`}
       >
@@ -81,6 +83,10 @@ export function MenuButton({ onSignOut, large }: { onSignOut?: () => void; large
         >
           <MenuIcon />
         </motion.span>
+        {/* Messages or friend requests waiting in People. */}
+        {waiting > 0 && (
+          <span aria-hidden className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-accent" />
+        )}
       </motion.button>
       <AnimatePresence>
         {open && <Sheet status={status} onSignOut={onSignOut} close={() => setOpen(false)} />}
@@ -108,6 +114,7 @@ function Sheet({
   const name = useAgent((s) => s.botName)
   const email = useAgent((s) => s.email)
   const theme = useUi((s) => s.theme)
+  const waiting = usePeopleWaiting()
   const push = usePush((s) => s.status)
   const counts = useEntities(
     useShallow((s) => ({
@@ -184,6 +191,9 @@ function Sheet({
           Reset colours
         </Item>
       )}
+      <Item onClick={go(() => ui.openPeople())} hint={waiting ? `${waiting} new` : undefined}>
+        People
+      </Item>
       <Item onClick={go(() => ui.openVault())}>Vault</Item>
       <Item onClick={go(() => ui.pastChats(true))}>Past chats</Item>
       {/* The agent's now-and-then "how's it going?" while the app is open. */}
