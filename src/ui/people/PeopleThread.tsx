@@ -13,7 +13,7 @@ import {
   sendDm,
 } from '../../social/social'
 import type { DmMessage, Pending } from '../../social/types'
-import { messagesFor, pendingFor, useSocial } from '../../stores/social'
+import { messagesFor, pendingFor, threadName, useSocial } from '../../stores/social'
 import { ui } from '../../stores/ui'
 import { clockTime, dayLabel } from '../format'
 import { morph, press } from '../motion'
@@ -235,6 +235,7 @@ function PendingBubble({ p }: { p: Pending }) {
 /** The message box under a conversation (an edit takes it over until it's saved). */
 export function ThreadComposer({ id }: { id: string }) {
   const editing = useEditing()
+  const who = useSocial((s) => (s.threads[id] ? threadName(s.threads[id]) : 'them'))
   const [text, setText] = useState('')
   const input = useRef<HTMLInputElement>(null)
   useEffect(() => {
@@ -275,7 +276,9 @@ export function ThreadComposer({ id }: { id: string }) {
         onChange={(e) => setText(e.target.value)}
         maxLength={4000}
         placeholder={editing ? 'Edit your message' : 'Message'}
-        aria-label={editing ? 'Edit your message' : 'Message'}
+        aria-label={editing ? 'Edit your message' : `Message ${who}`}
+        // Typing anywhere in this conversation lands here, not in Wendy's box (typeAnywhere).
+        data-type-here
         enterKeyHint="send"
         className="glass-pill h-12 min-w-0 flex-1 rounded-full px-5 text-[16px] text-strong placeholder:text-faint focus:outline-none"
       />

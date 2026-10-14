@@ -30,6 +30,7 @@ const panels = {
   item: () => import('@actora/ui/cards/ItemPanel'),
   finds: () => import('@actora/ui/cards/FindsPanel'),
   vault: () => import('@actora/ui/cards/VaultPanel'),
+  people: () => import('@actora/ui/people/PeoplePanel'),
   calendar: () => import('@actora/ui/tiles/Calendar'),
   goals: () => import('@actora/ui/tiles/Goals'),
   inbox: () => import('@actora/ui/tiles/Inbox'),
@@ -41,6 +42,7 @@ const panels = {
 const ItemPanel = lazy(() => panels.item().then((m) => ({ default: m.ItemPanel })))
 const FindsPanel = lazy(() => panels.finds().then((m) => ({ default: m.FindsPanel })))
 const VaultPanel = lazy(() => panels.vault().then((m) => ({ default: m.VaultPanel })))
+const PeoplePanel = lazy(() => panels.people().then((m) => ({ default: m.PeoplePanel })))
 const DateSheet = lazy(() => panels.date().then((m) => ({ default: m.DateSheet })))
 const KeyboardSheet = lazy(() => panels.keyboard().then((m) => ({ default: m.KeyboardSheet })))
 const PastChats = lazy(() => panels.past().then((m) => ({ default: m.PastChats })))
@@ -161,6 +163,7 @@ function FocusContent({ focused }: { focused: boolean }) {
   const selected = useUi((s) => s.selected)
   const finds = useUi((s) => s.finds)
   const vault = useUi((s) => s.vault)
+  const people = useUi((s) => s.people)
   const item = !focus && selected ? selected : null
 
   return (
@@ -185,6 +188,11 @@ function FocusContent({ focused }: { focused: boolean }) {
           {vault && (
             <Suspense key="vault" fallback={null}>
               <VaultPanel />
+            </Suspense>
+          )}
+          {people && (
+            <Suspense key="people" fallback={null}>
+              <PeoplePanel />
             </Suspense>
           )}
         </AnimatePresence>

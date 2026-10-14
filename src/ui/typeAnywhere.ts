@@ -16,9 +16,13 @@ export function useTypeAnywhere(): void {
       if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return
       const at = document.activeElement as HTMLElement | null
       if (at && (at.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(at.tagName))) return
-      const box = useUi.getState().chatOpen
-        ? document.querySelector<HTMLElement>('[role="dialog"] textarea, [role="dialog"] input')
-        : document.querySelector<HTMLElement>('input[aria-label="Message"]')
+      // A box that claims typing (a conversation in People) wins; else the chat's composer
+      // when it's open, else the home box.
+      const box =
+        document.querySelector<HTMLElement>('[data-type-here]') ??
+        (useUi.getState().chatOpen
+          ? document.querySelector<HTMLElement>('[role="dialog"] textarea, [role="dialog"] input')
+          : document.querySelector<HTMLElement>('input[aria-label="Message"]'))
       if (box && box.offsetParent !== null) box.focus()
     }
     window.addEventListener('keydown', onType)
