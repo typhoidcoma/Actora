@@ -1,4 +1,4 @@
-import { useAgent, type AgentState } from '@actora/stores/agent'
+import { useAgent, workSteps, type AgentState } from '@actora/stores/agent'
 import { panelOpen, ui, useUi } from '@actora/stores/ui'
 
 /** A turn this long (or with this many steps: searches, lookups) gets the close-up chat. */
@@ -12,7 +12,7 @@ export const markSteppedBack = (): void => {
 }
 
 const isLong = (s: AgentState) =>
-  steppedBack || (s.turnAt !== null && Date.now() - s.turnAt >= LONG_MS) || s.steps.length >= MANY_STEPS
+  steppedBack || (s.turnAt !== null && Date.now() - s.turnAt >= LONG_MS) || workSteps(s.steps).length >= MANY_STEPS
 
 /**
  * After a long search or a long think, her answer is worth reading in full, so

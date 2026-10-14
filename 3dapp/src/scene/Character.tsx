@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three/webgpu'
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
-import { orbSignals, useAgent } from '@actora/stores/agent'
+import { orbSignals, useAgent, workSteps } from '@actora/stores/agent'
 import { panelOpen, useUi } from '@actora/stores/ui'
 import { AgentAnimator } from '../bridge/agentAnim'
 import { Wander } from '../bridge/wander'
@@ -162,7 +162,7 @@ function Animated({ gltf }: { gltf: GLTF }) {
     // Phones frame her head and shoulders: wandering would only walk her out of shot.
     const wide = size.width / size.height >= 0.8
     const working = !open && (a.awaitingTurn || a.turnId !== null) && !a.streaming
-    const usingTools = a.steps.length > 0
+    const usingTools = workSteps(a.steps).length > 0
     const busy = wide && working && usingTools
     thinkFor.current = working && !usingTools ? thinkFor.current + dt : 0
     const facing = lastHeading.current === null ? 1 : Math.cos(lastHeading.current - m.rotation.y)

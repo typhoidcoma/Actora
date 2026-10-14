@@ -57,7 +57,7 @@ import { resetColors, setColors, useScheme } from '../stores/scheme'
 import type { FrameBus } from './socket'
 import { actionArgs, AVAILABLE_ACTIONS, strayAction } from './actions'
 import { eventVerdict } from './owner'
-import { peekThenChat } from '../ui/peek'
+import { peekThenChat, talkKey } from '../ui/peek'
 import { play } from '../sound/sound'
 import { handleSocialFrame, socialConnected } from '../social/social'
 import { setActionRunner } from './chat'
@@ -456,7 +456,7 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
           answer: true,
         }))
       // 2–5 answers; a lone option isn't a choice, so keep the current ones instead.
-      if (options.length >= 2) optionsStore.push(contextKeyOf(useUi.getState()), options)
+      if (options.length >= 2) optionsStore.push(talkKey(), options)
       return
     }
     case 'reply.show':

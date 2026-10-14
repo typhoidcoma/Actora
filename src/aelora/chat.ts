@@ -10,9 +10,9 @@ import { connectGoogle, isGoogleError } from '../google/google'
 import { toast } from '../stores/toast'
 import { sayOption } from '../options/types'
 import { optionsStore } from '../stores/options'
-import { contextKeyOf, useUi } from '../stores/ui'
 import { isFindsThread } from '../finds/finds'
 import { rememberMain } from './mainThread'
+import { talkKey } from '../ui/peek'
 import type { Step } from '../stores/agent'
 
 let stepSeq = 0
@@ -102,7 +102,7 @@ function offerSayLinks(raw: string) {
   const links = [...sayLinks(raw), ...textOptions(raw)]
   if (!links.length) return
   optionsStore.push(
-    contextKeyOf(useUi.getState()),
+    talkKey(),
     links.slice(0, 5).map((l) => sayOption(l.label, l.say.slice(0, 160), 'pushed')),
   )
 }
@@ -286,6 +286,17 @@ export function handleChatFrame(f: ServerFrame): boolean {
       // refuses it (router.ts), so it reads as screen work, not a failure.
       const stray = strayAction(f.name) !== null
       const name = stray ? 'ui_action' : String(f.name ?? '')
+      // Screen actions and her own beats (perform_reaction) land mid-reply now, where
+      // she wrote them: they're noted as steps but don't change what she's doing, or
+      // she'd flicker from speaking to working and back.
+      if (name === 'ui_action' || BACKSTAGE.has(name)) {
+        const steps =
+          f.phase === 'called'
+            ? startTool(s.steps, String(f.name ?? ''), f.argsSummary)
+            : endStep(s.steps, name, f.phase === 'failed' && !stray)
+        if (steps !== s.steps) set({ steps })
+        return true
+      }
       if (f.phase === 'called') {
         set({ phase: 'tool', toolName: name, steps: startTool(s.steps, String(f.name ?? ''), f.argsSummary) })
       } else {

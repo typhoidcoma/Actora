@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { Notification, Task } from '../aelora/protocol'
 import { runUiAction } from '../aelora/router'
-import { isStale, mergeOptions, useOptionsStore, type OptionHistory } from '../stores/options'
+import { isStale, mergeOptions, pushedShowsIn, useOptionsStore, type OptionHistory } from '../stores/options'
+import { stopPeek } from '../ui/peek'
 import { useEntities } from '../stores/entities'
 import { useUi } from '../stores/ui'
 import { localOptions, type Snapshot } from './local'
@@ -243,6 +244,22 @@ describe('Wendy-driven UI actions', () => {
     const pushed = useOptionsStore.getState().pushed
     expect(pushed?.key).toBe('item:task:t1')
     expect(pushed?.options.map((o) => o.say)).toEqual(['Yes please', 'No'])
+  })
+
+  it('options.set during a glance belongs to the chat it comes back to', () => {
+    useUi.setState({ chatOpen: true })
+    runUiAction('card.open', { kind: 'task', id: 't1' }) // a glance: the chat returns shortly
+    runUiAction('options.set', { options: [{ label: 'Yes' }, { label: 'No' }] })
+    expect(useOptionsStore.getState().pushed?.key).toBe('chat')
+    stopPeek()
+  })
+
+  it('pushed options follow the conversation between home and chat, not into panels', () => {
+    expect(pushedShowsIn('chat', 'home')).toBe(true)
+    expect(pushedShowsIn('home', 'chat')).toBe(true)
+    expect(pushedShowsIn('item:task:t1', 'item:task:t1')).toBe(true)
+    expect(pushedShowsIn('chat', 'tile:tasks')).toBe(false)
+    expect(pushedShowsIn('item:task:t1', 'home')).toBe(false)
   })
 
   it('theme.set accepts only known modes', () => {

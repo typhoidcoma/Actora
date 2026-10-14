@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAgent } from '../stores/agent'
 import { useEntities } from '../stores/entities'
-import { isStale, mergeOptions, useOptionsStore } from '../stores/options'
+import { isStale, mergeOptions, pushedShowsIn, useOptionsStore } from '../stores/options'
 import { usePush } from '../stores/push'
 import { useSession } from '../stores/session'
 import { approvalOptions, usePending, waiting } from '../stores/pending'
@@ -46,7 +46,7 @@ export function useOptions(key: string): { options: Option[]; loading: boolean }
   )
   const agentOptions = useOptionsStore((s) => s.byKey[key]?.agent ?? EMPTY)
   const loading = useOptionsStore((s) => s.byKey[key]?.loading ?? false)
-  const pushed = useOptionsStore((s) => (s.pushed?.key === key ? s.pushed.options : EMPTY))
+  const pushed = useOptionsStore((s) => (s.pushed && pushedShowsIn(s.pushed.key, key) ? s.pushed.options : EMPTY))
   // Anything waiting for the user's OK leads, wherever they are.
   const approval = usePending(useShallow((s) => waiting(s.items)[0]))
 

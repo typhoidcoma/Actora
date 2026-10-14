@@ -478,12 +478,13 @@ export function startAgentOptions(): () => void {
   }
 
   const offUi = useUi.subscribe((s, p) => {
-    if (contextKeyOf(s) !== contextKeyOf(p)) {
-      optionsStore.clearPushed()
-      schedule()
-    }
+    // What she pushed stays until the next turn (it now arrives late in her reply,
+    // often after a glance or the chat opening has changed the screen).
+    if (contextKeyOf(s) !== contextKeyOf(p)) schedule()
   })
   const offAgent = useAgent.subscribe((s, p) => {
+    // A new turn: what she offered last time has been answered (or passed over).
+    if (s.awaitingTurn && !p.awaitingTurn) optionsStore.clearPushed()
     const turnEnded = (p.turnId || p.awaitingTurn) && !s.turnId && !s.awaitingTurn
     if (
       turnEnded ||

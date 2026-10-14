@@ -1,4 +1,4 @@
-import { ui, useUi } from '../stores/ui'
+import { contextKeyOf, ui, useUi } from '../stores/ui'
 
 /** How long something she opens mid-conversation stays up before the chat comes back. */
 export const PEEK_MS = 5_000
@@ -39,6 +39,9 @@ export function peekThenChat(open: () => void, ms = PEEK_MS): void {
 
 /** A glance is under way (she opened something and the chat will come back). */
 export const peeking = (): boolean => timer !== undefined
+
+/** Where what she offers belongs: the chat during a glance (it's coming back), else what's on screen. */
+export const talkKey = (): string => (peeking() ? 'chat' : contextKeyOf(useUi.getState()))
 
 /** For tests. */
 export function stopPeek(): void {

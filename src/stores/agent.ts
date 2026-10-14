@@ -43,6 +43,9 @@ interface Notice {
  * the welcome greeting, her latest reply, a notification, or a one-off message.
  */
 /** One thing the agent did during a turn (a tool call), for the activity line. */
+/** Her real work this turn (searches, lookups), leaving out screen moves. */
+export const workSteps = (steps: Step[]): Step[] => steps.filter((x) => x.name !== 'ui_action')
+
 export interface Step {
   id: string
   name: string

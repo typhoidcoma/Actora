@@ -187,6 +187,20 @@ describe('chat turn', () => {
     expect(s.messages.map((m) => m.text)).toEqual(['hi', 'Hello there'])
   })
 
+  it('a screen action or her own beat mid-reply leaves her speaking (no flicker, no lost text)', () => {
+    sendChat(bus, 'make it darker')
+    frame({ type: 'chat.start', conversationId: cid })
+    frame({ type: 'token', conversationId: cid, delta: 'Going darker' })
+    for (const name of ['ui_action', 'perform_reaction', 'colors_set']) {
+      frame({ type: 'tool.progress', conversationId: cid, phase: 'called', name, argsSummary: '{}' })
+      expect(useAgent.getState()).toMatchObject({ phase: 'speaking', toolName: null, streaming: 'Going darker' })
+      frame({ type: 'tool.progress', conversationId: cid, phase: 'succeeded', name })
+      expect(useAgent.getState().phase).toBe('speaking')
+    }
+    frame({ type: 'token', conversationId: cid, delta: ' now.' })
+    expect(useAgent.getState().streaming).toBe('Going darker now.')
+  })
+
   it('clears streamed text when the model pivots to a tool', () => {
     sendChat(bus, 'plan my day')
     frame({ type: 'chat.start', conversationId: cid })

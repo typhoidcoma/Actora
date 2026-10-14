@@ -34,6 +34,13 @@ export const useOptionsStore = create<OptionsState>(() => ({
 
 const set = useOptionsStore.setState
 
+/** Where the conversation with her is: home (her line) and the chat show the same turn. */
+const TALK = new Set(['home', 'chat'])
+
+/** Options she pushed show where they were pushed, and anywhere else the conversation is. */
+export const pushedShowsIn = (pushedKey: string, key: string): boolean =>
+  pushedKey === key || (TALK.has(pushedKey) && TALK.has(key))
+
 export const optionsStore = {
   setAgent: (key: string, agent: Option[]) => set((s) => ({ byKey: { ...s.byKey, [key]: { agent, loading: false } } })),
   setLoading: (key: string, loading: boolean) =>
