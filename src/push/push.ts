@@ -41,6 +41,22 @@ const isIOS = () =>
 const isStandalone = () =>
   (navigator as { standalone?: boolean }).standalone === true || matchMedia('(display-mode: standalone)').matches
 
+/** This app's home (the 2D app at /, the 3D app at /3d/): where a tapped notification should land. */
+const APP_PATH = import.meta.env.BASE_URL || '/'
+
+/**
+ * Remember which app was used last. A tap with no window open lands on the site
+ * root (the worker and the server only know "/"), and index.html forwards it to
+ * /3d/ when that's where the user lives.
+ */
+function rememberApp(): void {
+  try {
+    localStorage.setItem('actora.app', APP_PATH)
+  } catch {
+    /* private mode: the 2D app it is */
+  }
+}
+
 let publicKey: string | null = null
 let registration: ServiceWorkerRegistration | null = null
 
@@ -57,6 +73,7 @@ export async function initPush(): Promise<void> {
     return void usePush.setState({ status: 'unsupported' })
   }
   navigator.serviceWorker.addEventListener('message', onWorkerMessage)
+  rememberApp()
 
   if (config.mock) {
     publicKey = null
@@ -100,7 +117,7 @@ export async function notifyInBackground(n: { id: string; title: string; body: s
     tag: `n:${n.id}`,
     icon: '/icons/icon-192.png',
     badge: '/icons/badge-72.png',
-    data: { url: '/', notificationId: n.id },
+    data: { url: APP_PATH, notificationId: n.id },
   })
 }
 

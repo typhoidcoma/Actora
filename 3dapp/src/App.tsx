@@ -13,6 +13,7 @@ import { useAgent } from '@actora/stores/agent'
 import { useThemeSync } from '@actora/ui/Theme'
 import { startLongAnswers } from './look/longAnswers'
 import { startThinkAway } from './look/thinkAway'
+import { startPush } from '@actora/push/start'
 import { loadWorld } from './look/loadWorld'
 import { Loader } from './dom/Loader'
 import { markReady } from './look/ready'
@@ -116,6 +117,8 @@ function Live() {
   useEffect(() => startRanking(), [])
   useEffect(() => startGreeting(), [])
   useEffect(() => startCheckins(), [])
+  // Reminders on the lock screen, like the 2D app; a tap opens this app on the reminder or the conversation.
+  useEffect(() => startPush(), [])
   useEffect(() => startLongAnswers(), [])
   useEffect(() => startThinkAway(), [])
   // Their data is in once tasks or the calendar have loaded (or the backend's

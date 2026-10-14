@@ -80,8 +80,9 @@ when the app is closed; while it is open, reminders arrive as socket events.
 
 ### Flow (`src/push/push.ts`)
 
-- `initPush()` registers `/sw.js` and works out the status. It never prompts. Called from `src/ui/Stage.tsx` (2D only;
-  the 3D app does not call it).
+- `startPush()` (`src/push/start.ts`) runs in both apps (`src/ui/Stage.tsx`, `3dapp/src/App.tsx`). It calls
+  `initPush()`, which registers `/sw.js` and works out the status without prompting, and it sets the notification
+  opener.
 - `enablePush()` must run from a tap. It asks permission first (Safari drops the gesture after awaits), then:
   - waits for an active worker, drops a subscription made with a different server key, subscribes,
   - retries "push service error" failures twice, the last time on a freshly registered worker (`subscribeHard`),
@@ -105,11 +106,16 @@ when the app is closed; while it is open, reminders arrive as socket events.
 
 ### Opening from a notification
 
-- `setNotificationOpener()` in `src/ui/Stage.tsx` routes both worker messages and cold starts:
+- `setNotificationOpener()`, set by `startPush()`, routes both worker messages and cold starts:
   - `?notification=<id>` opens that reminder's own item panel (`ui.open({ kind: 'notification', id })`) and marks it read,
     waiting for the list to load if needed.
   - `?dm=<threadId>` opens that conversation in People.
 - The query parameters are removed from the URL after use.
+- **Which app opens.** If a window is open, the worker focuses it and hands it the tap.
+  - With no window open, it opens the site root, because the server and the worker only know `/`.
+  - Each app records itself in `localStorage['actora.app']` (`/` or `/3d/`) when push starts.
+  - A small script in `index.html` forwards a root URL carrying `?notification=` or `?dm=` to `/3d/` when that's
+    the app used last. It only forwards from `/`, so it can't loop.
 
 ## 3. Sound
 

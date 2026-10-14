@@ -1,14 +1,12 @@
-import { showThread } from '../social/social'
 import { agentName } from '../stores/agent'
 import { AnimatePresence, LayoutGroup, motion, MotionConfig } from 'motion/react'
 import { useEffect } from 'react'
-import { markNotificationRead } from '../aelora/client'
 import { startGreeting } from '../aelora/greeting'
 import { startIdleHome } from './idleHome'
 import { useContextKey } from '../options/useOptions'
 import { startAgentOptions } from '../options/agentOptions'
 import { startRanking } from '../priority/rank'
-import { initPush, setNotificationOpener } from '../push/push'
+import { startPush } from '../push/start'
 import { agent, useAgent } from '../stores/agent'
 import { useEntities } from '../stores/entities'
 import { useMetrics, watchMetrics } from '../stores/metrics'
@@ -45,19 +43,6 @@ export function Backdrop({ grain = true }: { grain?: boolean }) {
 
 const Grain = () => <div className="grain z-50" aria-hidden />
 
-/** Lock-screen tap on a reminder: open Inbox on it and mark it read once data is in. */
-function openNotification(id: string): void {
-  ui.open({ kind: 'notification', id })
-  const tryMark = () => {
-    const n = useEntities.getState().notifications[id]
-    if (!n) return false
-    if (!n.read_at) void markNotificationRead(id)
-    return true
-  }
-  if (tryMark()) return
-  const off = useEntities.subscribe(() => tryMark() && off())
-}
-
 export function Stage({ onSignOut }: { onSignOut?: () => void }) {
   const focus = useUi(panelOpen)
   const chatOpen = useUi((s) => s.chatOpen)
@@ -77,11 +62,7 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
   useEffect(() => startIdleHome(), [])
   useEffect(() => startMoments(), [])
   useEffect(() => startCheckins(), [])
-  useEffect(() => {
-    void initPush()
-    // A reminder opens on its card; a direct message opens its conversation in People.
-    return setNotificationOpener((o) => (o.kind === 'dm' ? showThread(o.id) : openNotification(o.id)))
-  }, [])
+  useEffect(() => startPush(), [])
   // Moving somewhere new returns the agent's line from a finished reply to her greeting.
   // A reminder stays until it's acknowledged ("Got it" or read in the inbox).
   useEffect(
