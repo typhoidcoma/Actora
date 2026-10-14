@@ -3,6 +3,7 @@ import { config } from '../config'
 import { agent, useAgent } from '../stores/agent'
 import { entities, useEntities } from '../stores/entities'
 import { ui, useUi } from '../stores/ui'
+import { useSocial, waitingSummary } from '../stores/social'
 import { abortTurnOnDisconnect, sendChat, sendGreeting } from './chat'
 import { isFindsThread, startFinds } from '../finds/finds'
 import { rememberMain } from './mainThread'
@@ -77,10 +78,29 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
   })
   // Keep the agent's idea of what's on screen in sync with what is actually on screen.
   const offUi = useUi.subscribe((s, prev) => {
-    if (s.focus !== prev.focus || s.chatOpen !== prev.chatOpen || s.selected !== prev.selected) sendClientState(sock)
+    if (
+      s.focus !== prev.focus ||
+      s.chatOpen !== prev.chatOpen ||
+      s.selected !== prev.selected ||
+      s.people !== prev.people ||
+      s.peopleView !== prev.peopleView ||
+      s.dmThread !== prev.dmThread
+    )
+      sendClientState(sock)
   })
 
   // The agent hears what her colour change became (guardrail notes) right away.
+  // A message or a friend request arrived (or was read): she knows what's waiting in People.
+  // Settled for a moment first, so a burst of frames is one update.
+  let waitingSig = JSON.stringify(waitingSummary(useSocial.getState()))
+  let waitingTimer: ReturnType<typeof setTimeout> | undefined
+  const offSocial = useSocial.subscribe((s) => {
+    const sig = JSON.stringify(waitingSummary(s))
+    if (sig === waitingSig) return
+    waitingSig = sig
+    clearTimeout(waitingTimer)
+    waitingTimer = setTimeout(() => sendClientState(sock), 800)
+  })
   const offScheme = useScheme.subscribe((s, p) => s.scheme !== p.scheme && sendClientState(sock))
   // Her welcome landed: she'll know what she asked when the user answers it.
   const offGreeting = useAgent.subscribe(
@@ -111,6 +131,8 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
     offUi()
     offScheme()
     offGreeting()
+    offSocial()
+    clearTimeout(waitingTimer)
     // Deletes still inside their Undo window go now, on this user's socket.
     flushPendingCommits()
     sock.stop()

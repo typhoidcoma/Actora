@@ -61,7 +61,7 @@ import { phone } from '../stores/phone'
 import { play } from '../sound/sound'
 import { handleSocialFrame, socialConnected } from '../social/social'
 import { setActionRunner } from './chat'
-import { social } from '../stores/social'
+import { social, useSocial, waitingSummary } from '../stores/social'
 
 /**
  * ui_action names we accept; advertised in client_state so the agent can drive the
@@ -152,8 +152,13 @@ function screen() {
     ...(acks.length ? { yourRecentEmoji: acks.join(' ') } : {}),
     chat: u.chatOpen,
     vault: u.vault ? { open: true, query: v.query, category: v.category } : { open: false },
-    // Only which part of People is up, never who or what's in it.
-    people: u.people ? { open: true, view: u.dmThread ? 'conversation' : u.peopleView } : { open: false },
+    // People: which part is up, and what's waiting there: unread counts with who they're
+    // from (muted conversations left out) and who's asked to be friends. Never what anyone wrote.
+    people: {
+      open: u.people,
+      ...(u.people ? { view: u.dmThread ? 'conversation' : u.peopleView } : {}),
+      ...waitingSummary(useSocial.getState()),
+    },
     // The user's Look setting, and what's actually showing now (auto follows the sun).
     theme: u.theme,
     themeNow: typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dusk' ? 'dusk' : 'day',
@@ -439,7 +444,9 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
       return void reactToMessage(args.emoji)
     case 'theme.set': {
       // She doesn't always use our words: dark/night are dusk, light is day.
-      const said = String(args.mode ?? args.theme ?? '').trim().toLowerCase()
+      const said = String(args.mode ?? args.theme ?? '')
+        .trim()
+        .toLowerCase()
       const mode = THEME_WORDS[said] ?? said
       if (THEMES.has(mode as ThemeMode)) ui.setTheme(mode as ThemeMode)
       return

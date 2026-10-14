@@ -237,8 +237,7 @@ export function speakerOf(m: DmMessage, t: Thread, me: string | null): Speaker {
 }
 
 /** What's waiting in People: unread messages plus friend requests (the menu's badge). */
-export const usePeopleWaiting = () =>
-  useSocial((s) => totalUnread(s.threads) + incomingRequests(s.friends).length)
+export const usePeopleWaiting = () => useSocial((s) => totalUnread(s.threads) + incomingRequests(s.friends).length)
 
 /** A card on the home grid for unread messages: who wrote, never what (anyone can see the screen). */
 export interface MessageCardData {
@@ -272,5 +271,42 @@ export function messageCard(threads: Record<string, Thread>, now = Date.now()): 
     more: unread.length - 1,
     at: t.lastMessageAt!,
     score: Math.round(score),
+  }
+}
+
+/** A name as she may hear it: one line, short (names come from other users). */
+const spoken = (s: string) =>
+  s
+    .replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 40)
+
+/**
+ * What's waiting in People, for her screen state: how many unread messages and
+ * who they're from, and who's asked to be friends. Never what anyone wrote.
+ * Muted conversations are left out, as they are from the badge.
+ */
+export function waitingSummary(s: Pick<SocialState, 'threads' | 'friends'>): {
+  unread: number
+  from: Array<{ name: string; count: number }>
+  requests: string[]
+} {
+  const live = threadList(s.threads).filter((t) => !t.muted && t.unread > 0)
+  return {
+    unread: live.reduce((n, t) => n + t.unread, 0),
+    from: live.slice(0, 5).map((t) => ({
+      // The person's name is capped; the "assistant" label goes after it, whole.
+      name:
+        t.kind !== 'assistant'
+          ? spoken(t.title?.trim() || nameOf(t.members[0]))
+          : t.role === 'owner'
+            ? `${spoken(nameOf(t.members[0]))} · your assistant`
+            : `${spoken(ownerName(t))}'s assistant`,
+      count: t.unread,
+    })),
+    requests: incomingRequests(s.friends)
+      .slice(0, 5)
+      .map((r) => spoken(nameOf(r.profile))),
   }
 }
