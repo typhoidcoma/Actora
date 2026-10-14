@@ -196,6 +196,8 @@ function Sheet({
       <Item onClick={go(() => ui.openPeople())} hint={waiting ? `${waiting} new` : undefined}>
         People
       </Item>
+      {/* Your name, handle, who can find you and your assistant (People → Your profile). */}
+      <Item onClick={go(() => ui.openPeople(null, 'profile'))}>Profile</Item>
       <Item onClick={go(() => ui.openVault())}>Vault</Item>
       <Item onClick={go(() => ui.pastChats(true))}>Past chats</Item>
       {/* The agent's now-and-then "how's it going?" while the app is open. */}

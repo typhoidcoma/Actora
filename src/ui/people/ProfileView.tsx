@@ -51,109 +51,113 @@ export function ProfileView() {
   const handleChanged = cleanHandle !== profile.handle
 
   return (
-    <div className="grid max-w-[520px] grid-cols-[minmax(0,1fr)] gap-6">
-      <section>
-        <h3 className="label mb-2">Your name</h3>
-        <form
-          className="flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (!nameChanged) return
-            setSaving('name')
-            updateProfile({ displayName: name.trim() })
-          }}
-        >
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={60}
-            placeholder="What friends see (optional)"
-            aria-label="Your name"
-            className="glass-pill h-11 min-w-0 flex-1 rounded-[8px] bg-transparent px-4 text-[16px] text-strong outline-none placeholder:text-faint"
-          />
-          <motion.button
-            whileTap={press}
-            type="submit"
-            disabled={!nameChanged || saving === 'name'}
-            className="h-11 shrink-0 rounded-[8px] bg-fill px-4 text-[15px] font-semibold text-on-accent transition-colors disabled:bg-text/10 disabled:text-faint"
-          >
-            {saving === 'name' ? 'Saving…' : 'Save'}
-          </motion.button>
-        </form>
-        <p className="mt-2 min-h-5 text-[13px] text-muted" aria-live="polite">
-          {errors.profile ? (
-            <span className="text-urgent">Couldn't save that. Try again.</span>
-          ) : saved === 'name' ? (
-            'Saved.'
-          ) : (
-            'Leave it empty to go by your handle.'
-          )}
-        </p>
-      </section>
+    // Fills the panel: one column on a phone; on a wide panel, you on the left and your assistant on the right.
+    <div className="@container">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-x-12 gap-y-8 @2xl:grid-cols-2">
+        <div className="grid content-start gap-6">
+          <section>
+            <h3 className="label mb-2">Your name</h3>
+            <form
+              className="flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (!nameChanged) return
+                setSaving('name')
+                updateProfile({ displayName: name.trim() })
+              }}
+            >
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={60}
+                placeholder="What friends see (optional)"
+                aria-label="Your name"
+                className="glass-pill h-11 min-w-0 flex-1 rounded-[8px] bg-transparent px-4 text-[16px] text-strong outline-none placeholder:text-faint"
+              />
+              <motion.button
+                whileTap={press}
+                type="submit"
+                disabled={!nameChanged || saving === 'name'}
+                className="h-11 shrink-0 rounded-[8px] bg-fill px-4 text-[15px] font-semibold text-on-accent transition-colors disabled:bg-text/10 disabled:text-faint"
+              >
+                {saving === 'name' ? 'Saving…' : 'Save'}
+              </motion.button>
+            </form>
+            <p className="mt-2 min-h-5 text-[13px] text-muted" aria-live="polite">
+              {errors.profile ? (
+                <span className="text-urgent">Couldn't save that. Try again.</span>
+              ) : saved === 'name' ? (
+                'Saved.'
+              ) : (
+                'Leave it empty to go by your handle.'
+              )}
+            </p>
+          </section>
 
-      <section>
-        <h3 className="label mb-2">Your handle</h3>
-        <form
-          className="flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (!handleChanged || !handleValid) return
-            setSaving('handle')
-            claimHandle(cleanHandle)
-          }}
-        >
-          <label className="glass-pill flex h-11 min-w-0 flex-1 items-center rounded-[8px] px-4">
-            <span className="text-[16px] text-faint">@</span>
-            <input
-              value={handle}
-              onChange={(e) => setHandle(e.target.value.replace(/\s/g, '').replace(/^@/, ''))}
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              maxLength={20}
-              aria-label="Your handle"
-              className="h-full min-w-0 flex-1 bg-transparent pl-1 text-[16px] text-strong outline-none"
+          <section>
+            <h3 className="label mb-2">Your handle</h3>
+            <form
+              className="flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (!handleChanged || !handleValid) return
+                setSaving('handle')
+                claimHandle(cleanHandle)
+              }}
+            >
+              <label className="glass-pill flex h-11 min-w-0 flex-1 items-center rounded-[8px] px-4">
+                <span className="text-[16px] text-faint">@</span>
+                <input
+                  value={handle}
+                  onChange={(e) => setHandle(e.target.value.replace(/\s/g, '').replace(/^@/, ''))}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  maxLength={20}
+                  aria-label="Your handle"
+                  className="h-full min-w-0 flex-1 bg-transparent pl-1 text-[16px] text-strong outline-none"
+                />
+              </label>
+              <motion.button
+                whileTap={press}
+                type="submit"
+                disabled={!handleChanged || !handleValid || saving === 'handle'}
+                className="h-11 shrink-0 rounded-[8px] bg-fill px-4 text-[15px] font-semibold text-on-accent transition-colors disabled:bg-text/10 disabled:text-faint"
+              >
+                {saving === 'handle' ? 'Saving…' : 'Change'}
+              </motion.button>
+            </form>
+            <p className="mt-2 min-h-5 text-[13px] text-muted" aria-live="polite">
+              {errors.claim && handleChanged ? (
+                <span className="text-urgent">{HANDLE_SAY[errors.claim] ?? "That didn't work. Try again."}</span>
+              ) : saved === 'handle' ? (
+                'Changed. Friends find you by this now.'
+              ) : handleChanged && !handleValid ? (
+                HANDLE_SAY.invalid_handle
+              ) : (
+                'Your friends stay your friends. Your old handle becomes free for someone else.'
+              )}
+            </p>
+          </section>
+
+          <section>
+            <h3 className="label mb-1">Who can find you</h3>
+            <Switch
+              label="By your handle"
+              hint="Off: only invite links and QR codes reach you."
+              on={profile.discoverable !== false}
+              onChange={(v) => updateProfile({ discoverable: v })}
             />
-          </label>
-          <motion.button
-            whileTap={press}
-            type="submit"
-            disabled={!handleChanged || !handleValid || saving === 'handle'}
-            className="h-11 shrink-0 rounded-[8px] bg-fill px-4 text-[15px] font-semibold text-on-accent transition-colors disabled:bg-text/10 disabled:text-faint"
-          >
-            {saving === 'handle' ? 'Saving…' : 'Change'}
-          </motion.button>
-        </form>
-        <p className="mt-2 min-h-5 text-[13px] text-muted" aria-live="polite">
-          {errors.claim && handleChanged ? (
-            <span className="text-urgent">{HANDLE_SAY[errors.claim] ?? "That didn't work. Try again."}</span>
-          ) : saved === 'handle' ? (
-            'Changed. Friends find you by this now.'
-          ) : handleChanged && !handleValid ? (
-            HANDLE_SAY.invalid_handle
-          ) : (
-            'Your friends stay your friends. Your old handle becomes free for someone else.'
-          )}
-        </p>
-      </section>
-
-      <section>
-        <h3 className="label mb-1">Who can find you</h3>
-        <Switch
-          label="By your handle"
-          hint="Off: only invite links and QR codes reach you."
-          on={profile.discoverable !== false}
-          onChange={(v) => updateProfile({ discoverable: v })}
-        />
-        <Switch
-          label="By your email"
-          hint="Someone who types your exact email can send a request."
-          on={profile.emailDiscoverable === true}
-          onChange={(v) => updateProfile({ emailDiscoverable: v })}
-        />
-      </section>
-
-      <AssistantSettings />
+            <Switch
+              label="By your email"
+              hint="Someone who types your exact email can send a request."
+              on={profile.emailDiscoverable === true}
+              onChange={(v) => updateProfile({ emailDiscoverable: v })}
+            />
+          </section>
+        </div>
+        <AssistantSettings />
+      </div>
     </div>
   )
 }
