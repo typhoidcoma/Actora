@@ -1,5 +1,5 @@
 import { useEntities } from '../stores/entities'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CalendarOccurrence, Notification, Task } from '../aelora/protocol'
 import { runUiAction } from '../aelora/router'
 import { mergePriorities, usePriorityStore } from '../stores/priority'
@@ -165,24 +165,34 @@ describe('Wendy actions', () => {
     expect(useUi.getState().focus).toBeNull()
   })
 
-  it('on a phone, her moves leave an open chat in place', async () => {
-    const { phone } = await import('../stores/phone')
-    const compact = phone.compact
-    phone.compact = () => true
+  it('mid-conversation, what she opens is a glance: it shows, then the chat comes back', async () => {
+    const { PEEK_MS, stopPeek } = await import('../ui/peek')
+    vi.useFakeTimers()
     try {
       useEntities.setState({ events: { e1: event('e1', 30) } })
       useUi.setState({ chatOpen: true })
       runUiAction('card.open', { kind: 'event', id: 'e1' })
-      runUiAction('list.open', { tile: 'calendar' })
-      runUiAction('vault.open', {})
+      expect(useUi.getState()).toMatchObject({ chatOpen: false, selected: { kind: 'event', id: 'e1' } })
+      vi.advanceTimersByTime(PEEK_MS + 1)
+      expect(useUi.getState()).toMatchObject({ chatOpen: true, selected: null })
+      // Going home would only end the conversation: skipped while chatting.
       runUiAction('home.show', {})
-      expect(useUi.getState()).toMatchObject({ chatOpen: true, selected: null, focus: null, vault: false })
-      // With the chat closed she can still show things.
+      expect(useUi.getState().chatOpen).toBe(true)
+      // A second move during a glance restarts it; the chat still comes back after.
+      runUiAction('list.open', { tile: 'calendar' })
+      vi.advanceTimersByTime(PEEK_MS - 1000)
+      runUiAction('vault.open', {})
+      expect(useUi.getState()).toMatchObject({ chatOpen: false, vault: true })
+      vi.advanceTimersByTime(PEEK_MS + 1)
+      expect(useUi.getState()).toMatchObject({ chatOpen: true, vault: false })
+      // With the chat closed she shows things as before: they stay.
       useUi.setState({ chatOpen: false })
       runUiAction('card.open', { kind: 'event', id: 'e1' })
-      expect(useUi.getState().selected).toEqual({ kind: 'event', id: 'e1' })
+      vi.advanceTimersByTime(PEEK_MS * 3)
+      expect(useUi.getState()).toMatchObject({ chatOpen: false, selected: { kind: 'event', id: 'e1' } })
     } finally {
-      phone.compact = compact
+      stopPeek()
+      vi.useRealTimers()
     }
   })
 

@@ -57,7 +57,7 @@ import { resetColors, setColors, useScheme } from '../stores/scheme'
 import type { FrameBus } from './socket'
 import { actionArgs, AVAILABLE_ACTIONS, strayAction } from './actions'
 import { eventVerdict } from './owner'
-import { phone } from '../stores/phone'
+import { peekThenChat } from '../ui/peek'
 import { play } from '../sound/sound'
 import { handleSocialFrame, socialConnected } from '../social/social'
 import { setActionRunner } from './chat'
@@ -252,9 +252,10 @@ function pickEmotion(data: Record<string, unknown>): EmotionVector {
 }
 
 /**
- * Her UI moves that would put something over the chat. On a phone the chat
- * fills the screen, so opening a list, a card, the finds or the Vault there
- * hides what she's saying; while it's open she stays in the conversation.
+ * Her UI moves that would put something over the chat. While you're talking
+ * with her, each is a glance (peekThenChat): it shows for a few seconds, then
+ * the chat comes back. Going home or closing a list would only end the
+ * conversation, so those wait until the chat's closed.
  */
 const SCREEN_MOVES = new Set([
   'home.show',
@@ -269,9 +270,24 @@ const SCREEN_MOVES = new Set([
   'vault.search',
   'people.open',
 ])
+const CLOSES_EVERYTHING = new Set(['home.show', 'tile.close'])
 
-function keepChat(): boolean {
-  return phone.compact() && useUi.getState().chatOpen
+/** Running the move a glance shows (so it isn't turned into a glance again). */
+let glancing = false
+
+/** Her screen move mid-conversation: skipped, run as a glance, or (false) run as is. */
+function asGlance(action: string, run: () => void): boolean {
+  if (glancing || !useUi.getState().chatOpen) return false
+  if (CLOSES_EVERYTHING.has(action)) return true
+  peekThenChat(() => {
+    glancing = true
+    try {
+      run()
+    } finally {
+      glancing = false
+    }
+  })
+  return true
 }
 
 function runCommand(cmd: AgentCommand | undefined): void {
@@ -280,7 +296,7 @@ function runCommand(cmd: AgentCommand | undefined): void {
     case 'open_app': {
       const target = APP_TO_TILE[cmd.id]
       if (target === 'chat') ui.openChat()
-      else if (keepChat()) return
+      else if (asGlance('open_app', () => runCommand(cmd))) return
       else if (target === 'vault') ui.openVault()
       else if (target) ui.focus(target)
       return
@@ -338,7 +354,7 @@ function itemExists(kind: ItemKind, id: string): boolean {
 setActionRunner((action, args) => runUiAction(action, args))
 
 export function runUiAction(action: string, args: Record<string, unknown>): void {
-  if (SCREEN_MOVES.has(action) && keepChat()) return
+  if (SCREEN_MOVES.has(action) && asGlance(action, () => runUiAction(action, args))) return
   switch (action) {
     case 'priorities.set': {
       const items = Array.isArray(args.items) ? args.items : []
