@@ -13,6 +13,8 @@ export interface Selected {
 }
 
 export type ThemeMode = 'auto' | 'day' | 'dusk'
+/** The parts of People besides a conversation: the list, adding a friend, blocked people, your profile. */
+export type PeopleView = 'home' | 'add' | 'blocked' | 'profile'
 
 interface UiState {
   /** Full list panel for a domain (Tasks, Calendar, Goals, Inbox). */
@@ -33,6 +35,8 @@ interface UiState {
   people: boolean
   /** The direct-message thread open inside People (null: the friends/messages list). */
   dmThread: string | null
+  /** Which part of People is showing (when no conversation is open). */
+  peopleView: PeopleView
   theme: ThemeMode
   /** The open item panel should start by asking to delete it ("Delete…" from a list row). */
   deleting: boolean
@@ -64,6 +68,7 @@ export const useUi = create<UiState>(() => ({
   vault: false,
   people: false,
   dmThread: null,
+  peopleView: 'home',
   theme: 'auto',
   deleting: false,
   back: null,
@@ -86,6 +91,7 @@ const CLOSED = {
   vault: false,
   people: false,
   dmThread: null,
+  peopleView: 'home',
   deleting: false,
   back: null,
   picking: null,
@@ -128,8 +134,11 @@ export const ui = {
   },
   closeVault: () => useUi.setState({ vault: false }),
   /** People, on its list or straight into one conversation. */
-  openPeople: (threadId: string | null = null) => useUi.setState({ ...CLOSED, people: true, dmThread: threadId }),
-  closePeople: () => useUi.setState({ people: false, dmThread: null }),
+  openPeople: (threadId: string | null = null, view: PeopleView = 'home') =>
+    useUi.setState({ ...CLOSED, people: true, dmThread: threadId, peopleView: view }),
+  closePeople: () => useUi.setState({ people: false, dmThread: null, peopleView: 'home' }),
+  /** Inside People: the list, adding a friend, blocked people or your profile. */
+  peopleView: (view: PeopleView) => useUi.setState({ dmThread: null, peopleView: view }),
   /** Inside People: a conversation, or back to the list (null). */
   openDm: (threadId: string | null) => useUi.setState({ dmThread: threadId }),
   /** Toggle which find is selected in Discover. */

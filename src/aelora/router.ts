@@ -32,6 +32,7 @@ import {
   ui,
   useUi,
   type ItemKind,
+  type PeopleView,
   type ThemeMode,
   type TileId,
 } from '../stores/ui'
@@ -150,6 +151,8 @@ function screen() {
     ...(acks.length ? { yourRecentEmoji: acks.join(' ') } : {}),
     chat: u.chatOpen,
     vault: u.vault ? { open: true, query: v.query, category: v.category } : { open: false },
+    // Only which part of People is up, never who or what's in it.
+    people: u.people ? { open: true, view: u.dmThread ? 'conversation' : u.peopleView } : { open: false },
     // The user's Look setting, and what's actually showing now (auto follows the sun).
     theme: u.theme,
     themeNow: typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dusk' ? 'dusk' : 'day',
@@ -306,6 +309,7 @@ function runCommand(cmd: AgentCommand | undefined): void {
 
 const ITEM_KINDS = new Set<ItemKind>(['task', 'goal', 'event', 'notification'])
 const THEMES = new Set<ThemeMode>(['auto', 'day', 'dusk'])
+const PEOPLE_VIEWS = new Set<PeopleView>(['home', 'profile', 'add', 'blocked'])
 const THEME_WORDS: Record<string, ThemeMode> = {
   dark: 'dusk',
   night: 'dusk',
@@ -454,8 +458,11 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
     case 'vault.close':
       return ui.closeVault()
     // She can bring People up for the user ("show me my messages") but never sees what's in it.
-    case 'people.open':
-      return ui.openPeople()
+    case 'people.open': {
+      // Optionally straight to a part of it: your profile (name, handle, assistant), adding a friend, blocked.
+      const view = PEOPLE_VIEWS.has(args.view as PeopleView) ? (args.view as PeopleView) : 'home'
+      return ui.openPeople(null, view)
+    }
     case 'people.close':
       return ui.closePeople()
     case 'vault.search': {

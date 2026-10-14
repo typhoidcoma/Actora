@@ -22,7 +22,7 @@ import { HandlePicker } from './HandlePicker'
 import { ProfileView } from './ProfileView'
 import { ThreadBody, ThreadComposer } from './PeopleThread'
 
-type View = 'home' | 'add' | 'blocked' | 'profile'
+
 
 /**
  * People: your friends and your conversations with them. Nothing here reaches
@@ -31,7 +31,8 @@ type View = 'home' | 'add' | 'blocked' | 'profile'
 export function PeoplePanel() {
   const { profile, guest, threads } = useSocial()
   const dmThread = useUi((s) => s.dmThread)
-  const [view, setView] = useState<View>('home')
+  const view = useUi((s) => s.peopleView)
+  const setView = ui.peopleView
   const thread = dmThread ? threads[dmThread] : undefined
 
   const back = (label: string, to: () => void) => (

@@ -269,7 +269,13 @@ describe('messages on the home grid, and Wendy', () => {
     expect(AVAILABLE_ACTIONS).toContain('people.open')
     useUi.setState({ chatOpen: false })
     runUiAction('people.open', {})
-    expect(useUi.getState().people).toBe(true)
+    expect(useUi.getState()).toMatchObject({ people: true, peopleView: 'home' })
+    // Straight to a part of it ("open my profile"); a made-up view is just the list.
+    runUiAction('people.open', { view: 'profile' })
+    expect(useUi.getState()).toMatchObject({ people: true, peopleView: 'profile', dmThread: null })
+    runUiAction('people.open', { view: 'secrets' })
+    expect(useUi.getState().peopleView).toBe('home')
+    runUiAction('people.open', { view: 'profile' })
 
     useSocial.setState({
       profile: { userId: ME, handle: 'secret_handle', displayName: 'Me', avatarPath: null },
@@ -280,6 +286,8 @@ describe('messages on the home grid, and Wendy', () => {
     sendClientState({ send: (m: unknown) => (sent.push(m), true), subscribe: () => () => {} } as unknown as FrameBus)
     const blob = JSON.stringify(sent)
     for (const secret of ['secret_handle', 'sam_secret', 'Sam Secret', 'the secret text', 't1']) expect(blob).not.toContain(secret)
+    // She is told which part is up, nothing more.
+    expect(blob).toContain('"people":{"open":true,"view":"profile"}')
     runUiAction('people.close', {})
     expect(useUi.getState().people).toBe(false)
   })
