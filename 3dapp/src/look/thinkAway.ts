@@ -1,4 +1,4 @@
-import { agent, useAgent } from '@actora/stores/agent'
+import { useAgent } from '@actora/stores/agent'
 import { panelOpen, ui, useUi } from '@actora/stores/ui'
 import { markSteppedBack } from './longAnswers'
 
@@ -40,8 +40,6 @@ export function startThinkAway(): () => void {
         done = true
         stop()
         markSteppedBack()
-        // Sent from the chat, her line over her head was never switched to this turn: it carries her thinking.
-        agent.showReply()
         ui.closeChat()
       }, 200)
     }

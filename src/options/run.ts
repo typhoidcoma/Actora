@@ -60,9 +60,12 @@ export function toggleVoice(): void {
  */
 export const sayPolicy = { openChatForLargeQuestions: true }
 
-/** Send a user turn. Off the chat screen, the agent answers in the line above the grid. */
+/** Send a user turn. She answers in her line (and in the chat, when it is open). */
 export function say(text: string): boolean {
   const u = useUi.getState()
+  // One rule, wherever it was asked from: the line over her head carries this turn
+  // (her thinking, then her answer). The chat is just the closer view of it.
+  agent.showReply()
   // Asked from inside a task, list or other panel: answer in the main chat, so
   // the user sees her think and talk instead of a panel with no words in it.
   if (!u.chatOpen && panelOpen(u)) {
@@ -70,7 +73,6 @@ export function say(text: string): boolean {
     if (sent) ui.openChat()
     return sent
   }
-  if (!u.chatOpen) agent.showReply()
   const sent = chat(text)
   // A big question opens the chat straight away, so the whole answer can be
   // read (and replied to) as it streams in.
