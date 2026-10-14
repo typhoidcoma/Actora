@@ -1,30 +1,65 @@
 # Actora
 
-A touch-first web client for the [Aelora](https://github.com/luminora-app/Aelora) agent backend. The app shows one
-screen:
+A touch-first personal assistant on the [Aelora](https://github.com/luminora-app/Aelora) agent backend. You talk with
+your agent (Wendy today; the name comes from the server), she keeps your day in view, and she can drive the whole UI.
 
-- **The agent's line** across the top: its welcome, the first sentence of each reply, and reminders.
-- **The grid**: four 4:3 cards around an orb that is the agent (Wendy today; its name comes from the server).
-  - Three **priority cards**, ranked: the things to tackle next, from any domain.
-  - **Box 4** (bottom-right): fun finds the agent searched the web for, picked for you, under a headline it writes. Images crossfade behind a big count of fun things you have not seen yet. While something it prepared waits for your OK (an email, an invite), it takes this box instead. Its full answers live in the chat, which opens on its own for big questions and rich answers, or from "Read all" under its line.
-- **The option rail** along the bottom: what you can say or do next.
+Actora has two front ends that share one brain:
 
-**Nothing requires typing.** Tap the orb to talk, tap an option, or tap a card for its actions. The agent can drive every
-part of the UI; `docs/agent-ui.md` is its playbook. Actora is designed for iPad first, scales down to phones, and
-installs to the home screen.
+- **The 2D app** (`src/`): one screen, designed for iPad first and scaling down to 360 px phones. It installs to the home
+  screen.
+- **The 3D app** (`3dapp/`, served at `/3d/`): the same app around an animated character in a WebGPU room. It reuses
+  everything in `src/` except the DOM views.
 
-## Priority cards (`src/priority/`)
+## What's on the screen
 
-1. **Local score** (`score.ts`). Each item gets an instant, deterministic score: a live or imminent event, an overdue
-   task, a fresh unread reminder, a task due today, a goal falling behind. The top 3 can hold at most two of one kind.
-2. **The agent re-ranks** (`rank.ts`). It reorders the top 8 through `POST /api/llm`, grounded in your profile, and
-   writes a short "why now" for each card. Debounced, cached by the candidate set, at most once every 2 minutes,
-   429-aware.
-3. **`priorities.set`**. The agent can set the order itself. It holds for 30 minutes.
+- **Her line** over her head: her welcome, her thinking, the start of each reply, and reminders.
+- **Four cards** in a 2×2 grid.
+  - **Three priority cards**: what to tackle next, from any domain. These are events, tasks, reminders, goals and unread
+    messages.
+  - **Box 4**: fun finds she searched the web for, or "Waiting for your OK" while an email or invite she prepared needs
+    approval.
+- **The pills**: what you can say or do next, for whatever is on screen. Nothing requires typing.
+- **The chat**: the full conversation, a closer view of the same turns her line shows.
+- **Panels**: lists, items, the Vault (what she remembers), finds, and **People**. People has friends, direct messages,
+  and an assistant mode that lets friends talk to your agent.
 
-When an item is finished or read, its card drops out at once and the others glide up. If there are fewer than three
-things to tackle, domain summaries fill the gaps. Tapping a card morphs it into its item panel. The full lists open
-from the header buttons, from "See all", or when the agent opens them.
+## Quick start
+
+```bash
+npm install
+npm run dev          # 2D on http://localhost:5173, mock backend unless VITE_AELORA_BASE_URL is set
+
+cd 3dapp
+npm install
+npm run dev          # 3D on http://localhost:5173 (run one app at a time), needs a WebGPU browser
+```
+
+With no `VITE_AELORA_BASE_URL`, or with `VITE_AELORA_MOCK=1`, both apps run against an in-browser mock of Aelora
+(`src/aelora/mock.ts`, `src/aelora/mockSocial.ts`). That mock covers streaming chat, tools, reminders, finds and a whole
+social graph. Put the real backend's URL in `.env.local` to use it.
+
+| Script (root)       |                                                 |
+| ------------------- | ----------------------------------------------- |
+| `npm run dev`       | 2D dev server with HMR (binds to your LAN)      |
+| `npm run build`     | Typecheck and production build                  |
+| `npm run typecheck` | Typecheck only                                  |
+| `npm test`          | Unit tests (Vitest)                             |
+| `npm run lint`      | oxlint                                          |
+| `npm run format`    | Prettier                                        |
+| `npm run icons`     | Regenerate app icons and the notification badge |
+
+## Docs
+
+| Doc                                          | Read it for                                                                                             |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| [docs/principles.md](docs/principles.md)     | The rules behind the behaviour. Start here before changing how anything feels.                          |
+| [docs/architecture.md](docs/architecture.md) | How the code fits together: socket, router, stores, the mock, 2D and 3D.                                |
+| [docs/home-screen.md](docs/home-screen.md)   | The cards, box 4, her line and the pills: where the data comes from and how it is ranked.               |
+| [docs/social.md](docs/social.md)             | People: profiles, pictures, friends, messages, assistant mode, privacy.                                 |
+| [docs/services.md](docs/services.md)         | Sign-in and Google, push reminders, sound, voice, theme and colour, check-ins, the Vault, phone layout. |
+| [docs/agent-ui.md](docs/agent-ui.md)         | The agent's playbook: every UI action she can call. Reference copy of the one on the server.            |
+| [docs/development.md](docs/development.md)   | Running, testing, checking the UI headless, deploying, and working with Aelora.                         |
+| [3dapp/README.md](3dapp/README.md)           | The 3D app: WebGPU room, character, 3D-only behaviour.                                                  |
 
 ## Stack
 
@@ -32,151 +67,16 @@ from the header buttons, from "See all", or when the agent opens them.
 | --------- | --------------------------------------------------------------------------------------- |
 | Framework | React 19 + TypeScript, Vite                                                             |
 | Motion    | [Motion](https://motion.dev) (`motion/react`): shared-layout morphs, springs, gestures  |
-| Styling   | Tailwind CSS v4 over themed CSS tokens (daylight / dusk)                                |
+| Styling   | Tailwind CSS v4 over themed CSS tokens (daylight / dusk), OKLCH colour engine           |
+| State     | Zustand stores fed by the Aelora WebSocket (data is pushed, not fetched)                |
+| Auth      | Supabase Google OAuth, which also connects Calendar and Gmail                           |
+| 3D        | three.js `WebGPURenderer` with React Three Fiber (WebGPU only)                          |
 | Type      | [Satoshi](https://www.fontshare.com/fonts/satoshi), self-hosted (ITF Free Font License) |
-| State     | Zustand stores fed by the WebSocket (data is pushed, not fetched)                       |
-| Orb       | [OGL](https://github.com/oframe/ogl) fragment shader, with a CSS fallback               |
-| Auth      | Supabase Google OAuth (the same project Aelora verifies JWTs against)                   |
+| Sound     | SND Sine kit (`public/sounds/sine/CREDITS.md`)                                          |
 | Tooling   | Vitest, oxlint, Prettier                                                                |
 
-## Run it
+## Deploy
 
-```bash
-npm install
-npm run dev          # mock mode unless VITE_AELORA_BASE_URL is set
-```
-
-With no `VITE_AELORA_BASE_URL`, or with `VITE_AELORA_MOCK=1`, the app runs against an **in-browser mock** of Aelora
-(`src/aelora/mock.ts`). The mock supports streaming chat, the `system_chat` welcome, tool progress, emotion, broadcast
-echoes, a reminder drip and canned option generation. To use a real backend, put `VITE_AELORA_BASE_URL` in `.env` or
-`.env.local`. The dev server binds to your LAN, so an iPad on the same Wi-Fi can open `http://<your-ip>:5173`.
-
-| Script                    |                                                         |
-| ------------------------- | ------------------------------------------------------- |
-| `npm run dev`             | Dev server with HMR                                     |
-| `npm run build`           | Typecheck + production build                            |
-| `npm test`                | Unit tests (protocol, sync, chat, options, push, voice) |
-| `npm run lint` / `format` | oxlint / Prettier                                       |
-| `npm run icons`           | Regenerate app icons and the notification badge         |
-
-## Backend setup checklist
-
-1. **CORS.** Add every origin you serve from to Aelora's `AELORA_CORS_ORIGINS`, using exact strings. The variable
-   replaces the defaults rather than adding to them. `/api/llm`, which generates the options, needs this too.
-2. **Google sign-in.** In Supabase, enable **Auth → Providers → Google**, and add your origins to **Auth → URL
-   Configuration → Redirect URLs**.
-3. **Push** (optional). Aelora must serve a VAPID key in `GET /api/public-config` (`push.publicKey`). When the key is
-   `null`, the reminder offer never appears.
-4. **Hosting.** Serve `/sw.js` from the site root with `Cache-Control: no-cache`.
-
-## Deploy (Cloud Run, Docker)
-
-The repo builds as a Docker image: `npm run build` in a Node stage, then nginx serves `dist/` on Cloud Run's
-`$PORT` (see `Dockerfile` and `deploy/nginx.conf.template`). Cloud Run's continuous deployment (Cloud Build
-trigger on `main`) picks the Dockerfile up as is.
-
-- **Build arg.** `VITE_AELORA_BASE_URL` defaults to the current Aelora service URL; override it with
-  `--build-arg` (or a trigger substitution) if the backend moves. Supabase comes from Aelora's
-  `/api/public-config` at runtime, so it needs nothing. `.env` files never enter the image.
-- **Serving.** Hashed `/assets/*` are cached for a year; `index.html`, `/sw.js` and the manifest are
-  `no-cache` so new deploys and the push worker take effect at once; a missing `sw.js` 404s instead of falling
-  back to the app shell (Aelora `docs/PUSH.md` §3).
-
-**Outside this repo, once you know the production URL** (`https://actora-….run.app` or a custom domain):
-
-1. **Aelora:** add it to `AELORA_CORS_ORIGINS` on the Aelora Cloud Run service. The variable _replaces_ the default
-   list, so keep the existing origins (and `http://localhost:5173` for local dev). Without it the browser blocks
-   `/api/public-config` (sign-in can't start) and `/api/llm` (The agent's options and card ranking).
-2. **Supabase → Authentication → URL Configuration:** add it to _Redirect URLs_ (keep `http://localhost:5173`), so
-   Google sign-in can return to the live site.
-
-Google's own OAuth settings don't change: Google redirects to Supabase, and Supabase redirects to the app.
-
-## How it works
-
-### Never typing: options everywhere (`src/options/`)
-
-Every place in the app has a context key: `home`, `tile:<id>`, `item:<kind>:<id>` or `chat`. The rail always shows
-options for that context, merged in this order:
-
-1. **Local options** (`local.ts`): instant and deterministic, built from your data. They include **direct actions**
-   that need no chat turn, such as _Done_, _Tomorrow_, _Got it_ and _Mark all read_.
-2. **Agent-written options** (`agentOptions.ts`): generated through Aelora's `POST /api/llm`, written for whichever
-   agent is connected (its name comes from the server; Wendy today). The request carries a summary of the screen with
-   real item titles, the recent turns, and the agent's last message (or its welcome / check-in), plus
-   `context: {profile, memoryQuery}`. If that message asks something, the options are only answers to it. These
-   refresh on every context change, finished reply and new welcome, and they are debounced, cached for 3 minutes, and
-   back off on 429.
-3. **Options pushed by the agent** through the `options.set` ui_action. These win until you move to another context.
-
-Tapping a _say_ option sends a chat turn, and the agent answers in the line above the grid. The orb is the microphone: tap
-it to talk, and its pulse follows the words as they come in. Hold it to open the full conversation. On iPad a chat button, a
-keyboard button and the menu sit at the end of the rail; on phones the options are a 2×2 grid with chat and the menu
-beside it (typing is in the menu). Inside the chat there is always a message box with a mic.
-
-### The agent drives the UI (`src/aelora/router.ts`)
-
-`client_state` advertises the ui_actions the agent can call (`AVAILABLE_ACTIONS` in `src/aelora/actions.ts`): screen moves
-(`home.show`, `card.open`, `list.open`, `chat.open`, `finds.*`, `vault.*`), the cards (`priorities.set`), the pills
-(`options.set`), the look (`theme.set`, `colors.set`, `colors.reset`), and offers (`push.offer`, `voice.listen`).
-Alongside them it sends a `ui.screen` snapshot of what is on screen, with real ids. The playbook the agent follows, with
-every action and when to use it, is [docs/agent-ui.md](docs/agent-ui.md).
-
-### The agent's line (`src/ui/AgentLine.tsx`, `src/aelora/greeting.ts`)
-
-- **Welcome.** The welcome comes over `system_chat`, Aelora's path for app events (no history, mood or fact side
-  effects). It is cached and regenerated only after 30 minutes away or when the part of the day changes.
-- **Replies.** Off the chat screen, its replies stream into the line, and older lines fade up and out.
-- **Reminders.** A reminder that arrives while the app is open appears in the line with answer chips, and stays there
-  until you acknowledge it.
-
-### Push reminders (`src/push/`, `public/sw.js`)
-
-The setup follows Aelora's `docs/PUSH.md`:
-
-- The service worker is a plain push transport, with no Workbox and no caching.
-- Opting in is a single quiet chip, _Let <name> remind me_, which only appears after the agent has spoken.
-  - On iOS in a Safari tab, the chip explains how to add the app to the Home Screen instead.
-- The subscription is re-sent on every reconnect.
-- Tapping a notification on the lock screen opens Inbox with that reminder selected and marks it read.
-- The header menu holds the on/off toggle and **Send a test reminder** (`push.test`).
-
-### Look
-
-- **Palette.** Designer palette (`src/ui/brand.ts`): indigo `#3F3E6F`, amber `#FFBE0B`, rose `#E3425F`, crimson
-  `#DE2B52` and turquoise `#2EDDBA`, plus tints for emotion and weather range.
-  - All UI colour comes from the **scheme engine** (`src/color/`): OKLCH colour science that turns the brand (or
-    The agent's `colors.set` request) into CSS variables for both themes. `--role-*` are fills and glows (≥3:1 on the
-    background); `--ink-*` are their readable text forms (≥4.5:1).
-  - Guardrails: gamut mapping by chroma, lightness/chroma bands, near-neutral surfaces, `urgent` always warm and
-    `calm` never, minimum ΔE between kinds and heat levels. The agent's palette lasts 8 h by default; `colors.reset`
-    restores the brand.
-  - Priority heat runs crimson, then amber, then turquoise. Daylight is a pale indigo-white; dusk is deep indigo.
-- **Shape.** Cards are exactly 4:3 with 12px corners.
-- **Themes.**
-  - **Daylight** is Hog Bristle and runs while the sun is up at your location (Open-Meteo sunrise/sunset).
-  - **Dusk** is Midnight Affair and runs after sunset.
-  - Changes cross-fade through registered CSS custom properties. You can override the theme in the menu, and the agent can
-    with `theme.set`.
-- **Liquid glass.** Backdrop blur and saturation, a specular edge, a finger-tracking sheen, a rim around the notch, and
-  a jelly press. The orb's mood colour spills through from behind the grid.
-- **Weather background.** The field is laid out randomly on each load and coloured by the local weather: seven skies,
-  each with a day and a dusk palette, tinted by temperature.
-- **The orb** never sits still: it breathes, floats, churns slowly, drifts through its mood colours, and throws in an
-  occasional spontaneous glance. In daylight it casts a soft tinted shadow instead of glowing.
-
-### Protocol rules the code depends on (Aelora `FRONTEND.md`)
-
-- The JWT is pinned at connect time, so the app reconnects on `TOKEN_REFRESHED`. Close `4001` is fatal and `1008`
-  triggers a reauth.
-- Replies are matched by `type`. Same-type requests are queued, and every request has a timeout.
-- Broadcasts echo back to the sender, so the app upserts by id and lets the newest `updated_at` win.
-- Streamed tokens can be retracted (`tool:working`), and `done.text` is authoritative.
-
-### Performance
-
-- Geometry lives in `stores/metrics.ts`, which stacks the header, the agent's line, the grid and the rail. All motion is
-  transforms between known boxes.
-- One persistent WebGL orb. It pauses when the page is hidden and caps DPR at 2.
-- Supabase and the Markdown renderer are code-split. The initial JS is about 159 KB gzipped.
-- The app respects `prefers-reduced-motion`.
+Pushing to `main` deploys. Cloud Build builds the `Dockerfile`, which contains the 2D app at `/` and the 3D app at
+`/3d/`, served by nginx on Cloud Run. Each new origin also needs adding to Aelora's CORS list and to Supabase's
+redirect URLs. [docs/development.md](docs/development.md) has the details and the backend checklist.
