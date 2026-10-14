@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { api } from '../aelora/http'
 import { config } from '../config'
 import { toast } from '../stores/toast'
+import { GOOGLE_SCOPES, rememberGoogleConnected } from '../auth/supabase'
 
 /**
  * The user's Google connection (one account for Calendar and Gmail), through
@@ -46,7 +47,42 @@ export async function refreshGoogle(): Promise<GoogleStatus | null> {
   const r = await api<GoogleStatus>('/api/google/calendar/status').catch(() => null)
   const status = r?.ok ? r.body : null
   useGoogle.setState({ status })
+  // Next sign-in skips Google's permissions screen once it's connected (auth/supabase.ts).
+  if (status) rememberGoogleConnected(!!status.connected && !status.needs_reauth)
   return status
+}
+
+/** Refresh tokens already handed to Aelora this visit (auth events repeat). */
+const linked = new Set<string>()
+
+/**
+ * Signing in asked Google for calendar and Gmail too (GOOGLE_SCOPES): the
+ * session that comes back from Google carries its refresh token once. Hand it
+ * to Aelora, and Google is connected without a separate step.
+ */
+export async function linkGoogleFromSession(session: {
+  access_token: string
+  provider_refresh_token?: string | null
+}): Promise<void> {
+  const rt = session.provider_refresh_token
+  if (!rt || linked.has(rt) || config.mock) return
+  linked.add(rt)
+  try {
+    const r = await fetch(`${config.baseUrl}/api/google/calendar/connect-token`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: rt, scope: GOOGLE_SCOPES }),
+    })
+    if (!r.ok) {
+      linked.delete(rt) // let a later sign-in try again
+      return
+    }
+    rememberGoogleConnected(true)
+    const s = await refreshGoogle()
+    toast.show(`Google connected${s?.google_email ? ` · ${s.google_email}` : ''}`)
+  } catch {
+    linked.delete(rt)
+  }
 }
 
 /**

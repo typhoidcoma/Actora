@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { reconnectAelora, startAelora } from '@actora/aelora/client'
 import { startGreeting } from '@actora/aelora/greeting'
 import { getSupabase, signInWithGoogle } from '@actora/auth/supabase'
+import { linkGoogleFromSession } from '@actora/google/google'
 import { startAppearanceSync } from '@actora/stores/appearance'
 import { startCheckins } from '@actora/checkins/checkins'
 import { config } from '@actora/config'
@@ -43,6 +44,8 @@ function AuthedApp() {
     let cancelled = false
     const apply = (sb: SupabaseClient, session: Session | null) => {
       if (session) useAgent.setState({ userName: firstName(session) })
+      // Just back from Google: signing in asked for calendar and Gmail too; connect them now.
+      if (session) void linkGoogleFromSession(session)
       setAuth((prev) =>
         session
           ? prev.status === 'signed-in' && prev.userId === session.user.id

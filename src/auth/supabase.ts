@@ -29,13 +29,53 @@ export function getSupabase(): Promise<SupabaseClient> {
   return client
 }
 
+/**
+ * What signing in asks Google for: who you are, plus your calendar and Gmail, so
+ * one sign-in also connects Google (Aelora's "Path A"; no separate Connect step).
+ * Keep in sync with GOOGLE_SCOPES in Aelora's
+ * src/integrations/google-calendar/google-oauth.ts.
+ */
+export const GOOGLE_SCOPES = [
+  'openid',
+  'email',
+  'https://www.googleapis.com/auth/calendar.events',
+  'https://www.googleapis.com/auth/gmail.modify',
+  'https://www.googleapis.com/auth/gmail.settings.basic',
+].join(' ')
+
+const CONNECTED_KEY = 'actora.google.connected'
+
+/** Whether Google was connected last time we looked (this device). */
+export function rememberGoogleConnected(connected: boolean): void {
+  try {
+    localStorage.setItem(CONNECTED_KEY, connected ? '1' : '0')
+  } catch {
+    /* private mode: the consent screen just shows again */
+  }
+}
+
+function googleWasConnected(): boolean {
+  try {
+    return localStorage.getItem(CONNECTED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 export async function signInWithGoogle(): Promise<void> {
   const sb = await getSupabase()
   const { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo: config.authRedirectUrl || `${window.location.origin}${window.location.pathname}`,
-      queryParams: { prompt: 'select_account' },
+      scopes: GOOGLE_SCOPES,
+      // offline: Google hands back a refresh token Aelora keeps for your calendar and Gmail.
+      // It only comes with a fresh consent, so the permissions screen shows until Google is
+      // connected; after that, signing in is just picking the account.
+      queryParams: {
+        access_type: 'offline',
+        prompt: googleWasConnected() ? 'select_account' : 'consent select_account',
+      },
     },
   })
   if (error) throw error
