@@ -165,6 +165,34 @@ describe('Wendy actions', () => {
     expect(useUi.getState().focus).toBeNull()
   })
 
+  it("in People, her 'open the chat' waits unless you're talking with her right now", async () => {
+    const { useAgent } = await import('../stores/agent')
+    useAgent.setState({ awaitingTurn: false, turnId: null })
+    useUi.setState({ chatOpen: false, people: true, dmThread: 't1' })
+    runUiAction('chat.open', {}) // a check-in in the background: you stay with your friend
+    expect(useUi.getState()).toMatchObject({ chatOpen: false, people: true, dmThread: 't1' })
+    useAgent.setState({ awaitingTurn: true })
+    runUiAction('chat.open', {}) // you asked her something: her answer opens the chat
+    expect(useUi.getState().chatOpen).toBe(true)
+    useAgent.setState({ awaitingTurn: false })
+  })
+
+  it("her talking doesn't pull the chat over People (it does over other panels)", async () => {
+    const { useAgent } = await import('../stores/agent')
+    const { startAutoChat } = await import('../ui/autoChat')
+    const stop = startAutoChat()
+    useAgent.setState({ awaitingTurn: false, turnId: null, streaming: null, messages: [] })
+    useUi.setState({ chatOpen: false, people: true, dmThread: 't1', focus: null, selected: null })
+    useAgent.setState({ turnId: 'turn-1', streaming: 'Here is a long answer. With more to say.' })
+    expect(useUi.getState()).toMatchObject({ chatOpen: false, people: true })
+    useAgent.setState({ turnId: null, streaming: null })
+    useUi.setState({ people: false, dmThread: null, focus: 'tasks' })
+    useAgent.setState({ turnId: 'turn-2', streaming: 'Here is a long answer. With more to say.' })
+    expect(useUi.getState().chatOpen).toBe(true)
+    useAgent.setState({ turnId: null, streaming: null })
+    stop()
+  })
+
   it('mid-conversation, what she opens is a glance: it shows, then the chat comes back', async () => {
     const { PEEK_MS, stopPeek } = await import('../ui/peek')
     vi.useFakeTimers()

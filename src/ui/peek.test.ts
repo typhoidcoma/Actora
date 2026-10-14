@@ -39,7 +39,7 @@ describe('a glance at what she opened', () => {
     const w = fakeWindow()
     ui.openChat()
     peekThenChat(() => ui.openPeople(null, 'profile'))
-    expect(w.count()).toBe(3)
+    expect(w.count()).toBe(4)
     w.fire('pointerdown')
     vi.advanceTimersByTime(PEEK_MS * 4)
     expect(useUi.getState()).toMatchObject({ people: true, chatOpen: false })

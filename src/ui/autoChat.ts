@@ -8,7 +8,7 @@ import { hasMore, isRichReply } from './markdownText'
  * - From home: a web search, or a reply that goes past its first sentence
  *   (what would be "Read all"), or one whose first sentence alone is cut off.
  *   A one-sentence reply that fits stays in her line.
- * - Inside anything else (a task, a list, the Vault, the finds): as soon as she
+ * - Inside anything else (a task, a list, the Vault, the finds; never People): as soon as she
  *   talks, since those panels don't show her words at all.
  * If the user closes the chat during that turn it stays closed until the next
  * one, and a panel the agent opens herself mid-turn (card.open…) is left alone.
@@ -51,6 +51,8 @@ export function startAutoChat(): () => void {
     if (!turn || turn === dismissedTurn) return
     const u = useUi.getState()
     if (u.chatOpen) return
+    // In People you're with friends: her words wait in her line and the chat, not on top of them.
+    if (u.people) return
     if (panelOpen(u)) {
       if (turn !== shownByAgent && s.streaming) ui.openChat()
       return

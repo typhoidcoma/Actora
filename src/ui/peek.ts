@@ -24,7 +24,8 @@ export function peekThenChat(open: () => void, ms = PEEK_MS): void {
   open()
   if (typeof window !== 'undefined') {
     const keep = () => stop()
-    const events = ['pointerdown', 'keydown', 'wheel'] as const
+    // Moving the pointer over it counts too: on a desktop, that's someone looking at it.
+    const events = ['pointerdown', 'pointermove', 'keydown', 'wheel'] as const
     for (const e of events) window.addEventListener(e, keep, { capture: true, passive: true })
     unlisten = () => {
       for (const e of events) window.removeEventListener(e, keep, { capture: true })

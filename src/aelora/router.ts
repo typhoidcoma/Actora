@@ -290,12 +290,24 @@ function asGlance(action: string, run: () => void): boolean {
   return true
 }
 
+
+/**
+ * Her "open the chat". While you're busy in People it only happens if you're
+ * talking with her right now (you sent something and she's answering): a
+ * background turn (a check-in) never pulls you out of a conversation with a friend.
+ */
+function herOpenChat(): void {
+  const a = useAgent.getState()
+  const talking = a.awaitingTurn || a.turnId !== null
+  if (useUi.getState().people && !talking) return
+  ui.openChat()
+}
 function runCommand(cmd: AgentCommand | undefined): void {
   if (!cmd || typeof cmd !== 'object') return
   switch (cmd.type) {
     case 'open_app': {
       const target = APP_TO_TILE[cmd.id]
-      if (target === 'chat') ui.openChat()
+      if (target === 'chat') herOpenChat()
       else if (asGlance('open_app', () => runCommand(cmd))) return
       else if (target === 'vault') ui.openVault()
       else if (target) ui.focus(target)
@@ -400,7 +412,7 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
       return
     // The reader is the chat now (one place for her words); kept as aliases.
     case 'reader.open':
-      return ui.openChat()
+      return herOpenChat()
     case 'finds.open':
       return ui.openFinds()
     case 'finds.close':
@@ -416,7 +428,7 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
     case 'reader.close':
       return ui.closeChat()
     case 'chat.open':
-      return ui.openChat()
+      return herOpenChat()
     case 'chat.close':
       return ui.closeChat()
     case 'card.open':
