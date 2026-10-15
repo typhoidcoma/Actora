@@ -4,6 +4,8 @@ import { describeTool, thinkingWords, toolDetail } from './activity'
 describe('describeTool', () => {
   it('names common tools in plain words', () => {
     expect(describeTool('web_search').doing).toBe('Searching the web')
+    expect(describeTool('read_messages').doing).toBe('Reading your messages')
+    expect(describeTool('draft_message').done).toBe('Reply ready for your OK')
     expect(describeTool('search_memory').done).toBe('Checked what I remember')
     expect(describeTool('search_conversations').icon).toBe('memory')
     expect(describeTool('fetch_url').doing).toBe('Reading a page')

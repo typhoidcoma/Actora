@@ -36,6 +36,10 @@ export function describeTool(name: string): ToolWords {
     return { doing: 'Preparing an invite for your OK', done: 'Invite ready for your OK', icon: 'calendar' }
   if (/draft_email|forward_email|propose_email_change/.test(n))
     return { doing: 'Drafting an email for your OK', done: 'Email ready for your OK', icon: 'note' }
+  // Your messages with friends (Aelora read_messages / draft_message): no detail, the server sends no arguments.
+  if (n === 'read_messages') return { doing: 'Reading your messages', done: 'Read your messages', icon: 'read' }
+  if (n === 'draft_message')
+    return { doing: 'Writing a reply for your OK', done: 'Reply ready for your OK', icon: 'note' }
   if (/search_email|read_email|email_thread|email_attachment|email_labels|email_settings/.test(n))
     return { doing: 'Reading your email', done: 'Read your email', icon: 'read' }
   if (/modify_email|email_label|untrash_email|email_filter/.test(n))
