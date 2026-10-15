@@ -57,7 +57,10 @@ function endStep(steps: Step[], name: string, failed: boolean): Step[] {
 // system_chat is used for the agent's welcome line: same stream shape, but its
 // frames carry only channelId "system:<userId>" and no conversationId.
 
-const TURN_TIMEOUT_MS = 120_000 // the server has no turn timeout of its own
+// Aelora ends every turn by its own 240 s deadline (done or turn_timeout), and a
+// tool-heavy turn can legitimately run past 3 minutes. Wait past that: this is
+// only a backstop for a socket that went silent without closing.
+const TURN_TIMEOUT_MS = 250_000
 // What the server actually streamed; the store holds it scrubbed of leaked tool
 // calls (a call can arrive split across tokens, so scrub the whole, not each).
 let rawReply = ''
