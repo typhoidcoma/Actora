@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAgent } from '../stores/agent'
 import { entities, useEntities } from '../stores/entities'
 import { sendChat } from './chat'
@@ -374,6 +374,20 @@ describe('chat turn', () => {
     expect(s.streaming).toBeNull()
     expect(s.messages.at(-1)?.role).toBe('error')
     expect(sendChat(bus, 'try again')).toBe(true)
+  })
+
+  it('waits out a slow tool-heavy turn instead of failing it at two minutes', () => {
+    vi.useFakeTimers()
+    try {
+      sendChat(bus, "let's prep for the meeting")
+      frame({ type: 'chat.start', conversationId: cid })
+      vi.advanceTimersByTime(204_000)
+      expect(useAgent.getState().messages.at(-1)?.role).not.toBe('error')
+      frame({ type: 'done', conversationId: cid, text: 'Here is your prep.' })
+      expect(useAgent.getState().messages.at(-1)).toMatchObject({ role: 'assistant', text: 'Here is your prep.' })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('closes out the turn on llm_failed', () => {
