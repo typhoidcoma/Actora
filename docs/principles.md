@@ -67,8 +67,11 @@ visible height, headers slim down, and the rail and pills step aside (`src/store
 
 ## Look and feel
 
-**3D is WebGPU only.** No WebGL fallback, and no slower paths. Without WebGPU you get a clear message, not a degraded
-scene (`3dapp/src/gpu.ts`). Within WebGPU, use the best technique available, such as PCSS soft shadows.
+**Graphics are WebGPU and TSL only.** Everything drawn on the GPU (the 3D scene, her orb in 2D) runs on WebGPU with
+shaders written in TSL. No WebGL, no GLSL, no fallback, and no slower paths. Without WebGPU the 3D app gives a clear
+message, not a degraded scene (`3dapp/src/gpu.ts`), and the 2D orb is its CSS stand-in. Within WebGPU, use the best
+technique available, such as PCSS soft shadows. `scripts/graphics-guard.mjs` enforces it
+([agents/graphics.md](agents/graphics.md)).
 
 **Small and considered.** Profile pictures are small rounded squares, cropped and resized before upload. Sounds are a
 quiet, classy kit (SND Sine), on by default, with one switch in the menu.

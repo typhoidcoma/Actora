@@ -4,7 +4,7 @@ import { useAgent } from '../../stores/agent'
 import { useScheme } from '../../stores/scheme'
 import { css, orbColors } from '../palette'
 
-/** CSS-only orb for devices without WebGL. Same colours, simpler motion. */
+/** CSS-only orb for devices without WebGPU, and while the WebGPU one loads. Same colours, simpler motion. */
 export function OrbFallback() {
   const mood = useAgent((s) => s.mood)
   const emotion = useAgent((s) => s.emotion)

@@ -50,16 +50,17 @@ social graph. Put the real backend's URL in `.env.local` to use it.
 
 ## Docs
 
-| Doc                                          | Read it for                                                                                             |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| [docs/principles.md](docs/principles.md)     | The rules behind the behaviour. Start here before changing how anything feels.                          |
-| [docs/architecture.md](docs/architecture.md) | How the code fits together: socket, router, stores, the mock, 2D and 3D.                                |
-| [docs/home-screen.md](docs/home-screen.md)   | The cards, box 4, her line and the pills: where the data comes from and how it is ranked.               |
-| [docs/social.md](docs/social.md)             | People: profiles, pictures, friends, messages, assistant mode, privacy.                                 |
-| [docs/services.md](docs/services.md)         | Sign-in and Google, push reminders, sound, voice, theme and colour, check-ins, the Vault, phone layout. |
-| [docs/agent-ui.md](docs/agent-ui.md)         | The agent's playbook: every UI action she can call. Reference copy of the one on the server.            |
-| [docs/development.md](docs/development.md)   | Running, testing, checking the UI headless, deploying, and working with Aelora.                         |
-| [3dapp/README.md](3dapp/README.md)           | The 3D app: WebGPU room, character, 3D-only behaviour.                                                  |
+| Doc                                                  | Read it for                                                                                             |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| [docs/principles.md](docs/principles.md)             | The rules behind the behaviour. Start here before changing how anything feels.                          |
+| [docs/architecture.md](docs/architecture.md)         | How the code fits together: socket, router, stores, the mock, 2D and 3D.                                |
+| [docs/home-screen.md](docs/home-screen.md)           | The cards, box 4, her line and the pills: where the data comes from and how it is ranked.               |
+| [docs/social.md](docs/social.md)                     | People: profiles, pictures, friends, messages, assistant mode, privacy.                                 |
+| [docs/services.md](docs/services.md)                 | Sign-in and Google, push reminders, sound, voice, theme and colour, check-ins, the Vault, phone layout. |
+| [docs/agent-ui.md](docs/agent-ui.md)                 | The agent's playbook: every UI action she can call. Reference copy of the one on the server.            |
+| [docs/development.md](docs/development.md)           | Running, testing, checking the UI headless, deploying, and working with Aelora.                         |
+| [3dapp/README.md](3dapp/README.md)                   | The 3D app: WebGPU room, character, 3D-only behaviour.                                                  |
+| [CLAUDE.md](CLAUDE.md), [docs/agents/](docs/agents/) | For coding agents: hard rules, commands, and a task guide per feature.                                  |
 
 ## Stack
 
@@ -70,7 +71,7 @@ social graph. Put the real backend's URL in `.env.local` to use it.
 | Styling   | Tailwind CSS v4 over themed CSS tokens (daylight / dusk), OKLCH colour engine           |
 | State     | Zustand stores fed by the Aelora WebSocket (data is pushed, not fetched)                |
 | Auth      | Supabase Google OAuth, which also connects Calendar and Gmail                           |
-| 3D        | three.js `WebGPURenderer` with React Three Fiber (WebGPU only)                          |
+| Graphics  | WebGPU + TSL only: three.js `WebGPURenderer` (3D with React Three Fiber; the 2D orb)    |
 | Type      | [Satoshi](https://www.fontshare.com/fonts/satoshi), self-hosted (ITF Free Font License) |
 | Sound     | SND Sine kit (`public/sounds/sine/CREDITS.md`)                                          |
 | Tooling   | Vitest, oxlint, Prettier                                                                |
