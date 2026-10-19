@@ -179,7 +179,8 @@ chat ─> [conversation.created] ─> chat.start ─> token* / tool.progress* �
 - `tool.progress` becomes steps for the activity trail (`activity.ts` words them). Screen actions and backstage tools
   (`perform_reaction`, `get_app_state`) are noted without switching her phase, so she doesn't flicker between
   speaking and working. A failure that names Google offers a Connect toast.
-- A client-side turn timeout of 120 s fails the turn with a retry message (the server has none).
+- A client-side backstop of 250 s (`TURN_TIMEOUT_MS`) fails the turn with a retry message. Aelora ends every turn by
+  its own 240 s deadline, so this only catches a socket that went silent without closing.
 - A `mindmap` `fact:extracted` event shows "Noted: ..." with an Undo that forgets the memory.
 
 **Scrubbing** (`scrub.ts`). Sometimes the model writes a tool call into its reply instead of making it
@@ -349,8 +350,9 @@ What it simulates:
   ui_actions are `name.verb` with exactly one dot.
 - **Validate everything from the agent.** Assume any argument may be missing, wrong or cut off (`looseArgs`), and
   ignore ids that don't exist locally.
-- **Dependencies.** The root has few runtime dependencies (React, zustand, motion, OGL, Supabase, react-markdown).
-  Don't add one lightly. Heavy ones are code-split (Supabase, Markdown, the mock).
+- **Dependencies.** The root has few runtime dependencies (React, zustand, motion, three, Supabase, react-markdown).
+  Don't add one lightly. Heavy ones are code-split (Supabase, Markdown, the mock, and three/webgpu for the orb).
+- **Graphics.** WebGPU and TSL only (`three/webgpu`, `three/tsl`): [agents/graphics.md](agents/graphics.md).
 - **Styling.** Use Tailwind with the theme tokens from `src/styles/index.css` (`bg-bg`, `text-muted`,
   `text-accent`, ...). These map to `--role-*` (fills) and `--ink-*` (readable text), which the scheme engine
   generates. Don't hard-code colours. Brand colours live in `src/ui/brand.ts`.

@@ -1,138 +1,195 @@
-export const vertex = /* glsl */ `
-attribute vec2 uv;
-attribute vec2 position;
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = vec4(position, 0.0, 1.0);
-}
-`
+import * as THREE from 'three/webgpu'
+import {
+  Fn,
+  If,
+  atan,
+  clamp,
+  cos,
+  dot,
+  exp,
+  float,
+  floor,
+  fract,
+  length,
+  max,
+  min,
+  mix,
+  pow,
+  screenCoordinate,
+  screenUV,
+  select,
+  sin,
+  smoothstep,
+  uniform,
+  vec2,
+  vec3,
+  vec4,
+} from 'three/tsl'
 
 // An amorphous, matte, softly lit blob (art direction: soft toon render, no
-// outlines, gentle rim, subtle grain). Everything is driven by smoothed uniforms.
-export const fragment = /* glsl */ `
-precision highp float;
-varying vec2 vUv;
+// outlines, gentle rim, subtle grain), written in TSL. Everything is driven by
+// smoothed uniforms that Orb.tsx eases each frame.
 
-uniform float uTime;    // flow time (accumulated at a phase-dependent speed)
-uniform float uClock;   // wall clock seconds, for grain + ring spin
-uniform float uAmp;     // edge displacement
-uniform float uSwirl;   // interior swirl
-uniform float uGlow;    // outer glow strength
-uniform float uDesat;   // 0..1 offline desaturation
-uniform float uReact;   // -1..1 reaction (positive flare / negative contract)
-uniform float uWobble;  // cognitive wobble
-uniform float uEnergy;  // speaking energy 0..1
-uniform float uRing;    // tool ring 0..1
-uniform float uBreath;  // -1..1 slow idle breathing
-uniform float uDay;     // 0 dusk .. 1 daylight (glow becomes a soft tinted shadow)
-uniform vec3 uC1;
-uniform vec3 uC2;
-uniform vec3 uC3;
+/** Each orb's uniforms. */
+export function orbUniforms() {
+  return {
+    /** Flow time (accumulated at a phase-dependent speed). */
+    time: uniform(0),
+    /** Wall clock seconds, for the grain. */
+    clock: uniform(0),
+    /** Edge displacement. */
+    amp: uniform(0.05),
+    /** Interior swirl. */
+    swirl: uniform(0.2),
+    /** Outer glow strength. */
+    glow: uniform(0.4),
+    /** 0..1 offline desaturation. */
+    desat: uniform(0.8),
+    /** -1..1 reaction (positive flare / negative contract). */
+    react: uniform(0),
+    /** Cognitive wobble. */
+    wobble: uniform(0),
+    /** Speaking energy 0..1. */
+    energy: uniform(0),
+    /** -1..1 slow idle breathing. */
+    breath: uniform(0),
+    /** 0 dusk .. 1 daylight (the glow becomes a soft tinted shadow). */
+    day: uniform(1),
+    c1: uniform(new THREE.Vector3(0.2, 0.3, 0.8)),
+    c2: uniform(new THREE.Vector3(0.5, 0.4, 0.7)),
+    c3: uniform(new THREE.Vector3(0.8, 0.9, 0.3)),
+  }
+}
 
-float cmax(vec3 c) { return max(c.r, max(c.g, c.b)); }
-float sat(vec3 c) { float m = cmax(c); return m > 1e-4 ? (m - min(c.r, min(c.g, c.b))) / m : 0.0; }
+export type OrbUniforms = ReturnType<typeof orbUniforms>
+
+type V3 = THREE.Node<'vec3'>
+type F = THREE.Node<'float'>
+
+const cmax = (c: V3) => max(c.r, max(c.g, c.b))
+const sat = (c: V3) => {
+  const m = cmax(c)
+  return select(m.greaterThan(1e-4), m.sub(min(c.r, min(c.g, c.b))).div(m), float(0))
+}
 
 // Mixing like light, not paint: a plain lerp of two hues (amber + turquoise)
 // loses saturation and brightness where they meet and turns muddy. This keeps
 // the in-between as saturated and as bright as the two colours it comes from.
-vec3 vivid(vec3 x, vec3 y, float t) {
-  vec3 c = mix(x, y, t);
-  float m = cmax(c);
-  float s = sat(c);
-  if (s > 1e-4) c = m - (m - c) * min(mix(sat(x), sat(y), t) / s, 2.5);
-  return max(c, 0.0) * (mix(cmax(x), cmax(y), t) / max(m, 1e-4));
-}
+const vivid = Fn(([x, y, t]: [V3, V3, F]) => {
+  const c = mix(x, y, t).toVar()
+  const m = cmax(c).toVar()
+  const s = sat(c).toVar()
+  If(s.greaterThan(1e-4), () => {
+    c.assign(m.sub(m.sub(c).mul(min(mix(sat(x), sat(y), t).div(s), 2.5))))
+  })
+  return max(c, 0).mul(mix(cmax(x), cmax(y), t).div(max(m, 1e-4)))
+}).setLayout({
+  name: 'orbVivid',
+  type: 'vec3',
+  inputs: [
+    { name: 'x', type: 'vec3' },
+    { name: 'y', type: 'vec3' },
+    { name: 't', type: 'float' },
+  ],
+})
 
-float hash(vec3 p) {
-  p = fract(p * 0.3183099 + 0.1);
-  p *= 17.0;
-  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
-}
+const hash = Fn(([p0]: [V3]) => {
+  const p = fract(p0.mul(0.3183099).add(0.1)).mul(17).toVar()
+  return fract(p.x.mul(p.y).mul(p.z).mul(p.x.add(p.y).add(p.z)))
+}).setLayout({ name: 'orbHash', type: 'float', inputs: [{ name: 'p', type: 'vec3' }] })
 
-float noise(vec3 x) {
-  vec3 i = floor(x);
-  vec3 f = fract(x);
-  f = f * f * (3.0 - 2.0 * f);
+const noise = Fn(([x]: [V3]) => {
+  const i = floor(x).toVar()
+  const g = fract(x).toVar()
+  const f = g
+    .mul(g)
+    .mul(float(3).sub(g.mul(2)))
+    .toVar()
+  const h = (dx: number, dy: number, dz: number) => hash(i.add(vec3(dx, dy, dz)))
   return mix(
-    mix(mix(hash(i), hash(i + vec3(1, 0, 0)), f.x),
-        mix(hash(i + vec3(0, 1, 0)), hash(i + vec3(1, 1, 0)), f.x), f.y),
-    mix(mix(hash(i + vec3(0, 0, 1)), hash(i + vec3(1, 0, 1)), f.x),
-        mix(hash(i + vec3(0, 1, 1)), hash(i + vec3(1, 1, 1)), f.x), f.y),
-    f.z);
-}
+    mix(mix(h(0, 0, 0), h(1, 0, 0), f.x), mix(h(0, 1, 0), h(1, 1, 0), f.x), f.y),
+    mix(mix(h(0, 0, 1), h(1, 0, 1), f.x), mix(h(0, 1, 1), h(1, 1, 1), f.x), f.y),
+    f.z,
+  )
+}).setLayout({ name: 'orbNoise', type: 'float', inputs: [{ name: 'x', type: 'vec3' }] })
 
-float fbm(vec3 p) {
-  float a = 0.5;
-  float s = 0.0;
-  for (int i = 0; i < 4; i++) {
-    s += a * noise(p);
-    p *= 2.03;
-    a *= 0.5;
+const fbm = Fn(([p0]: [V3]) => {
+  const s = float(0).toVar()
+  let p: V3 = p0
+  let a = 0.5
+  for (let i = 0; i < 4; i++) {
+    s.addAssign(noise(p).mul(a))
+    p = p.mul(2.03)
+    a *= 0.5
   }
-  return s;
+  return s
+}).setLayout({ name: 'orbFbm', type: 'float', inputs: [{ name: 'p', type: 'vec3' }] })
+
+/** The orb's colour, premultiplied by its alpha, for a full-canvas quad. */
+export function orbFragment(u: OrbUniforms) {
+  return Fn(() => {
+    // -1..1 across the canvas, y up (screenUV's origin is the top left).
+    const p = vec2(screenUV.x, screenUV.y.oneMinus()).mul(2).sub(1).toVar()
+    const r = length(p).toVar()
+    const ang = atan(p.y, p.x).toVar()
+    const dir = vec2(cos(ang), sin(ang))
+
+    // Silhouette: noise on the unit circle, so the edge stays continuous.
+    const base = float(0.6).mul(u.react.mul(0.07).add(1).add(u.breath.mul(0.03)))
+    const n = fbm(vec3(dir.mul(u.wobble.mul(1.6).add(1.25)), u.time.mul(0.55)))
+    const disp = n
+      .sub(0.5)
+      .mul(2)
+      .mul(u.amp)
+      .add(
+        sin(ang.mul(3).add(u.time.mul(1.2)))
+          .mul(u.amp)
+          .mul(0.3),
+      )
+    const R = base.add(disp).toVar()
+    const d = r.sub(R).toVar()
+    const body = smoothstep(-0.01, 0.01, d).oneMinus().toVar()
+
+    // Interior: two swirled fbm fields blend the three mood colours.
+    const sw = u.swirl.mul(r.oneMinus()).mul(2.4).add(u.time.mul(0.18))
+    const cs = cos(sw).toVar()
+    const sn = sin(sw).toVar()
+    const q = vec2(cs.mul(p.x).add(sn.mul(p.y)), cs.mul(p.y).sub(sn.mul(p.x))).toVar()
+    const f1 = fbm(vec3(q.mul(1.6), u.time.mul(0.32)))
+    const f2 = fbm(vec3(q.mul(3).add(4), u.time.mul(0.46)))
+    const col = vivid(u.c1, u.c2, smoothstep(0.28, 0.72, f1)).toVar()
+    col.assign(vivid(col, u.c3, smoothstep(0.58, 0.9, f2).mul(0.6)))
+
+    // Soft volume: darker toward the edge, broad low-contrast key light top-left.
+    const rr = clamp(r.div(R), 0, 1).toVar()
+    col.mulAssign(mix(float(1.06), float(0.5), pow(rr, 2.3)))
+    const key = smoothstep(0, 0.95, length(p.sub(vec2(-0.26, 0.3)))).oneMinus()
+    col.addAssign(vec3(1, 0.95, 0.85).mul(key.mul(0.09)))
+
+    // Gentle rim.
+    const rim = smoothstep(0.72, 1, rr).mul(body)
+    col.addAssign(mix(u.c3, vec3(1), 0.25).mul(rim).mul(u.energy.mul(0.5).add(0.22)))
+
+    col.mulAssign(u.energy.mul(0.22).add(1).add(max(u.react, 0).mul(0.32)))
+    col.mulAssign(min(u.react, 0).mul(0.25).add(1))
+
+    const lum = dot(col, vec3(0.299, 0.587, 0.114))
+    col.assign(mix(col, vec3(lum.mul(mix(float(0.65), float(0.9), u.day))), u.desat))
+
+    // Outer glow at dusk; in daylight a light glow reads as dirt on cream, so it
+    // becomes a soft, mood-tinted contact shadow beneath the blob instead.
+    const glow = exp(max(d, 0).mul(-8.5)).mul(body.oneMinus()).mul(u.glow).mul(u.day.mul(0.75).oneMinus())
+    const gcol = vivid(u.c1, u.c2, float(0.5)).mul(mix(float(1), float(0.35), u.desat))
+    const sd = length(p.sub(vec2(0, -0.07))).sub(R)
+    const shadow = exp(max(sd, 0).mul(-7)).mul(body.oneMinus()).mul(0.32).mul(u.day)
+    const scol = u.c2.mul(0.45)
+
+    // Film grain.
+    const grain = hash(vec3(screenCoordinate.xy, floor(u.clock.mul(24)))).sub(0.5)
+    col.addAssign(grain.mul(0.025).mul(body))
+
+    const out = col.mul(body).add(gcol.mul(glow)).add(scol.mul(shadow))
+    const alpha = clamp(body.add(glow.mul(0.85)).add(shadow), 0, 1)
+    return vec4(out, alpha)
+  })()
 }
-
-void main() {
-  vec2 p = vUv * 2.0 - 1.0;
-  float r = length(p);
-  float ang = atan(p.y, p.x);
-  vec2 dir = vec2(cos(ang), sin(ang));
-
-  // Silhouette: noise on the unit circle, so the edge stays continuous.
-  float base = 0.6 * (1.0 + uReact * 0.07 + uBreath * 0.03);
-  float n = fbm(vec3(dir * (1.25 + uWobble * 1.6), uTime * 0.55));
-  float disp = (n - 0.5) * 2.0 * uAmp + sin(ang * 3.0 + uTime * 1.2) * uAmp * 0.3;
-  float R = base + disp;
-  float d = r - R;
-  float body = 1.0 - smoothstep(-0.01, 0.01, d);
-
-  // Interior: two swirled fbm fields blend the three mood colours.
-  float sw = uSwirl * (1.0 - r) * 2.4 + uTime * 0.18;
-  float cs = cos(sw);
-  float sn = sin(sw);
-  vec2 q = mat2(cs, -sn, sn, cs) * p;
-  float f1 = fbm(vec3(q * 1.6, uTime * 0.32));
-  float f2 = fbm(vec3(q * 3.0 + 4.0, uTime * 0.46));
-  vec3 col = vivid(uC1, uC2, smoothstep(0.28, 0.72, f1));
-  col = vivid(col, uC3, smoothstep(0.58, 0.9, f2) * 0.6);
-
-  // Soft volume: darker toward the edge, broad low-contrast key light top-left.
-  float rr = clamp(r / R, 0.0, 1.0);
-  col *= mix(1.06, 0.5, pow(rr, 2.3));
-  float key = smoothstep(0.95, 0.0, length(p - vec2(-0.26, 0.3)));
-  col += key * 0.09 * vec3(1.0, 0.95, 0.85);
-
-  // Gentle rim.
-  float rim = smoothstep(0.72, 1.0, rr) * body;
-  col += rim * mix(uC3, vec3(1.0), 0.25) * (0.22 + uEnergy * 0.5);
-
-  col *= 1.0 + uEnergy * 0.22 + max(uReact, 0.0) * 0.32;
-  col *= 1.0 + min(uReact, 0.0) * 0.25;
-
-  float lum = dot(col, vec3(0.299, 0.587, 0.114));
-  col = mix(col, vec3(lum) * mix(0.65, 0.9, uDay), uDesat);
-
-  // Outer glow at dusk; in daylight a light glow reads as dirt on cream, so it
-  // becomes a soft, mood-tinted contact shadow beneath the blob instead.
-  float glow = exp(-max(d, 0.0) * 8.5) * (1.0 - body) * uGlow * (1.0 - uDay * 0.75);
-  vec3 gcol = vivid(uC1, uC2, 0.5) * mix(1.0, 0.35, uDesat);
-  float sd = length(p - vec2(0.0, -0.07)) - R;
-  float shadow = exp(-max(sd, 0.0) * 7.0) * (1.0 - body) * 0.32 * uDay;
-  vec3 scol = uC2 * 0.45;
-
-  // Tool ring: a thin dashed orbit that spins while a tool runs.
-  float ringR = R + 0.12;
-  float ring = smoothstep(0.011, 0.0, abs(r - ringR)) * uRing;
-  ring *= mix(0.2, 1.0, step(0.45, fract(ang / 6.2831853 * 4.0 - uClock * 0.4)));
-
-  // Film grain.
-  float g = hash(vec3(gl_FragCoord.xy, floor(uClock * 24.0))) - 0.5;
-  col += g * 0.025 * body;
-
-  vec3 ringCol = mix(vec3(0.94, 0.92, 0.82), vec3(0.34, 0.49, 0.54), uDay);
-  vec3 outc = col * body + gcol * glow + scol * shadow + ringCol * ring;
-  float a = clamp(body + glow * 0.85 + shadow + ring, 0.0, 1.0);
-  gl_FragColor = vec4(outc, a);
-}
-`
