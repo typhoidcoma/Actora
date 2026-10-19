@@ -72,6 +72,7 @@ export function ProfileView() {
               }}
             >
               <input
+                name="display-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={60}
@@ -113,6 +114,7 @@ export function ProfileView() {
               <label className="glass-pill flex h-11 min-w-0 flex-1 items-center rounded-[8px] px-4">
                 <span className="text-[16px] text-faint">@</span>
                 <input
+                  name="handle"
                   value={handle}
                   onChange={(e) => setHandle(e.target.value.replace(/\s/g, '').replace(/^@/, ''))}
                   autoCapitalize="none"

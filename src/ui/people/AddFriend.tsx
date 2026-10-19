@@ -48,6 +48,7 @@ export function AddFriend() {
           <label className="glass-pill flex h-11 min-w-0 flex-1 items-center rounded-[8px] px-3">
             <span className="text-faint">@</span>
             <input
+              name="friend-handle"
               value={q}
               onChange={(e) => setQ(e.target.value.replace(/\s/g, '').replace(/^@/, ''))}
               autoFocus

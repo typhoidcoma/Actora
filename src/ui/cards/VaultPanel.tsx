@@ -69,6 +69,7 @@ export function VaultPanel() {
             <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
           </svg>
           <input
+            name="vault-search"
             value={query}
             onChange={(ev) => setQuery(ev.target.value)}
             placeholder={`Search what ${botName} knows`}
@@ -305,6 +306,7 @@ function AddMemory({ defaultCategory, onSaved }: { defaultCategory: string | nul
         }}
       >
         <input
+          name="memory"
           value={text}
           onChange={(ev) => setText(ev.target.value)}
           maxLength={500}

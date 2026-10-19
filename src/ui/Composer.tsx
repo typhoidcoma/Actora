@@ -31,6 +31,7 @@ export function Composer() {
   return (
     <form onSubmit={submit} className="flex items-center gap-2">
       <input
+        name="message"
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={

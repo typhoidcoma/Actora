@@ -340,6 +340,7 @@ export function ThreadComposer({ id }: { id: string }) {
           </button>
         )}
         <input
+          name="message"
           ref={input}
           value={text}
           onChange={(e) => setText(e.target.value)}

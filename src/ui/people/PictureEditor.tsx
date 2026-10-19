@@ -66,6 +66,7 @@ export function PictureEditor({ kind }: { kind: PictureKind }) {
         </p>
       </div>
       <input
+        name="picture"
         ref={input}
         type="file"
         accept="image/*"

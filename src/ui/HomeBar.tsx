@@ -41,6 +41,7 @@ function MessageBox() {
   const text = useDraft((s) => s.text)
   return (
     <input
+      name="message"
       value={text}
       onChange={(e) => useDraft.setState({ text: e.target.value })}
       onKeyDown={(e) => {

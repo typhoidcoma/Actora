@@ -36,6 +36,7 @@ export function HandlePicker() {
       <label className="glass-pill flex h-12 items-center rounded-[8px] px-4">
         <span className="text-[16px] text-faint">@</span>
         <input
+          name="handle"
           value={handle}
           onChange={(e) => {
             setHandle(e.target.value.replace(/\s/g, ''))
@@ -52,6 +53,7 @@ export function HandlePicker() {
         />
       </label>
       <input
+        name="display-name"
         value={name}
         onChange={(e) => setName(e.target.value)}
         maxLength={60}

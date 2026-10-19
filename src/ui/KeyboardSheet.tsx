@@ -66,6 +66,7 @@ function Sheet() {
         }}
       >
         <input
+          name="message"
           autoFocus
           value={text}
           onChange={(e) => setText(e.target.value)}

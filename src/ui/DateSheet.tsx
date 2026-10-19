@@ -74,6 +74,7 @@ function Sheet({ taskId }: { taskId: string }) {
             {/* Typing a date fires change on every digit ("0002-10-15"): only a full,
                 sensible date counts, set on Enter, on leaving the field, or with Set. */}
             <input
+              name="date"
               type="date"
               min={iso(now)}
               value={other}
