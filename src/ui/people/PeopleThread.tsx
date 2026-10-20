@@ -12,8 +12,20 @@ import {
   retryDm,
   sendDm,
 } from '../../social/social'
-import type { DmMessage, Pending } from '../../social/types'
-import { messagesFor, ownerName, pendingFor, speakerOf, threadName, useSocial, type Speaker } from '../../stores/social'
+import type { DmMessage, Pending, Thread } from '../../social/types'
+import {
+  hiddenFrom,
+  messagesFor,
+  nameOf,
+  ownerName,
+  pendingFor,
+  personIn,
+  speakerOf,
+  threadName,
+  useSocial,
+  type Known,
+  type Speaker,
+} from '../../stores/social'
 import { ROLE } from '../brand'
 import { useMetrics } from '../../stores/metrics'
 import { ui } from '../../stores/ui'
@@ -51,6 +63,8 @@ export function ThreadBody({ id }: { id: string }) {
   const pendingAll = useSocial((s) => s.pending)
   const loading = useSocial((s) => !!s.loading[id])
   const me = useSocial((s) => s.profile?.userId ?? null)
+  const names = useSocial((s) => s.names)
+  const blocks = useSocial((s) => s.blocks)
   // Whose picture a receptionist wears: the owner chose it (their profile, on your friends list).
   const friends = useSocial((s) => s.friends)
   const ownAssistant = useSocial((s) => s.profile?.assistantAvatarPath ?? null)
@@ -99,7 +113,8 @@ export function ThreadBody({ id }: { id: string }) {
   }, [messages.length, pending.length, newest, typing])
 
   if (!thread) return <p className="text-[15px] text-muted">This conversation isn't available.</p>
-  const other = thread.members[0]
+  // Blocking is for one person: in a group it would pick whoever happens to be listed first.
+  const other = thread.kind === 'group' ? undefined : thread.members[0]
   const oldest = messages[0]?.seq ?? 0
 
   return (
@@ -148,16 +163,21 @@ export function ThreadBody({ id }: { id: string }) {
 
       <div className="mt-auto flex flex-col gap-1.5">
         {messages.map((m, i) => {
-          const who = speakerOf(m, thread, me)
+          if (hiddenFrom(m, thread, blocks)) return <HiddenRow key={m.seq} />
+          const who = speakerOf(m, thread, me, names)
           const prev = messages[i - 1]
           const day = !prev || dayLabel(prev.createdAt) !== dayLabel(m.createdAt)
           // A face on the first message of each run from the other side.
           const firstOfRun = day || !prev || prev.senderId !== m.senderId || prev.senderKind !== m.senderKind
           const face =
             who.side === 'me' || !firstOfRun ? null : who.agent ? (
-              <AssistantAvatar size={28} path={assistantPicture(thread.ownerId)} />
+              // A group's agents are each their owner's; an assistant thread has the one.
+              <AssistantAvatar
+                size={28}
+                path={assistantPicture(thread.kind === 'group' ? m.senderId : thread.ownerId)}
+              />
             ) : (
-              <Avatar size={28} who={thread.members.find((x) => x.userId === m.senderId) ?? null} />
+              <Avatar size={28} who={personIn(thread, m.senderId, names)} />
             )
           return (
             <Bubble
@@ -166,6 +186,9 @@ export function ThreadBody({ id }: { id: string }) {
               who={who}
               day={day}
               face={face}
+              // A run from one person in a group is named once, like the face.
+              named={thread.kind !== 'group' || firstOfRun}
+              asked={askedOf(m, thread, me, names)}
               picked={picked === m.id}
               onPick={() => setPicked(picked === m.id ? null : m.id)}
             />
@@ -180,11 +203,25 @@ export function ThreadBody({ id }: { id: string }) {
   )
 }
 
+/** A blocked person's group message: its place is kept, its words aren't shown. */
+function HiddenRow() {
+  return <p className="self-start px-1 py-1 text-[13px] text-faint italic">Hidden message (someone you blocked)</p>
+}
+
+/** "Asked Sam's assistant" under a group message that woke agents (no wait for a reply: some never come). */
+function askedOf(m: DmMessage, t: Thread, me: string | null, names: Record<string, Known>): string | null {
+  if (t.kind !== 'group' || !m.agentMentions?.length) return null
+  const whose = m.agentMentions.map((id) => (id === me ? 'your' : `${nameOf(personIn(t, id, names))}'s`))
+  return `Asked ${whose.join(', ')} assistant${whose.length > 1 ? 's' : ''}`
+}
+
 function Bubble({
   m,
   who,
   day,
   face,
+  named,
+  asked,
   picked,
   onPick,
 }: {
@@ -193,24 +230,29 @@ function Bubble({
   day: boolean
   /** Theirs: who wrote it, on the first of a run; null keeps the gap so a run lines up. */
   face: React.ReactNode | null
+  /** The first of a run: its label shows (later ones in the run go without). */
+  named: boolean
+  /** Agents this message asked to answer, said plainly. */
+  asked: string | null
   picked: boolean
   onPick: () => void
 }) {
   const gone = !!m.deletedAt
   const mine = who.side === 'me'
   const canEdit = who.editable && !gone
+  const label = named || who.agent ? who.label : null
   return (
     <>
       {day && <p className="my-2 text-center text-[12px] text-faint">{dayLabel(m.createdAt)}</p>}
       <div className={`flex max-w-[86%] items-start gap-2 ${mine ? 'self-end' : 'self-start'}`}>
-        {!mine && <span className={`w-7 shrink-0 ${who.label ? 'mt-[20px]' : ''}`}>{face}</span>}
+        {!mine && <span className={`w-7 shrink-0 ${label ? 'mt-[20px]' : ''}`}>{face}</span>}
         <div className={`flex min-w-0 flex-col ${mine ? 'items-end' : 'items-start'}`}>
-          {who.label && (
+          {label && (
             <span
               className={`mb-0.5 px-1 text-[12px] font-semibold ${who.agent ? '' : 'text-muted'}`}
               style={who.agent ? { color: 'var(--ink-agent)' } : undefined}
             >
-              {who.label}
+              {label}
             </span>
           )}
           <button
@@ -238,6 +280,7 @@ function Bubble({
           <span className="mt-0.5 px-1 text-[11px] text-faint">
             {clockTime(m.createdAt)}
             {m.editedAt && !gone ? ' · edited' : ''}
+            {asked && !gone ? ` · ${asked}` : ''}
           </span>
           <AnimatePresence initial={false}>
             {picked && (
@@ -299,6 +342,15 @@ export function ThreadComposer({ id }: { id: string }) {
   const who = useSocial((s) => (s.threads[id] ? threadName(s.threads[id]) : 'them'))
   // Your own receptionist's thread: writing here takes over from her for a while.
   const takeover = useSocial((s) => s.threads[id]?.kind === 'assistant' && s.threads[id]?.role === 'owner')
+  const thread = useSocial((s) => s.threads[id])
+  const me = useSocial((s) => s.profile?.userId ?? null)
+  // In a group: the agents here, any of which a message can ask to answer (yours too, if you brought her).
+  const agents = useMemo(() => {
+    if (thread?.kind !== 'group') return []
+    const list = thread.members.filter((m) => m.agentPresent).map((m) => ({ id: m.userId, label: `${nameOf(m)}'s` }))
+    return thread.agentPresent && me ? [{ id: me, label: 'Your' }, ...list] : list
+  }, [thread, me])
+  const [asking, setAsking] = useState<string[]>([])
   const [text, setText] = useState('')
   const input = useRef<HTMLInputElement>(null)
   useEffect(() => {
@@ -315,11 +367,52 @@ export function ThreadComposer({ id }: { id: string }) {
       if (text.trim() !== editing.body) editDm(editing.id, text)
       setEditing(null)
       setText('')
-    } else if (sendDm(id, text)) setText('')
+    } else if (
+      sendDm(
+        id,
+        text,
+        asking.filter((a) => agents.some((x) => x.id === a)),
+      )
+    ) {
+      setText('')
+      setAsking([])
+    }
   }
 
   return (
     <div>
+      {agents.length > 0 && !editing && (
+        // Ask an assistant: up to three a message. A pill, so it never needs typing an @.
+        <div className="mb-2 flex flex-wrap gap-1.5" role="group" aria-label="Ask an assistant">
+          {agents.map((a) => {
+            const on = asking.includes(a.id)
+            return (
+              <motion.button
+                key={a.id}
+                whileTap={press}
+                type="button"
+                aria-pressed={on}
+                disabled={!on && asking.length >= 3}
+                onPointerDown={(e) => e.preventDefault()}
+                onClick={() => setAsking((l) => (on ? l.filter((x) => x !== a.id) : [...l, a.id]))}
+                className={`h-8 max-w-full truncate rounded-full px-3 text-[13px] font-semibold transition-colors disabled:opacity-50 ${
+                  on ? 'text-strong' : 'glass-pill text-muted'
+                }`}
+                style={
+                  on
+                    ? {
+                        background: `color-mix(in srgb, ${ROLE.agent} 34%, transparent)`,
+                        boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--ink-agent) 45%, transparent)',
+                      }
+                    : undefined
+                }
+              >
+                Ask {a.label} assistant
+              </motion.button>
+            )
+          })}
+        </div>
+      )}
       {takeover && (
         <p className="mb-2 px-1 text-[12px] text-muted">
           Writing here takes over: your assistant steps back for 10 minutes.

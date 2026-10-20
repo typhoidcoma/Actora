@@ -17,7 +17,10 @@ import type { DmMessage, Thread } from './types'
 
 function fakeBus() {
   const sent: Array<{ type: string } & Record<string, unknown>> = []
-  const bus = { send: (m: { type: string }) => (sent.push(m as never), true), subscribe: () => () => {} } as unknown as FrameBus
+  const bus = {
+    send: (m: { type: string }) => (sent.push(m as never), true),
+    subscribe: () => () => {},
+  } as unknown as FrameBus
   return { bus, sent, frame: (f: ServerFrame) => handleSocialFrame(f, bus) }
 }
 
@@ -58,12 +61,12 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers())
 
 describe('social connect sequence', () => {
-  it('asks for the profile, friends and threads, then syncs held threads from their contiguous top', () => {
+  it('asks for the profile, friends, threads and blocks, then syncs held threads from their contiguous top', () => {
     const { bus, sent } = fakeBus()
     useSocial.setState({ messages: { t1: { 1: msg(1), 2: msg(2), 5: msg(5) } } })
     socialConnected(bus)
-    expect(sent.map((m) => m.type)).toEqual(['profile.get', 'friends.list', 'dm.threads', 'dm.sync'])
-    expect(sent[3]).toMatchObject({ since: { t1: 2 } })
+    expect(sent.map((m) => m.type)).toEqual(['profile.get', 'friends.list', 'dm.threads', 'friends.blocks', 'dm.sync'])
+    expect(sent[4]).toMatchObject({ since: { t1: 2 } })
   })
 
   it('resends what was still sending, with the same clientMsgId', () => {
@@ -86,7 +89,9 @@ describe('social connect sequence', () => {
     expect(sent.some((m) => m.type === 'friends.invite.redeem')).toBe(false)
     expect(useUi.getState().people).toBe(true) // to pick a handle
     frame({ type: 'profile', profile: { userId: ME, handle: 'me', displayName: null, avatarPath: null } })
-    expect(sent.filter((m) => m.type === 'friends.invite.redeem')).toEqual([{ type: 'friends.invite.redeem', token: 'abc' }])
+    expect(sent.filter((m) => m.type === 'friends.invite.redeem')).toEqual([
+      { type: 'friends.invite.redeem', token: 'abc' },
+    ])
     frame({ type: 'profile', profile: { userId: ME, handle: 'me', displayName: null, avatarPath: null } })
     expect(sent.filter((m) => m.type === 'friends.invite.redeem')).toHaveLength(1)
   })
@@ -106,7 +111,7 @@ describe('social connect sequence', () => {
     expect(useSocial.getState()).toMatchObject({ guest: true, profile: null })
   })
 
-  it("leaves other errors to their owners", () => {
+  it('leaves other errors to their owners', () => {
     const { frame } = fakeBus()
     expect(frame({ type: 'error', code: 'llm_failed' })).toBe(false)
     expect(frame({ type: 'error', code: 'data_failed', request: 'task.list' })).toBe(false)
@@ -117,7 +122,10 @@ describe('the four rules', () => {
   it('dedupes: dm.sent, dm.message and dm.synced of one message make one row', () => {
     const { bus, frame } = fakeBus()
     socialConnected(bus)
-    useSocial.setState({ threads: { t1: thread() }, profile: { userId: ME, handle: 'me', displayName: null, avatarPath: null } })
+    useSocial.setState({
+      threads: { t1: thread() },
+      profile: { userId: ME, handle: 'me', displayName: null, avatarPath: null },
+    })
     const m = msg(1, { senderId: ME, clientMsgId: 'x' })
     frame({ type: 'dm.sent', clientMsgId: 'x', message: m })
     frame({ type: 'dm.message', message: m })
@@ -148,7 +156,10 @@ describe('the four rules', () => {
     const { bus, sent } = fakeBus()
     socialConnected(bus)
     sent.length = 0
-    useSocial.setState({ threads: { t1: thread({ lastSeq: 3 }) }, messages: { t1: { 1: msg(1), 2: msg(2), 4: msg(4) } } })
+    useSocial.setState({
+      threads: { t1: thread({ lastSeq: 3 }) },
+      messages: { t1: { 1: msg(1), 2: msg(2), 4: msg(4) } },
+    })
     markRead('t1')
     markRead('t1')
     expect(sent).toEqual([{ type: 'dm.read', threadId: 't1', seq: 2 }])
@@ -172,7 +183,11 @@ describe('sending', () => {
     const send = sent.at(-1)!
     expect(send).toMatchObject({ type: 'dm.send', threadId: 't1', body: 'hey' })
     expect(Object.values(useSocial.getState().pending)).toMatchObject([{ state: 'sending', body: 'hey' }])
-    frame({ type: 'dm.sent', clientMsgId: send.clientMsgId, message: msg(1, { senderId: ME, clientMsgId: String(send.clientMsgId) }) })
+    frame({
+      type: 'dm.sent',
+      clientMsgId: send.clientMsgId,
+      message: msg(1, { senderId: ME, clientMsgId: String(send.clientMsgId) }),
+    })
     expect(useSocial.getState().pending).toEqual({})
     expect(messagesFor(useSocial.getState().messages, 't1')).toHaveLength(1)
   })
@@ -209,7 +224,9 @@ describe('sending', () => {
 describe('threads and unread', () => {
   it('a read elsewhere clears the count; muted threads stay out of the badge', () => {
     const { frame } = fakeBus()
-    useSocial.setState({ threads: { t1: thread({ lastSeq: 2, unread: 2 }), t2: thread({ id: 't2', unread: 4, muted: true }) } })
+    useSocial.setState({
+      threads: { t1: thread({ lastSeq: 2, unread: 2 }), t2: thread({ id: 't2', unread: 4, muted: true }) },
+    })
     expect(totalUnread(useSocial.getState().threads)).toBe(2)
     frame({ type: 'dm.state', threadId: 't1', lastReadSeq: 2, muted: false })
     expect(useSocial.getState().threads.t1!.unread).toBe(0)
@@ -257,10 +274,20 @@ describe('the message card', () => {
 describe('messages on the home grid, and Wendy', () => {
   it('slots the message card in by score, keeping three cards', async () => {
     const { cardsWithMessage } = await import('./homeCard')
-    const ranked = [{ key: 'a', score: 95 }, { key: 'b', score: 70 }, { key: 'c', score: 50 }]
+    const ranked = [
+      { key: 'a', score: 95 },
+      { key: 'b', score: 70 },
+      { key: 'c', score: 50 },
+    ]
     const card = { threadId: 't1', from: 'Sam', count: 1, more: 0, at: '', score: 82 }
-    expect(cardsWithMessage(ranked, card).map((c) => (c.type === 'message' ? 'dm' : c.item.key))).toEqual(['a', 'dm', 'b'])
-    expect(cardsWithMessage(ranked, { ...card, score: 30 }).map((c) => (c.type === 'message' ? 'dm' : c.item.key))).toEqual(['a', 'b', 'c'])
+    expect(cardsWithMessage(ranked, card).map((c) => (c.type === 'message' ? 'dm' : c.item.key))).toEqual([
+      'a',
+      'dm',
+      'b',
+    ])
+    expect(
+      cardsWithMessage(ranked, { ...card, score: 30 }).map((c) => (c.type === 'message' ? 'dm' : c.item.key)),
+    ).toEqual(['a', 'b', 'c'])
     expect(cardsWithMessage([], { ...card, score: 30 })).toHaveLength(1)
   })
 
@@ -279,13 +306,27 @@ describe('messages on the home grid, and Wendy', () => {
 
     useSocial.setState({
       profile: { userId: ME, handle: 'secret_handle', displayName: 'Me', avatarPath: null },
-      friends: [{ profile: { userId: 'sam', handle: 'sam_secret', displayName: 'Sam Secret', avatarPath: null }, status: 'accepted', direction: null, since: '' }],
-      threads: { t1: thread({ unread: 1, lastMessageAt: new Date().toISOString(), lastMessage: msg(1, { body: 'the secret text' }) }) },
+      friends: [
+        {
+          profile: { userId: 'sam', handle: 'sam_secret', displayName: 'Sam Secret', avatarPath: null },
+          status: 'accepted',
+          direction: null,
+          since: '',
+        },
+      ],
+      threads: {
+        t1: thread({
+          unread: 1,
+          lastMessageAt: new Date().toISOString(),
+          lastMessage: msg(1, { body: 'the secret text' }),
+        }),
+      },
     })
     const sent: unknown[] = []
     sendClientState({ send: (m: unknown) => (sent.push(m), true), subscribe: () => () => {} } as unknown as FrameBus)
     const blob = JSON.stringify(sent)
-    for (const secret of ['secret_handle', 'sam_secret', 'Sam Secret', 'the secret text', 't1']) expect(blob).not.toContain(secret)
+    for (const secret of ['secret_handle', 'sam_secret', 'Sam Secret', 'the secret text', 't1'])
+      expect(blob).not.toContain(secret)
     // She's told which part is up and what's waiting (who, how many), never what anyone wrote.
     const people = (sent[0] as { ui: { screen: { people: unknown } } }).ui.screen.people
     expect(people).toEqual({
@@ -464,7 +505,11 @@ describe('what she knows is waiting in People', () => {
     const sam = { userId: 'sam', role: 'member', handle: 'sam', displayName: 'Sam', avatarPath: null }
     const summary = waitingSummary({
       threads: {
-        t1: thread({ unread: 2, lastMessageAt: '2026-10-14T10:00:00Z', lastMessage: msg(2, { body: 'private words' }) }),
+        t1: thread({
+          unread: 2,
+          lastMessageAt: '2026-10-14T10:00:00Z',
+          lastMessage: msg(2, { body: 'private words' }),
+        }),
         t2: thread({ id: 't2', unread: 3, muted: true, members: [{ ...sam, userId: 'jo', displayName: 'Jo' }] }),
         t3: thread({
           id: 't3',
@@ -483,7 +528,12 @@ describe('what she knows is waiting in People', () => {
           direction: 'incoming',
           since: '',
         },
-        { profile: { userId: 'lee', handle: 'lee', displayName: 'Lee', avatarPath: null }, status: 'pending', direction: 'outgoing', since: '' },
+        {
+          profile: { userId: 'lee', handle: 'lee', displayName: 'Lee', avatarPath: null },
+          status: 'pending',
+          direction: 'outgoing',
+          since: '',
+        },
       ],
     })
     expect(summary).toEqual({
@@ -514,5 +564,133 @@ describe('what she knows is waiting in People', () => {
     const people = (sent[0] as unknown as { ui: { screen: { people: Record<string, unknown> } } }).ui.screen.people
     expect(people).toMatchObject({ open: true, view: 'conversation', thread: { id: 't1', with: 'Sam Rivera' } })
     expect(JSON.stringify(sent[0])).not.toContain('private words')
+  })
+})
+
+describe('group chats', () => {
+  const jo = { userId: 'jo', role: 'member', handle: 'jo', displayName: 'Jo Park', avatarPath: null }
+  const group = (over: Partial<Thread> = {}) =>
+    thread({
+      id: 'g1',
+      kind: 'group',
+      title: 'Book club',
+      role: 'owner',
+      members: [
+        { userId: 'sam', role: 'member', handle: 'sam', displayName: 'Sam', avatarPath: null, agentPresent: true },
+        jo,
+      ],
+      ...over,
+    })
+
+  it('makes a group and opens it when it comes back; a bad name or no one picked is never sent', async () => {
+    const { createGroup } = await import('./social')
+    const { bus, sent, frame } = fakeBus()
+    socialConnected(bus)
+    sent.length = 0
+    useUi.setState({ people: true, peopleView: 'newGroup' })
+    expect(createGroup('   ', ['sam'])).toBe(false)
+    expect(createGroup('x'.repeat(81), ['sam'])).toBe(false)
+    expect(createGroup('Book club', [])).toBe(false)
+    expect(sent).toEqual([])
+    expect(createGroup(' Book club ', ['sam', 'jo', 'sam'])).toBe(true)
+    expect(sent).toEqual([{ type: 'group.create', title: 'Book club', userIds: ['sam', 'jo'] }])
+    frame({ type: 'dm.thread', thread: group() })
+    // Back from it is the list, not the form it was made in.
+    expect(useUi.getState()).toMatchObject({ dmThread: 'g1', peopleView: 'home' })
+  })
+
+  it('asks agents with agentMentions (deduped, three at most), and a retry asks them again', () => {
+    const { bus, sent, frame } = fakeBus()
+    socialConnected(bus)
+    sendDm('g1', 'Thursday?', ['sam', 'sam', 'jo', 'kim', 'lee'])
+    const out = sent.at(-1)!
+    expect(out).toMatchObject({ type: 'dm.send', agentMentions: ['sam', 'jo', 'kim'] })
+    frame({ type: 'error', request: 'dm.send', code: 'rate_limited', clientMsgId: out.clientMsgId })
+    retryDm(String(out.clientMsgId))
+    expect(sent.at(-1)).toMatchObject({ clientMsgId: out.clientMsgId, agentMentions: ['sam', 'jo', 'kim'] })
+    sendDm('g1', 'no one asked')
+    expect(sent.at(-1)).not.toHaveProperty('agentMentions')
+  })
+
+  it('leaving drops the group and its messages, and closes it if open; a removal refetches', () => {
+    const { bus, sent, frame } = fakeBus()
+    socialConnected(bus)
+    frame({ type: 'dm.threads', threads: [group(), thread()] })
+    frame({ type: 'dm.history', threadId: 'g1', messages: [msg(1, { threadId: 'g1' })] })
+    useUi.setState({ people: true, dmThread: 'g1' })
+    frame({ type: 'group.left', threadId: 'g1' })
+    const s = useSocial.getState()
+    expect(Object.keys(s.threads)).toEqual(['t1'])
+    expect(s.messages.g1).toBeUndefined()
+    expect(useUi.getState()).toMatchObject({ people: true, dmThread: null })
+    sent.length = 0
+    frame({ type: 'group.removed', threadId: 'g2', userId: 'jo' })
+    expect(sent).toEqual([{ type: 'dm.threads' }])
+  })
+
+  it('says why a group change failed; assistant_off points to the settings', async () => {
+    const { useToast } = await import('../stores/toast')
+    const { frame } = fakeBus()
+    useToast.setState({ toasts: [] })
+    expect(frame({ type: 'error', request: 'group.rename', code: 'forbidden' })).toBe(true)
+    expect(frame({ type: 'error', request: 'group.agent', code: 'assistant_off' })).toBe(true)
+    const [forbidden, off] = useToast.getState().toasts
+    expect(forbidden).toMatchObject({ text: 'Only the owner or an admin can do that', tone: 'error' })
+    expect(off?.text).toBe('Turn on your assistant for friends first')
+    useUi.setState({ people: true })
+    off?.action?.run()
+    expect(useUi.getState().peopleView).toBe('profile')
+  })
+
+  it("names each speaker, keeps a name for someone who left, and labels an agent as the owner's assistant", async () => {
+    const { speakerOf } = await import('../stores/social')
+    const { frame } = fakeBus()
+    frame({ type: 'dm.threads', threads: [group()] })
+    // Jo leaves: no longer a member, still a name.
+    frame({ type: 'dm.threads', threads: [group({ members: [group().members[0]!] })] })
+    const s = useSocial.getState()
+    const t = s.threads.g1!
+    expect(speakerOf(msg(1, { threadId: 'g1', senderId: 'jo' }), t, ME, s.names)).toMatchObject({
+      side: 'them',
+      label: 'Jo Park',
+    })
+    expect(speakerOf(msg(2, { threadId: 'g1', senderId: 'gone' }), t, ME, s.names).label).toBe('Someone')
+    expect(speakerOf(msg(3, { threadId: 'g1', senderId: 'sam', senderKind: 'agent' }), t, ME, s.names)).toMatchObject({
+      side: 'them',
+      label: "Sam's assistant (AI)",
+      agent: true,
+      editable: false,
+    })
+    expect(speakerOf(msg(4, { threadId: 'g1', senderId: ME, senderKind: 'agent' }), t, ME, s.names)).toMatchObject({
+      side: 'me',
+      label: 'Your assistant (AI)',
+    })
+    expect(speakerOf(msg(5, { threadId: 'g1', senderId: ME }), t, ME, s.names)).toMatchObject({
+      side: 'me',
+      label: null,
+    })
+  })
+
+  it("hides a blocked person's messages in a group only", async () => {
+    const { hiddenFrom } = await import('../stores/social')
+    const blocks = [{ userId: 'jo', handle: 'jo', blockedAt: '' }]
+    expect(hiddenFrom({ senderId: 'jo' }, { kind: 'group' }, blocks)).toBe(true)
+    expect(hiddenFrom({ senderId: 'sam' }, { kind: 'group' }, blocks)).toBe(false)
+    expect(hiddenFrom({ senderId: 'jo' }, { kind: 'dm' }, blocks)).toBe(false)
+  })
+
+  it('her client_state names a group by its title, never what anyone wrote in it', async () => {
+    const { sendClientState } = await import('../aelora/router')
+    useSocial.setState({
+      threads: {
+        g1: group({ unread: 2, lastMessageAt: '2026-10-14T10:00:00Z', lastMessage: msg(2, { body: 'group_secret' }) }),
+      },
+    })
+    useUi.setState({ people: true, dmThread: 'g1' })
+    const { bus, sent } = fakeBus()
+    sendClientState(bus)
+    const people = (sent[0] as unknown as { ui: { screen: { people: Record<string, unknown> } } }).ui.screen.people
+    expect(people).toMatchObject({ thread: { id: 'g1', with: 'Book club' }, from: [{ name: 'Book club', count: 2 }] })
+    expect(JSON.stringify(sent[0])).not.toContain('group_secret')
   })
 })

@@ -10,15 +10,17 @@ import {
   unblockUser,
 } from '../../social/social'
 import type { FriendRow, Thread } from '../../social/types'
-import { incomingRequests, nameOf, threadList, threadName, useSocial } from '../../stores/social'
+import { hiddenFrom, incomingRequests, nameOf, personIn, threadList, threadName, useSocial } from '../../stores/social'
 import { ui, useUi } from '../../stores/ui'
 import { ROLE } from '../brand'
 import { Panel } from '../cards/Panel'
 import { ago } from '../format'
 import { morph, press } from '../motion'
 import { AddFriend } from './AddFriend'
-import { AssistantAvatar, Avatar, Confirm } from './bits'
+import { AssistantAvatar, Avatar, Confirm, StackedAvatars } from './bits'
+import { GroupInfo } from './GroupInfo'
 import { HandlePicker } from './HandlePicker'
+import { NewGroup } from './NewGroup'
 import { ProfileView } from './ProfileView'
 import { ThreadBody, ThreadComposer } from './PeopleThread'
 
@@ -32,6 +34,9 @@ export function PeoplePanel() {
   const view = useUi((s) => s.peopleView)
   const setView = ui.peopleView
   const thread = dmThread ? threads[dmThread] : undefined
+  // A group's info (members, name, leave) in place of its messages; a new conversation starts on its messages.
+  const [info, setInfo] = useState<string | null>(null)
+  const showInfo = !!thread && thread.kind === 'group' && info === thread.id
 
   const back = (label: string, to: () => void) => (
     <button onClick={to} className="flex items-center gap-1 text-left" aria-label={`Back to ${label}`}>
@@ -63,8 +68,22 @@ export function PeoplePanel() {
   else if (profile === null) {
     title = 'Pick a handle'
     body = <HandlePicker />
+  } else if (dmThread && showInfo) {
+    kicker = back(threadName(thread), () => setInfo(null))
+    title = 'Group info'
+    body = <GroupInfo key={dmThread} thread={thread} />
   } else if (dmThread) {
-    kicker = back('People', () => ui.openDm(null))
+    kicker =
+      thread?.kind === 'group' ? (
+        <span className="flex flex-wrap items-center gap-x-4">
+          {back('People', () => ui.openDm(null))}
+          <button onClick={() => setInfo(thread.id)} className="underline decoration-current/30 underline-offset-4">
+            Group info
+          </button>
+        </span>
+      ) : (
+        back('People', () => ui.openDm(null))
+      )
     title = thread ? threadName(thread) : 'Conversation'
     body = <ThreadBody key={dmThread} id={dmThread} />
     footer = thread ? <ThreadComposer id={dmThread} /> : undefined
@@ -72,6 +91,10 @@ export function PeoplePanel() {
     kicker = back('People', () => setView('home'))
     title = 'Add a friend'
     body = <AddFriend />
+  } else if (view === 'newGroup') {
+    kicker = back('People', () => setView('home'))
+    title = 'New group'
+    body = <NewGroup />
   } else if (view === 'profile') {
     kicker = back('People', () => setView('home'))
     title = 'Your profile'
@@ -80,7 +103,10 @@ export function PeoplePanel() {
     kicker = back('People', () => setView('home'))
     title = 'Blocked'
     body = <Blocked />
-  } else body = <Home onAdd={() => setView('add')} onBlocked={() => setView('blocked')} />
+  } else
+    body = (
+      <Home onAdd={() => setView('add')} onGroup={() => setView('newGroup')} onBlocked={() => setView('blocked')} />
+    )
 
   return (
     <Panel
@@ -106,7 +132,7 @@ function Loading() {
   )
 }
 
-function Home({ onAdd, onBlocked }: { onAdd: () => void; onBlocked: () => void }) {
+function Home({ onAdd, onGroup, onBlocked }: { onAdd: () => void; onGroup: () => void; onBlocked: () => void }) {
   const { friends, threads } = useSocial()
   const requests = useMemo(() => incomingRequests(friends), [friends])
   const list = useMemo(() => threadList(threads), [threads])
@@ -115,16 +141,38 @@ function Home({ onAdd, onBlocked }: { onAdd: () => void; onBlocked: () => void }
 
   return (
     <div className="grid gap-6">
-      <motion.button
-        whileTap={press}
-        onClick={onAdd}
-        className="glass-pill flex h-12 items-center gap-3 rounded-[8px] px-4 text-left text-[15px] font-semibold text-strong"
-      >
-        <svg viewBox="0 0 16 16" className="h-4 w-4 text-accent" aria-hidden>
-          <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" />
-        </svg>
-        Add a friend
-      </motion.button>
+      <div className="flex flex-wrap gap-2">
+        <motion.button
+          whileTap={press}
+          onClick={onAdd}
+          className="glass-pill flex h-12 min-w-0 flex-1 items-center gap-3 rounded-[8px] px-4 text-left text-[15px] font-semibold text-strong"
+        >
+          <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-accent" aria-hidden>
+            <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" />
+          </svg>
+          Add a friend
+        </motion.button>
+        {accepted.length > 0 && (
+          <motion.button
+            whileTap={press}
+            onClick={onGroup}
+            className="glass-pill flex h-12 min-w-0 flex-1 items-center gap-3 rounded-[8px] px-4 text-left text-[15px] font-semibold text-strong"
+          >
+            <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-accent" aria-hidden>
+              <circle cx="6" cy="6" r="2.4" stroke="currentColor" strokeWidth={1.6} fill="none" />
+              <circle cx="11" cy="7" r="2" stroke="currentColor" strokeWidth={1.6} fill="none" />
+              <path
+                d="M1.8 13.5c.6-2.3 2.2-3.4 4.2-3.4s3.6 1.1 4.2 3.4M10.2 10.3c1.8-.2 3.3.8 3.9 3.2"
+                stroke="currentColor"
+                strokeWidth={1.6}
+                fill="none"
+                strokeLinecap="round"
+              />
+            </svg>
+            New group
+          </motion.button>
+        )}
+      </div>
 
       {requests.length > 0 && (
         <Section title="Asked to be friends">
@@ -247,7 +295,27 @@ function Row({
 
 function ThreadRow({ t }: { t: Thread }) {
   const last = t.lastMessage
-  const line = !last ? 'No messages yet' : last.deletedAt ? 'Message deleted' : last.body
+  const blocks = useSocial((s) => s.blocks)
+  const names = useSocial((s) => s.names)
+  const me = useSocial((s) => s.profile?.userId ?? null)
+  const group = t.kind === 'group'
+  // In a group, who said the last thing: "Sam: …" (yours "You: …"; an agent's is their assistant).
+  const first = (id: string) => nameOf(personIn(t, id, names)).split(/\s+/)[0]
+  const by =
+    !group || !last
+      ? ''
+      : last.senderKind === 'agent'
+        ? `${last.senderId === me ? 'Your' : `${first(last.senderId)}'s`} assistant: `
+        : last.senderId === me
+          ? 'You: '
+          : `${first(last.senderId)}: `
+  const line = !last
+    ? 'No messages yet'
+    : hiddenFrom(last, t, blocks)
+      ? 'Hidden message'
+      : last.deletedAt
+        ? 'Message deleted'
+        : by + last.body
   const who = t.members[0] ?? { displayName: threadName(t), handle: null }
   // A friend's assistant: the picture its owner chose for it (or the default assistant tile).
   const assistantPath = useSocial(
@@ -256,12 +324,20 @@ function ThreadRow({ t }: { t: Thread }) {
   return (
     <Row
       who={who}
-      icon={t.kind === 'assistant' && t.role !== 'owner' ? <AssistantAvatar path={assistantPath} /> : undefined}
+      icon={
+        group ? (
+          <StackedAvatars who={t.members} />
+        ) : t.kind === 'assistant' && t.role !== 'owner' ? (
+          <AssistantAvatar path={assistantPath} />
+        ) : undefined
+      }
       name={
         t.kind === 'assistant' ? (
           <>
             {threadName(t)} <AiTag />
           </>
+        ) : group ? (
+          threadName(t)
         ) : undefined
       }
       onClick={() => ui.openDm(t.id)}

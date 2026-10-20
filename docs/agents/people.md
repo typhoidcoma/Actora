@@ -1,6 +1,6 @@
-# People: friends, messages, her receptionist
+# People: friends, messages, groups, her receptionist
 
-Handles, friends, direct messages, and an assistant mode where friends can talk to the user's agent. Protocol is
+Handles, friends, direct messages, group chats, and an assistant mode where friends can talk to the user's agent. Protocol is
 Aelora's (`H:\Projects\Aelora\docs\SOCIAL.md`, `SOCIAL-CLIENT.md`). Full reference: [social.md](../social.md).
 
 ## The rule that shapes everything
@@ -14,15 +14,16 @@ priority list, pills or logs breaks this rule. Don't.
 
 ## Where things are
 
-| What                                                  | File                       |
-| ----------------------------------------------------- | -------------------------- |
-| Protocol: connect, every request, `handleSocialFrame` | `src/social/social.ts`     |
-| Types (`Thread`, `DmMessage`, `SHAREABLE`, …)         | `src/social/types.ts`      |
-| Store + pure helpers (unread, `isMine`, names)        | `src/stores/social.ts`     |
-| Home message card                                     | `src/social/homeCard.ts`   |
-| Profile pictures (crop, upload, URL)                  | `src/social/pictures.ts`   |
-| Panel, thread, profile, receptionist settings         | `src/ui/people/*`          |
-| Mock (Sam, Priya, Jo, a handle to claim)              | `src/aelora/mockSocial.ts` |
+| What                                                  | File                                                |
+| ----------------------------------------------------- | --------------------------------------------------- |
+| Protocol: connect, every request, `handleSocialFrame` | `src/social/social.ts`                              |
+| Types (`Thread`, `DmMessage`, `SHAREABLE`, …)         | `src/social/types.ts`                               |
+| Store + pure helpers (unread, `isMine`, names)        | `src/stores/social.ts`                              |
+| Home message card                                     | `src/social/homeCard.ts`                            |
+| Profile pictures (crop, upload, URL)                  | `src/social/pictures.ts`                            |
+| Panel, thread, profile, receptionist settings         | `src/ui/people/*`                                   |
+| New group, group info (members, roles, her, leave)    | `NewGroup.tsx`, `GroupInfo.tsx` in `src/ui/people/` |
+| Mock (Sam, Priya, Jo, a group, a handle to claim)     | `src/aelora/mockSocial.ts`                          |
 
 ## Rules
 
@@ -33,7 +34,12 @@ priority list, pills or logs breaks this rule. Don't.
 - **People stays open until the user closes it.** No idle return home, no chat pulled over it
   (`idleHome.ts`, `autoChat.ts`, `herOpenChat`).
 - Background loads fail silently; user actions toast; form errors show inline (`errors[form]`).
-- Assistants are never mistaken for people: `AssistantAvatar` carries "AI", labels say "(AI)".
+- Assistants are never mistaken for people: `AssistantAvatar` carries "AI", labels say "(AI)". In a group too: an
+  agent reply carries its owner's `senderId`, and `speakerOf` labels it "Sam's assistant (AI)", never "Sam".
+- **Groups hide blocked senders on the client** (`hiddenFrom`; the server still delivers them). Keep the row, so seqs
+  line up. Block is only offered in one-to-one threads: a group's `members[0]` is not "the other person".
+- Group controls follow `thread.role` (owner/admin manage, only the owner sets roles). Someone who left still needs a
+  name: `personIn(t, id, names)`.
 
 ## Check
 

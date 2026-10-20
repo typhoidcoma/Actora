@@ -60,6 +60,32 @@ export function Avatar({
 }
 
 /**
+ * A group's face: the first few members' pictures, overlapping, in the same
+ * square a single picture takes (so a group row lines up with the rest).
+ */
+export function StackedAvatars({
+  who,
+  size = 40,
+}: {
+  who: Array<{ displayName: string | null; handle: string | null; avatarPath?: string | null }>
+  size?: number
+}) {
+  const few = who.slice(0, 3)
+  if (few.length < 2) return <Avatar who={few[0] ?? null} size={size} />
+  const small = Math.round(size * (few.length === 2 ? 0.68 : 0.58))
+  const step = (size - small) / (few.length - 1)
+  return (
+    <span aria-hidden className="relative shrink-0" style={{ width: size, height: size }}>
+      {few.map((w, i) => (
+        <span key={i} className="absolute" style={{ left: i * step, top: i * step }}>
+          <Avatar who={w} size={small} />
+        </span>
+      ))}
+    </span>
+  )
+}
+
+/**
  * A receptionist (someone's assistant): the picture its owner chose, or a
  * default that can't be mistaken for a person: an orb-like glow in the agent
  * colour with a small "AI".

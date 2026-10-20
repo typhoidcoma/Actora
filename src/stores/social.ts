@@ -5,6 +5,7 @@ import type {
   DmMessage,
   FriendRow,
   Invite,
+  Member,
   OwnProfile,
   Pending,
   Profile,
@@ -41,7 +42,14 @@ export interface SocialState {
   preview: AssistantPreview | null
   /** Inline errors by form: 'claim' (pick a handle), 'find', 'invite', 'redeem'. */
   errors: Record<string, string | null>
+  /**
+   * Everyone seen in a thread, by userId: someone who left a group drops out of
+   * its members, but their old messages still need a name and a face.
+   */
+  names: Record<string, Known>
 }
+
+export type Known = Pick<Member, 'displayName' | 'handle' | 'avatarPath'>
 
 const EMPTY: SocialState = {
   profile: undefined,
@@ -58,6 +66,7 @@ const EMPTY: SocialState = {
   finding: false,
   invite: null,
   errors: {},
+  names: {},
 }
 
 export const useSocial = create<SocialState>(() => ({ ...EMPTY }))
@@ -208,6 +217,34 @@ export function ownerName(t: Thread): string {
   return nameOf(t.members.find((m) => m.userId === t.ownerId) ?? t.members[0])
 }
 
+/** The names cache with these threads' members folded in (nobody is ever dropped from it). */
+export function withNames(names: Record<string, Known>, threads: Thread[]): Record<string, Known> {
+  let next = names
+  for (const t of threads)
+    for (const m of t.members) {
+      const prev = next[m.userId]
+      if (prev && prev.displayName === m.displayName && prev.handle === m.handle && prev.avatarPath === m.avatarPath)
+        continue
+      if (next === names) next = { ...names }
+      next[m.userId] = { displayName: m.displayName, handle: m.handle, avatarPath: m.avatarPath }
+    }
+  return next
+}
+
+/** Who wrote something in a thread: a member now, else someone seen before, else null ("Someone"). */
+export function personIn(t: Thread, userId: string, names: Record<string, Known> = {}): Known | null {
+  return t.members.find((m) => m.userId === userId) ?? names[userId] ?? null
+}
+
+/**
+ * A group message from someone you've blocked: hidden on your side. Blocks don't
+ * take anyone out of a group and the server still delivers their messages, so
+ * this is the client's job. Its row stays (as "Hidden message"), so seqs line up.
+ */
+export function hiddenFrom(m: Pick<DmMessage, 'senderId'>, t: Pick<Thread, 'kind'>, blocks: BlockRow[]): boolean {
+  return t.kind === 'group' && blocks.some((b) => b.userId === m.senderId)
+}
+
 /** How one message shows: which side, a label over it, and whether it's an agent's (AI) words. */
 export interface Speaker {
   side: 'me' | 'them'
@@ -222,8 +259,23 @@ export interface Speaker {
  * labelled as the assistant's (AI), never as the owner; the owner writing in
  * person is labelled with their name for the friend. Elsewhere: yours or theirs.
  */
-export function speakerOf(m: DmMessage, t: Thread, me: string | null): Speaker {
+export function speakerOf(m: DmMessage, t: Thread, me: string | null, names: Record<string, Known> = {}): Speaker {
   const mine = isMine(m, me)
+  if (t.kind === 'group') {
+    // Many voices: each of theirs is named. An agent reply carries its owner's
+    // senderId, so it's the owner's assistant (AI), never the owner.
+    if (m.senderKind === 'agent')
+      return m.senderId === me
+        ? { side: 'me', label: 'Your assistant (AI)', agent: true, editable: true }
+        : {
+            side: 'them',
+            label: `${nameOf(personIn(t, m.senderId, names))}'s assistant (AI)`,
+            agent: true,
+            editable: false,
+          }
+    if (mine) return { side: 'me', label: null, agent: false, editable: true }
+    return { side: 'them', label: nameOf(personIn(t, m.senderId, names)), agent: false, editable: false }
+  }
   if (t.kind !== 'assistant') return { side: mine ? 'me' : 'them', label: null, agent: false, editable: mine }
   const owner = t.role === 'owner'
   if (m.senderKind === 'agent')

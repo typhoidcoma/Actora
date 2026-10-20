@@ -4,11 +4,13 @@ import { useAgent } from '../stores/agent'
 import {
   baselineOf,
   contiguousTop,
+  hiddenFrom,
   nameOf,
   recount,
   social,
   useSocial,
   withMessage,
+  withNames,
   type SocialState,
 } from '../stores/social'
 import { useEntities } from '../stores/entities'
@@ -26,13 +28,18 @@ import type { AssistantPreview, BlockRow, DmMessage, FriendRow, OwnProfile, Pend
 
 const SEND_TIMEOUT_MS = 15_000
 const BODY_MAX = 4000
+const TITLE_MAX = 80
+/** A group holds 32: you and 31 others. */
+const GROUP_OTHERS_MAX = 31
+/** Agents one message can ask to answer. */
+const MENTIONS_MAX = 3
 
 let bus: FrameBus | null = null
 const timers = new Map<string, ReturnType<typeof setTimeout>>()
 /** The read position last asked for per thread (so a busy thread doesn't resend it). */
 const readSent = new Map<string, number>()
-/** dm.open asked for this person: show the thread when it comes back. */
-let opening: { kind: 'dm' | 'assistant'; userId: string } | null = null
+/** dm.open asked for this person (or a group was just made): show the thread when it comes back. */
+let opening: { kind: 'dm' | 'assistant'; userId: string } | { kind: 'group' } | null = null
 /** The handle last looked up: a slower reply to an earlier lookup is ignored. */
 let lastFind = ''
 /** A DM deep link (/?dm=<id>, a push) waiting for the thread list. */
@@ -69,6 +76,8 @@ export function socialConnected(b: FrameBus): void {
   b.send({ type: 'profile.get' })
   b.send({ type: 'friends.list' })
   b.send({ type: 'dm.threads' })
+  // Who you've blocked: their messages in a group are hidden on your side.
+  b.send({ type: 'friends.blocks' })
   sync()
   // Anything still on its way is safe to resend: clientMsgId makes it idempotent.
   for (const p of Object.values(useSocial.getState().pending)) if (p.state === 'sending') transmit(p)
@@ -108,7 +117,11 @@ function sync(only?: string[]): void {
 /** Claim (or change) your handle. A leading @ is fine. */
 export function claimHandle(handle: string, displayName?: string): void {
   social.setError('claim', null)
-  out({ type: 'profile.claim', handle: handle.trim().replace(/^@/, ''), ...(displayName?.trim() ? { displayName: displayName.trim() } : {}) })
+  out({
+    type: 'profile.claim',
+    handle: handle.trim().replace(/^@/, ''),
+    ...(displayName?.trim() ? { displayName: displayName.trim() } : {}),
+  })
 }
 
 /** Your display name ("" clears it) and who can find you. */
@@ -200,6 +213,30 @@ export function openAssistant(ownerId: string): void {
   out({ type: 'assistant.open', userId: ownerId })
 }
 
+// ---- groups (every reply is a fresh dm.thread, or group.left; the others hear dm.membership) ----
+
+/** A group of your friends; People shows it when it comes back. */
+export function createGroup(title: string, userIds: string[]): boolean {
+  const name = title.trim()
+  const ids = [...new Set(userIds)]
+  if (!name || name.length > TITLE_MAX || !ids.length || ids.length > GROUP_OTHERS_MAX) return false
+  opening = { kind: 'group' }
+  return out({ type: 'group.create', title: name, userIds: ids })
+}
+export const addToGroup = (threadId: string, userIds: string[]) =>
+  userIds.length > 0 && out({ type: 'group.add', threadId, userIds: [...new Set(userIds)] })
+export const removeFromGroup = (threadId: string, userId: string) => out({ type: 'group.remove', threadId, userId })
+export const leaveGroup = (threadId: string) => out({ type: 'group.leave', threadId })
+export function renameGroup(threadId: string, title: string): boolean {
+  const name = title.trim()
+  return !!name && name.length <= TITLE_MAX && out({ type: 'group.rename', threadId, title: name })
+}
+/** Owner only. */
+export const setGroupRole = (threadId: string, userId: string, role: 'admin' | 'member') =>
+  out({ type: 'group.role', threadId, userId, role })
+/** Your agent joins or leaves the group (needs your assistant on for friends). */
+export const setMyAgent = (threadId: string, present: boolean) => out({ type: 'group.agent', threadId, present })
+
 /** Open a thread from a link or push: now if it's known, else when the list arrives. */
 export function showThread(threadId: string): void {
   if (useSocial.getState().threads[threadId]) ui.openPeople(threadId)
@@ -226,11 +263,19 @@ function history_(threadId: string, beforeSeq?: number): void {
     useSocial.setState((s) => ({ loading: { ...s.loading, [threadId]: true } }))
 }
 
-/** Optimistic: the bubble shows at once as "sending". */
-export function sendDm(threadId: string, text: string): boolean {
+/** Optimistic: the bubble shows at once as "sending". In a group, agentMentions asks those owners' agents to answer. */
+export function sendDm(threadId: string, text: string, agentMentions: string[] = []): boolean {
   const body = text.trim()
   if (!body || body.length > BODY_MAX) return false
-  const p: Pending = { clientMsgId: newId(), threadId, body, state: 'sending', at: Date.now() }
+  const mentions = [...new Set(agentMentions)].slice(0, MENTIONS_MAX)
+  const p: Pending = {
+    clientMsgId: newId(),
+    threadId,
+    body,
+    ...(mentions.length ? { agentMentions: mentions } : {}),
+    state: 'sending',
+    at: Date.now(),
+  }
   useSocial.setState((s) => ({ pending: { ...s.pending, [p.clientMsgId]: p } }))
   play('sent')
   transmit(p)
@@ -272,7 +317,13 @@ function transmit(p: Pending): void {
     p.clientMsgId,
     setTimeout(() => fail(p.clientMsgId, 'timeout'), SEND_TIMEOUT_MS),
   )
-  out({ type: 'dm.send', threadId: p.threadId, body: p.body, clientMsgId: p.clientMsgId })
+  out({
+    type: 'dm.send',
+    threadId: p.threadId,
+    body: p.body,
+    clientMsgId: p.clientMsgId,
+    ...(p.agentMentions?.length ? { agentMentions: p.agentMentions } : {}),
+  })
 }
 
 function fail(clientMsgId: string, code: string): void {
@@ -312,8 +363,29 @@ function put(list: DmMessage[]): void {
   })
 }
 
+/** You left (or on another device): the group goes, with its messages and anything still sending. */
+function dropThread(id: string): void {
+  if (!id) return
+  for (const p of Object.values(useSocial.getState().pending)) if (p.threadId === id) clearTimer(p.clientMsgId)
+  useSocial.setState((s) => {
+    const strip = <T>(r: Record<string, T>) => Object.fromEntries(Object.entries(r).filter(([k]) => k !== id))
+    return {
+      threads: strip(s.threads),
+      messages: strip(s.messages),
+      baselines: strip(s.baselines),
+      loading: strip(s.loading),
+      pending: Object.fromEntries(Object.entries(s.pending).filter(([, p]) => p.threadId !== id)),
+    }
+  })
+  readSent.delete(id)
+  if (useUi.getState().dmThread === id) ui.openDm(null)
+}
+
 const isMessage = (m: unknown): m is DmMessage =>
-  !!m && typeof m === 'object' && typeof (m as DmMessage).threadId === 'string' && typeof (m as DmMessage).seq === 'number'
+  !!m &&
+  typeof m === 'object' &&
+  typeof (m as DmMessage).threadId === 'string' &&
+  typeof (m as DmMessage).seq === 'number'
 const messageList = (v: unknown): DmMessage[] => (Array.isArray(v) ? v.filter(isMessage) : [])
 
 // ---- inbound ----
@@ -361,7 +433,8 @@ export function handleSocialFrame(f: ServerFrame, b: FrameBus): boolean {
       return true
     case 'friends.found': {
       // query echoes the raw input ({handle} or {email}): an earlier lookup's late reply isn't this one.
-      const query = typeof f.query === 'object' && f.query ? String(Object.values(f.query)[0] ?? '') : String(f.query ?? '')
+      const query =
+        typeof f.query === 'object' && f.query ? String(Object.values(f.query)[0] ?? '') : String(f.query ?? '')
       if (lastFind && query.replace(/^@/, '').toLowerCase() !== lastFind) return true
       useSocial.setState({ finding: false, found: { query, profile: (f.profile ?? null) as Profile | null } })
       return true
@@ -390,10 +463,11 @@ export function handleSocialFrame(f: ServerFrame, b: FrameBus): boolean {
     case 'dm.threads': {
       const list = Array.isArray(f.threads) ? (f.threads as Thread[]) : []
       // The server's counts are the truth whenever it sends them: recount from here.
-      useSocial.setState({
+      useSocial.setState((s) => ({
         threads: Object.fromEntries(list.map((t) => [t.id, t])),
         baselines: Object.fromEntries(list.map((t) => [t.id, baselineOf(t)])),
-      })
+        names: withNames(s.names, list),
+      }))
       if (wantThread) {
         const id = wantThread
         wantThread = null
@@ -407,22 +481,34 @@ export function handleSocialFrame(f: ServerFrame, b: FrameBus): boolean {
       useSocial.setState((s) => ({
         threads: { ...s.threads, [t.id]: t },
         baselines: { ...s.baselines, [t.id]: baselineOf(t) },
+        names: withNames(s.names, [t]),
       }))
       const asked = opening
       const answers =
         asked &&
-        (asked.kind === 'assistant'
-          ? t.kind === 'assistant' && t.ownerId === asked.userId
-          : t.kind === 'dm' && t.members.some((m) => m.userId === asked.userId))
+        (asked.kind === 'group'
+          ? t.kind === 'group' && t.role === 'owner' && !t.lastSeq
+          : asked.kind === 'assistant'
+            ? t.kind === 'assistant' && t.ownerId === asked.userId
+            : t.kind === 'dm' && t.members.some((m) => m.userId === asked.userId))
       if (answers) {
         opening = null
-        if (useUi.getState().people) ui.openDm(t.id)
+        // A new group came from the New group form: back (or leaving) goes to the list, not the form.
+        if (!useUi.getState().people) return true
+        if (asked.kind === 'group') ui.openPeople(t.id)
+        else ui.openDm(t.id)
       }
       return true
     }
     case 'dm.membership':
+    case 'group.removed':
       out({ type: 'dm.threads' })
       return true
+    case 'group.left': {
+      const id = String(f.threadId ?? '')
+      dropThread(id)
+      return true
+    }
     case 'dm.resync':
       sync()
       return true
@@ -434,7 +520,9 @@ export function handleSocialFrame(f: ServerFrame, b: FrameBus): boolean {
       return true
     }
     case 'dm.synced': {
-      const threads = Array.isArray(f.threads) ? (f.threads as Array<{ threadId: string; messages: unknown; more?: boolean }>) : []
+      const threads = Array.isArray(f.threads)
+        ? (f.threads as Array<{ threadId: string; messages: unknown; more?: boolean }>)
+        : []
       for (const t of threads) {
         put(messageList(t.messages))
         if (t.more) sync([t.threadId]) // a long gap comes in pages
@@ -458,11 +546,12 @@ export function handleSocialFrame(f: ServerFrame, b: FrameBus): boolean {
         // A new message from someone else (a friend, or a friend's assistant): a soft tone,
         // unless that conversation is muted or already open in front of you.
         if (f.type === 'dm.message' && m.senderId !== me() && !m.deletedAt) {
-          const t = useSocial.getState().threads[m.threadId]
+          const s = useSocial.getState()
+          const t = s.threads[m.threadId]
           const u = useUi.getState()
           const looking =
             u.people && u.dmThread === m.threadId && typeof document !== 'undefined' && document.hasFocus()
-          if (!t?.muted && !looking) play('message')
+          if (!t?.muted && !looking && !(t && hiddenFrom(m, t, s.blocks))) play('message')
         }
         put([f.message])
         // Ours from another device (or the echo of this one) clears a matching bubble.
@@ -523,9 +612,19 @@ const SAY: Record<string, string> = {
   social_unavailable: "People isn't available right now",
 }
 
+/** A group change that didn't go through, in the user's words (Aelora SOCIAL-CLIENT.md). */
+const GROUP_SAY: Record<string, string> = {
+  forbidden: 'Only the owner or an admin can do that',
+  group_full: 'Groups can have up to 32 people',
+  assistant_off: 'Turn on your assistant for friends first',
+  not_found: "That group or person isn't available",
+  rate_limited: 'Too many group changes today. Try again tomorrow',
+  bad_request: 'Give the group a name and at least one friend',
+}
+
 function socialError(f: ServerFrame): boolean {
   const request = typeof f.request === 'string' ? f.request : ''
-  if (!/^(profile|friends|dm|assistant)\./.test(request)) return false
+  if (!/^(profile|friends|dm|assistant|group)\./.test(request)) return false
   const code = String(f.code ?? 'failed')
 
   if (code === 'guest_not_allowed') {
@@ -545,7 +644,17 @@ function socialError(f: ServerFrame): boolean {
     useSocial.setState((s) => ({ loading: { ...s.loading, [id]: false } }))
     return true
   }
-  if (request === 'dm.open' || request === 'assistant.open') opening = null
+  if (request === 'dm.open' || request === 'assistant.open' || request === 'group.create') opening = null
+  if (request.startsWith('group.')) {
+    // Gone from it, or someone isn't there any more: the list catches up.
+    if (code === 'not_found') out({ type: 'dm.threads' })
+    toast.error(GROUP_SAY[code] ?? SAY[code] ?? "That didn't go through", {
+      ...(code === 'assistant_off'
+        ? { action: { label: 'Settings', run: () => ui.peopleView('profile') }, ms: 6000 }
+        : {}),
+    })
+    return true
+  }
 
   const form = FORM_OF[request]
   if (form) {

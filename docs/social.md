@@ -29,6 +29,30 @@ she reads it with Aelora's `read_messages` tool. When you want to answer, she dr
 | Take over                       | `ThreadComposer`                                                | In your own assistant thread (`kind: 'assistant'`, `role: 'owner'`) the composer says writing takes over: she steps back for 10 minutes (enforced server side).                                                        |
 | Hide from friends               | "What friends can hear" in `AssistantSettings.tsx`              | Each previewed entry has Hide, which sets `assistant_hidden` on that item: `goal.update` for goals, `vault.update` for everything else (`hideFromAssistant` in `social.ts`).                                           |
 | Profile pictures                | `PictureEditor.tsx`, `src/social/pictures.ts`                   | One for you, one for your assistant. See below.                                                                                                                                                                        |
+| Group chats                     | `NewGroup.tsx`, `GroupInfo.tsx`, `PeopleThread.tsx`             | See "Group chats" below.                                                                                                                                                                                               |
+
+### Group chats
+
+A group is a thread with `kind: 'group'`, a `title` and up to 32 people, so history, sending, unread, sync, read
+marks and push work as for a DM. Only making and running it is different (Aelora `SOCIAL.md` part 4).
+
+- **Making one:** "New group" on People (shown once you have a friend) opens `NewGroup.tsx`: tap friends (blocked
+  people are left out), and the name fills itself in from them ("You, Sam, Jo") so nothing has to be typed.
+  `createGroup` sends `group.create`; the group opens when its `dm.thread` comes back, with People's list behind it.
+- **Group info** (the kicker's "Group info" in a group): `GroupInfo.tsx`. Controls follow your `role`: owner and
+  admins rename, add (from your friends) and remove; an admin can't remove admins or the owner; only the owner makes
+  admins. Everyone gets "Bring my assistant", Mute and Leave.
+- **Senders:** each run of theirs is labelled with the sender's name. Someone who left isn't in `members` any more;
+  the store's `names` cache (everyone seen in a thread) keeps their name, else "Someone".
+- **Blocked people stay in groups.** The server still delivers their messages, so the client hides them
+  (`hiddenFrom`): the row stays, reading "Hidden message", so seqs line up. No sound plays for them. Blocking is
+  offered only in one-to-one threads (in a group there's no single person to block).
+- **Agents:** "Bring my assistant" sends `group.agent` (needs receptionist mode on; `assistant_off` toasts with a
+  Settings button to Your profile). In a group with agents present, the composer shows "Ask Sam's assistant" pills
+  (yours too, if you brought her), up to three, sent as `dm.send {agentMentions}`. Her reply is `senderKind: 'agent'`
+  with the owner's `senderId`, labelled "Sam's assistant (AI)" (or "Your assistant (AI)"), never as the owner. A
+  message that asked shows "Asked Sam's assistant" under it; nothing waits for a reply, since some never come.
+- **Wendy:** a group shows in `screen.people` by its title, like any thread. No group view is advertised to her.
 
 ### Profile pictures
 
@@ -49,28 +73,30 @@ she reads it with Aelora's `read_messages` tool. When you want to answer, she dr
 
 ## Code map
 
-| Path                                  | Role                                                                                                                                                                     |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `src/social/social.ts`                | Protocol: connect sequence, every outbound request, `handleSocialFrame` (inbound), social error routing, invite and deep-link handling.                                  |
-| `src/social/types.ts`                 | `Profile`, `OwnProfile`, `FriendRow`, `BlockRow`, `Member`, `DmMessage`, `Thread`, `Pending`, `Invite`, `AssistantPreview`, `SHAREABLE`.                                 |
-| `src/stores/social.ts`                | Zustand store `useSocial` and pure helpers (unit-tested).                                                                                                                |
-| `src/social/homeCard.ts`              | `useMessageCard`, `cardsWithMessage`, `messageMeta`: the unread-message card on the home grid.                                                                           |
-| `src/social/pictures.ts`              | Picture crop, upload, URL, remove.                                                                                                                                       |
-| `src/ui/people/PeoplePanel.tsx`       | The panel: picks the body from guest / loading / no handle / thread / view.                                                                                              |
-| `src/ui/people/PeopleThread.tsx`      | One conversation (`ThreadBody`) and its composer (`ThreadComposer`).                                                                                                     |
-| `src/ui/people/ProfileView.tsx`       | Name, handle, discoverability, your picture, then `AssistantSettings`.                                                                                                   |
-| `src/ui/people/AssistantSettings.tsx` | Receptionist settings and the preview with Hide.                                                                                                                         |
-| `src/ui/people/AddFriend.tsx`         | Handle lookup, invite link, QR.                                                                                                                                          |
-| `src/ui/people/HandlePicker.tsx`      | First-run handle claim.                                                                                                                                                  |
-| `src/ui/people/PictureEditor.tsx`     | Change / Remove for either picture.                                                                                                                                      |
-| `src/ui/people/bits.tsx`              | `Avatar`, `AssistantAvatar`, `Qr`, `Confirm`. `Switch.tsx` is the on/off row.                                                                                            |
-| `src/aelora/mockSocial.ts`            | Mock server side (`MockSocial`, used by `src/aelora/mock.ts`): Sam (friend with an assistant who writes back), Priya (pending request), Jo, and a handle to claim first. |
+| Path                                  | Role                                                                                                                                                                                                                                              |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/social/social.ts`                | Protocol: connect sequence, every outbound request, `handleSocialFrame` (inbound), social error routing, invite and deep-link handling.                                                                                                           |
+| `src/social/types.ts`                 | `Profile`, `OwnProfile`, `FriendRow`, `BlockRow`, `Member`, `DmMessage`, `Thread`, `Pending`, `Invite`, `AssistantPreview`, `SHAREABLE`.                                                                                                          |
+| `src/stores/social.ts`                | Zustand store `useSocial` and pure helpers (unit-tested).                                                                                                                                                                                         |
+| `src/social/homeCard.ts`              | `useMessageCard`, `cardsWithMessage`, `messageMeta`: the unread-message card on the home grid.                                                                                                                                                    |
+| `src/social/pictures.ts`              | Picture crop, upload, URL, remove.                                                                                                                                                                                                                |
+| `src/ui/people/PeoplePanel.tsx`       | The panel: picks the body from guest / loading / no handle / thread / view.                                                                                                                                                                       |
+| `src/ui/people/PeopleThread.tsx`      | One conversation (`ThreadBody`) and its composer (`ThreadComposer`).                                                                                                                                                                              |
+| `src/ui/people/ProfileView.tsx`       | Name, handle, discoverability, your picture, then `AssistantSettings`.                                                                                                                                                                            |
+| `src/ui/people/AssistantSettings.tsx` | Receptionist settings and the preview with Hide.                                                                                                                                                                                                  |
+| `src/ui/people/AddFriend.tsx`         | Handle lookup, invite link, QR.                                                                                                                                                                                                                   |
+| `src/ui/people/HandlePicker.tsx`      | First-run handle claim.                                                                                                                                                                                                                           |
+| `src/ui/people/PictureEditor.tsx`     | Change / Remove for either picture.                                                                                                                                                                                                               |
+| `src/ui/people/bits.tsx`              | `Avatar`, `StackedAvatars` (a group's face), `AssistantAvatar`, `Qr`, `Confirm`. `Switch.tsx` is the on/off row.                                                                                                                                  |
+| `src/ui/people/NewGroup.tsx`          | New group: `FriendPicker` and a name filled in from the picks.                                                                                                                                                                                    |
+| `src/ui/people/GroupInfo.tsx`         | A group's name, members, roles, add/remove, Bring my assistant, Mute, Leave.                                                                                                                                                                      |
+| `src/aelora/mockSocial.ts`            | Mock server side (`MockSocial`, used by `src/aelora/mock.ts`): Sam (friend with an assistant who writes back), Priya (pending request), Jo, the "Climbing crew" group (Sam's assistant in it), all `group.*` frames, and a handle to claim first. |
 
 ### Store: `src/stores/social.ts`
 
 State: `profile` (`undefined` loading, `null` no handle), `guest`, `friends`, `blocks`, `threads` by id,
 `messages` as `threadId -> seq -> DmMessage`, `pending` by `clientMsgId`, `loading`, `found`/`finding`,
-`invite`, `baselines`, `preview`, `errors` by form (`claim`, `profile`, `find`, `invite`, `redeem`, `preview`,
+`invite`, `baselines`, `preview`, `names` (everyone seen in a thread, for senders who've left a group), `errors` by form (`claim`, `profile`, `find`, `invite`, `redeem`, `preview`,
 `picture`). `social.reset()` empties it when a different user signs in (`src/aelora/router.ts`).
 
 Helpers worth knowing:
@@ -98,7 +124,8 @@ Helpers worth knowing:
 ## Protocol
 
 All requests are fire-and-forget over the Aelora socket; each reply is its own frame. `socialConnected(bus)` runs
-after every `hello` (`src/aelora/router.ts`): `profile.get`, `friends.list`, `dm.threads`, then `dm.sync` from
+after every `hello` (`src/aelora/router.ts`): `profile.get`, `friends.list`, `dm.threads`, `friends.blocks` (for
+hiding blocked senders in groups), then `dm.sync` from
 each held thread's contiguous top, and any message still `sending` is retransmitted with its original
 `clientMsgId` (idempotent server side). `friends.list` is also refetched on window focus, since
 `friends.changed` only reaches sockets on the same server instance.
@@ -123,7 +150,10 @@ each held thread's contiguous top, and any message still `sending` is retransmit
 | `dm.open`                                                                  | `openDmWith` (when no 1:1 thread exists yet)         | `userId`                                                                                                                                                       |
 | `dm.history`                                                               | `openThread`, `loadOlder`                            | `threadId`, `beforeSeq?`                                                                                                                                       |
 | `dm.sync`                                                                  | connect, `dm.resync`, `more` pages                   | `since: { threadId: seq }`                                                                                                                                     |
-| `dm.send`                                                                  | `sendDm`, `retryDm`                                  | `threadId`, `body` (trimmed, max 4000), `clientMsgId`                                                                                                          |
+| `dm.send`                                                                  | `sendDm`, `retryDm`                                  | `threadId`, `body` (trimmed, max 4000), `clientMsgId`, `agentMentions?` (groups: up to 3 owners whose agents should answer)                                    |
+| `group.create`                                                             | `createGroup`                                        | `title` (1-80), `userIds` (1-31 friends)                                                                                                                       |
+| `group.add` / `group.remove`                                               | Group info                                           | `threadId`, `userIds` / `userId`                                                                                                                               |
+| `group.rename` / `group.role` / `group.agent` / `group.leave`              | Group info                                           | `threadId`, plus `title` / `userId, role` / `present`                                                                                                          |
 | `dm.read`                                                                  | `markRead`                                           | `threadId`, `seq` (contiguous top; sent once per position)                                                                                                     |
 | `dm.edit` / `dm.delete`                                                    | bubble actions                                       | `messageId`, `body` (edit)                                                                                                                                     |
 | `dm.mute`                                                                  | `muteThread`                                         | `threadId`, `muted`                                                                                                                                            |
@@ -142,7 +172,8 @@ each held thread's contiguous top, and any message still `sending` is retransmit
 | `friends.invite.redeemed`                                 | `status`, `inviter`                          | Refetch friends; toast "You and X are friends" or "Friend request sent to X".                                                 |
 | `dm.threads`                                              | `threads`                                    | Replaces threads and baselines; opens a waiting deep-linked thread.                                                           |
 | `dm.thread`                                               | `thread`                                     | Upserts one thread and its baseline; opens it if it answers a pending `dm.open` / `assistant.open`.                           |
-| `dm.membership`                                           |                                              | Refetch `dm.threads`.                                                                                                         |
+| `dm.membership`, `group.removed`                          |                                              | Refetch `dm.threads`.                                                                                                         |
+| `group.left`                                              | `threadId`                                   | Drops the group, its messages and anything still sending; closes it if open.                                                  |
 | `dm.resync`                                               |                                              | `dm.sync` from contiguous tops.                                                                                               |
 | `dm.history`                                              | `threadId`, `messages`                       | Merged; clears `loading`.                                                                                                     |
 | `dm.synced`                                               | `threads[].{threadId, messages, more}`       | Merged; `more` syncs that thread again.                                                                                       |
@@ -150,14 +181,16 @@ each held thread's contiguous top, and any message still `sending` is retransmit
 | `dm.message`, `.updated`, `.edited`, `.deleted`           | `message`                                    | Merged; clears a matching pending bubble. A new `dm.message` from someone else plays `message`.                               |
 | `dm.read`, `dm.state`, `dm.muted`                         | `threadId`, `lastReadSeq`, `muted`           | Updates the thread and recounts unread.                                                                                       |
 | `assistant.preview`                                       | `mode`, `about`, `categories`, `entries[]`   | Stored as `preview`.                                                                                                          |
-| `error`                                                   | `request`, `code`, `clientMsgId`, `threadId` | Only for `profile.*`, `friends.*`, `dm.*`, `assistant.*` requests (else left to other handlers).                              |
+| `error`                                                   | `request`, `code`, `clientMsgId`, `threadId` | Only for `profile.*`, `friends.*`, `dm.*`, `assistant.*`, `group.*` requests (else left to other handlers).                   |
 
 Error handling (`socialError`): `guest_not_allowed` sets `guest` ("Sign in to add friends..."); `profile_required`
 sets `profile: null`; a `dm.send` error fails that bubble with its code; a send with no answer in 15 s fails with
 `timeout`. Form requests (`profile.claim`, `profile.update`, `friends.find`, `friends.invite.create`,
 `friends.invite.redeem`, `assistant.preview`) set `errors[form]` for inline display. Other user actions toast
 "That didn't go through" (or a known message for `rate_limited`, `not_found`, `social_unavailable`); background
-loads (`.list`, `.blocks`, `.threads`, `.sync`, `.get`) fail silently.
+loads (`.list`, `.blocks`, `.threads`, `.sync`, `.get`) fail silently. A `group.*` refusal toasts in plain words
+(`GROUP_SAY`: `forbidden`, `group_full`, `assistant_off` with a Settings button, `not_found` also refetching threads,
+`rate_limited`, `bad_request`).
 
 ### Deep links
 

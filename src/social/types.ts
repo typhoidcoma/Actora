@@ -43,6 +43,8 @@ export interface BlockRow {
 export interface Member {
   userId: string
   role: string
+  /** In a group: their agent is in it, so a message can ask it to answer. */
+  agentPresent?: boolean
   handle: string | null
   displayName: string | null
   avatarPath: string | null
@@ -61,6 +63,8 @@ export interface DmMessage {
   editedAt: string | null
   /** Deleted messages keep their row (and seq) and lose their text. */
   deletedAt: string | null
+  /** In a group: the owners whose agents this message asked to answer. */
+  agentMentions?: string[]
 }
 
 export interface Thread {
@@ -76,6 +80,8 @@ export interface Thread {
   lastReadSeq: number
   muted: boolean
   role?: 'owner' | 'admin' | 'member'
+  /** In a group: your own agent is in it. */
+  agentPresent?: boolean
   unread: number
   /** The *other* active members. */
   members: Member[]
@@ -87,6 +93,8 @@ export interface Pending {
   clientMsgId: string
   threadId: string
   body: string
+  /** In a group: whose agents to ask (kept so a retry asks them too). */
+  agentMentions?: string[]
   state: 'sending' | 'failed'
   error?: string
   at: number

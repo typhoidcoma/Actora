@@ -1,8 +1,8 @@
-// The mock server's side of friends and DMs (Aelora docs/SOCIAL.md), so People
-// can be tried without a second account: a friend (Sam) who writes back, a
-// pending request (Priya), and a handle to claim first.
+// The mock server's side of friends, DMs and groups (Aelora docs/SOCIAL.md), so
+// People can be tried without a second account: a friend (Sam) who writes back, a
+// pending request (Priya), a group with Sam's assistant in it, and a handle to claim first.
 
-import type { DmMessage, FriendRow, OwnProfile, Profile, Thread } from '../social/types'
+import type { DmMessage, FriendRow, Member, OwnProfile, Profile, Thread } from '../social/types'
 import type { ClientMessage, Goal, ServerFrame } from './protocol'
 
 const ME = 'mock-user'
@@ -93,13 +93,23 @@ export class MockSocial {
     this.post(mine.id, ME, "Done, I've left Tyler a message.", 25, uid(), 'agent')
     mine.lastReadSeq = mine.lastSeq
     mine.unread = 0
+
+    // A group Sam made (Jo's in it too, though you aren't friends yet), with Sam's assistant along.
+    const crew = this.newGroup('Climbing crew', [SAM, JO], 'member')
+    Object.assign(crew.members[0]!, { role: 'owner', agentPresent: true })
+    this.post(crew.id, 'sam', 'Who is in for Sunday at the crag?', 60 * 3)
+    this.post(crew.id, 'jo', "Me! I'll bring snacks", 60 * 3 - 4)
+    this.post(crew.id, ME, 'Count me in', 60 * 2)
+    this.post(crew.id, 'jo', 'Leaving at 8, carpool from mine?', 40)
+    crew.lastReadSeq = 3
+    crew.unread = 1
   }
 
   /** True when the frame was a social one. */
   handle(msg: ClientMessage, send: Send, later: Later, ctx: Ctx = { vault: [], goals: [] }): boolean {
     const err = (code: string, extra: Record<string, unknown> = {}) =>
       send({ type: 'error', code, message: code, request: msg.type, ...extra })
-    if (!/^(profile|friends|dm|assistant)\./.test(msg.type)) return false
+    if (!/^(profile|friends|dm|assistant|group)\./.test(msg.type)) return false
     if (!this.profile && !['profile.get', 'profile.claim'].includes(msg.type)) {
       err('profile_required')
       return true
@@ -222,7 +232,9 @@ export class MockSocial {
         const p = PEOPLE.find((x) => x.userId === msg.userId)
         this.friends = this.friends.filter((f) => f.profile.userId !== msg.userId)
         if (p) this.blocks.push({ userId: p.userId, handle: p.handle, blockedAt: iso() })
-        for (const [id, t] of this.threads) if (t.members.some((m) => m.userId === msg.userId)) this.threads.delete(id)
+        // Blocks don't take anyone out of a group: only the one-to-one threads go.
+        for (const [id, t] of this.threads)
+          if (t.kind !== 'group' && t.members.some((m) => m.userId === msg.userId)) this.threads.delete(id)
         send({ type: 'friends.blocked', userId: msg.userId })
         break
       }
@@ -254,7 +266,9 @@ export class MockSocial {
         const p = PEOPLE.find((x) => x.userId === msg.userId)
         const friend = this.friends.some((f) => f.profile.userId === msg.userId && f.status === 'accepted')
         if (!p || !friend) return (err('not_found'), true)
-        const t = [...this.threads.values()].find((x) => x.members[0]?.userId === p.userId) ?? this.newThread(p)
+        const t =
+          [...this.threads.values()].find((x) => x.kind === 'dm' && x.members[0]?.userId === p.userId) ??
+          this.newThread(p)
         send({ type: 'dm.thread', thread: t })
         break
       }
@@ -286,7 +300,14 @@ export class MockSocial {
         if (!t) return (err('not_found', { clientMsgId: msg.clientMsgId }), true)
         if (!body || body.length > 4000) return (err('bad_request', { clientMsgId: msg.clientMsgId }), true)
         const dup = this.messages.get(t.id)?.find((m) => m.clientMsgId === msg.clientMsgId)
-        const m = dup ?? this.post(t.id, ME, body, 0, String(msg.clientMsgId))
+        // Only agents that are here can be asked (the rest are dropped, as the server does).
+        const mentions =
+          t.kind === 'group' && Array.isArray(msg.agentMentions)
+            ? (msg.agentMentions as string[])
+                .filter((id) => (id === ME ? t.agentPresent : t.members.some((x) => x.userId === id && x.agentPresent)))
+                .slice(0, 3)
+            : []
+        const m = dup ?? this.post(t.id, ME, body, 0, String(msg.clientMsgId), 'human', mentions)
         t.lastReadSeq = m.seq
         t.unread = 0
         send({ type: 'dm.sent', clientMsgId: msg.clientMsgId, message: m })
@@ -297,6 +318,20 @@ export class MockSocial {
           const reply = AGENT_REPLIES[Math.floor(Math.random() * AGENT_REPLIES.length)]!
           const owner = t.ownerId
           later(1800, () => ({ type: 'dm.message', message: this.post(t.id, owner, reply, 0, uid(), 'agent') }))
+        } else if (!dup && t.kind === 'group') {
+          // Each assistant asked answers once; otherwise someone in the group might.
+          mentions.forEach((owner, i) => {
+            const reply = AGENT_REPLIES[Math.floor(Math.random() * AGENT_REPLIES.length)]!
+            later(1800 + i * 900, () => ({
+              type: 'dm.message',
+              message: this.post(t.id, owner, reply, 0, uid(), 'agent'),
+            }))
+          })
+          if (!mentions.length && t.members.length) {
+            const who = t.members[Math.floor(Math.random() * t.members.length)]!
+            const reply = REPLIES[Math.floor(Math.random() * REPLIES.length)]!
+            later(2200, () => ({ type: 'dm.message', message: this.post(t.id, who.userId, reply, 0) }))
+          }
         } else if (other && !dup && t.kind === 'dm') {
           const reply = REPLIES[Math.floor(Math.random() * REPLIES.length)]!
           later(1800, () => ({ type: 'dm.message', message: this.post(t.id, other.userId, reply, 0) }))
@@ -329,10 +364,79 @@ export class MockSocial {
         send({ type: msg.type === 'dm.edit' ? 'dm.edited' : 'dm.deleted', message: { ...m } })
         break
       }
+      case 'group.create': {
+        const title = String(msg.title ?? '').trim()
+        const ids = Array.isArray(msg.userIds) ? (msg.userIds as string[]) : []
+        if (!title || title.length > 80 || !ids.length) return (err('bad_request'), true)
+        if (ids.length > 31) return (err('group_full'), true)
+        const people = ids.map((id) => this.friendOf(id))
+        if (people.some((p) => !p)) return (err('not_found'), true)
+        send({ type: 'dm.thread', thread: this.newGroup(title, people as Profile[], 'owner') })
+        break
+      }
+      case 'group.add':
+      case 'group.remove':
+      case 'group.rename':
+      case 'group.role':
+      case 'group.agent':
+      case 'group.leave': {
+        const t = this.threads.get(String(msg.threadId))
+        if (!t || t.kind !== 'group') return (err('not_found'), true)
+        const manage = t.role === 'owner' || t.role === 'admin'
+        if (msg.type === 'group.leave') {
+          this.threads.delete(t.id)
+          send({ type: 'group.left', threadId: t.id })
+          break
+        }
+        if (msg.type === 'group.remove') {
+          const m = t.members.find((x) => x.userId === msg.userId)
+          if (!m) return (err('not_found'), true)
+          if (!manage || (t.role === 'admin' && m.role !== 'member')) return (err('forbidden'), true)
+          t.members = t.members.filter((x) => x !== m)
+          send({ type: 'group.removed', threadId: t.id, userId: m.userId })
+          break
+        }
+        if (msg.type === 'group.agent') {
+          if (msg.present && this.profile?.assistantMode !== 'friends') return (err('assistant_off'), true)
+          t.agentPresent = !!msg.present
+        } else if (msg.type === 'group.rename') {
+          const title = String(msg.title ?? '').trim()
+          if (!manage) return (err('forbidden'), true)
+          if (!title || title.length > 80) return (err('bad_request'), true)
+          t.title = title
+        } else if (msg.type === 'group.role') {
+          const m = t.members.find((x) => x.userId === msg.userId)
+          if (t.role !== 'owner') return (err('forbidden'), true)
+          if (!m || m.role === 'owner') return (err('not_found'), true)
+          m.role = msg.role === 'admin' ? 'admin' : 'member'
+        } else {
+          const ids = Array.isArray(msg.userIds) ? (msg.userIds as string[]) : []
+          if (!manage) return (err('forbidden'), true)
+          if (!ids.length) return (err('bad_request'), true)
+          const people = ids.filter((id) => !t.members.some((x) => x.userId === id)).map((id) => this.friendOf(id))
+          if (people.some((p) => !p)) return (err('not_found'), true)
+          if (t.members.length + 1 + people.length > 32) return (err('group_full'), true)
+          t.members.push(...(people as Profile[]).map(memberOf))
+        }
+        send({ type: 'dm.thread', thread: t })
+        break
+      }
       default:
         err('bad_request')
     }
     return true
+  }
+
+  /** An accepted friend, not blocked: someone you could put in a group. */
+  private friendOf(userId: string): Profile | null {
+    const row = this.friends.find((f) => f.profile.userId === userId && f.status === 'accepted')
+    return row && !this.blocks.some((b) => b.userId === userId) ? row.profile : null
+  }
+
+  private newGroup(title: string, people: Profile[], role: 'owner' | 'member'): Thread {
+    const t = this.newThread(people[0]!, { kind: 'group', title, role, agentPresent: false })
+    t.members = people.map(memberOf)
+    return t
   }
 
   private newThread(p: Profile, extra: Partial<Thread> = {}): Thread {
@@ -348,9 +452,7 @@ export class MockSocial {
       lastReadSeq: 0,
       muted: false,
       unread: 0,
-      members: [
-        { userId: p.userId, role: 'member', handle: p.handle, displayName: p.displayName, avatarPath: p.avatarPath },
-      ],
+      members: [memberOf(p)],
       lastMessage: null,
       ...extra,
     }
@@ -366,6 +468,7 @@ export class MockSocial {
     minsAgo: number,
     clientMsgId = uid(),
     senderKind: DmMessage['senderKind'] = 'human',
+    agentMentions: string[] = [],
   ): DmMessage {
     const list = this.messages.get(threadId)!
     const t = this.threads.get(threadId)!
@@ -380,6 +483,7 @@ export class MockSocial {
       createdAt: iso(minsAgo),
       editedAt: null,
       deletedAt: null,
+      agentMentions,
     }
     list.push(m)
     Object.assign(t, { lastSeq: m.seq, lastMessage: m, lastMessageAt: m.createdAt })
@@ -387,3 +491,12 @@ export class MockSocial {
     return m
   }
 }
+
+const memberOf = (p: Profile): Member => ({
+  userId: p.userId,
+  role: 'member',
+  agentPresent: false,
+  handle: p.handle,
+  displayName: p.displayName,
+  avatarPath: p.avatarPath,
+})

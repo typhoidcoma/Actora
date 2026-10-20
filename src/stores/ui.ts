@@ -13,8 +13,8 @@ export interface Selected {
 }
 
 export type ThemeMode = 'auto' | 'day' | 'dusk'
-/** The parts of People besides a conversation: the list, adding a friend, blocked people, your profile. */
-export type PeopleView = 'home' | 'add' | 'blocked' | 'profile'
+/** The parts of People besides a conversation: the list, adding a friend, a new group, blocked people, your profile. */
+export type PeopleView = 'home' | 'add' | 'newGroup' | 'blocked' | 'profile'
 
 interface UiState {
   /** Full list panel for a domain (Tasks, Calendar, Goals, Inbox). */
