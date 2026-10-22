@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { phone } from './phone'
 import { vault } from './vault'
 
 export const TILE_IDS = ['tasks', 'goals', 'calendar', 'inbox'] as const
@@ -97,19 +98,32 @@ const CLOSED = {
   picking: null,
 } as const
 
+/**
+ * Wide screens: the chat stays up beside whatever opens, so opening a panel keeps it
+ * (only one panel at a time still). Phones and narrow screens: one window at a time.
+ */
+const closed = () => ({ ...CLOSED, chatOpen: phone.split() && useUi.getState().chatOpen })
+
 /** Is any panel open over the grid (the chat sheet aside)? */
 export const panelOpen = (s: Pick<UiState, 'focus' | 'selected' | 'finds' | 'vault' | 'people'>) =>
   s.focus !== null || s.selected !== null || s.finds || s.vault || s.people
 
+/** The chat and a panel both open, side by side (only on a wide screen). */
+export const sideBySide = (s: Pick<UiState, 'chatOpen' | 'focus' | 'selected' | 'finds' | 'vault' | 'people'>) =>
+  s.chatOpen && panelOpen(s)
+
 export const ui = {
-  focus: (id: TileId | null) => useUi.setState({ ...CLOSED, focus: id }),
-  openChat: () => useUi.setState({ ...CLOSED, chatOpen: true }),
+  focus: (id: TileId | null) => useUi.setState({ ...closed(), focus: id }),
+  /** Wide screens: the chat opens beside what's open (it slides left, the panel stays). */
+  openChat: () => useUi.setState(phone.split() ? { chatOpen: true } : { ...CLOSED, chatOpen: true }),
   closeChat: () => useUi.setState({ chatOpen: false }),
+  /** Every panel closed, the chat left as it is (her "go home" while you're talking). */
+  closePanels: () => useUi.setState((s) => ({ ...CLOSED, chatOpen: s.chatOpen })),
   closeAll: () => useUi.setState({ ...CLOSED, keyboardOpen: false, pastChats: false, picking: null }),
   /** Open an item in its own panel (from a card, or when the agent points at it). */
-  open: (item: Selected) => useUi.setState({ ...CLOSED, selected: item }),
+  open: (item: Selected) => useUi.setState({ ...closed(), selected: item }),
   /** Open an item in its panel, already asking whether to delete it. */
-  askDelete: (item: Selected) => useUi.setState((s) => ({ ...CLOSED, selected: item, deleting: true, back: s.focus })),
+  askDelete: (item: Selected) => useUi.setState((s) => ({ ...closed(), selected: item, deleting: true, back: s.focus })),
   /** Leave an item panel: back to the list it came from, if any, else home. */
   leaveItem: () => {
     const back = useUi.getState().back
@@ -117,25 +131,25 @@ export const ui = {
     else useUi.setState({ selected: null, back: null })
   },
   /** Show an item in its full list, highlighted ("See all"). */
-  reveal: (item: Selected) => useUi.setState({ ...CLOSED, focus: ITEM_TILE[item.kind], selected: item }),
+  reveal: (item: Selected) => useUi.setState({ ...closed(), focus: ITEM_TILE[item.kind], selected: item }),
   /** Toggle a highlighted row inside the open list. */
   select: (item: Selected | null) => {
     const s = useUi.getState()
     if (!item) return useUi.setState({ selected: null })
     if (same(s.selected, item)) return useUi.setState({ selected: null })
-    useUi.setState({ ...CLOSED, selected: item, focus: s.focus ?? ITEM_TILE[item.kind] })
+    useUi.setState({ ...closed(), selected: item, focus: s.focus ?? ITEM_TILE[item.kind] })
   },
-  openFinds: () => useUi.setState({ ...CLOSED, finds: true }),
+  openFinds: () => useUi.setState({ ...closed(), finds: true }),
   closeFinds: () => useUi.setState({ finds: false, find: null }),
   /** Each visit starts unfiltered (the agent's vault.search filters after opening). */
   openVault: () => {
     if (!useUi.getState().vault) vault.clearFilter()
-    useUi.setState({ ...CLOSED, vault: true })
+    useUi.setState({ ...closed(), vault: true })
   },
   closeVault: () => useUi.setState({ vault: false }),
   /** People, on its list or straight into one conversation. */
   openPeople: (threadId: string | null = null, view: PeopleView = 'home') =>
-    useUi.setState({ ...CLOSED, people: true, dmThread: threadId, peopleView: view }),
+    useUi.setState({ ...closed(), people: true, dmThread: threadId, peopleView: view }),
   closePeople: () => useUi.setState({ people: false, dmThread: null, peopleView: 'home' }),
   /** Inside People: the list, adding a friend, blocked people or your profile. */
   peopleView: (view: PeopleView) => useUi.setState({ dmThread: null, peopleView: view }),
@@ -180,3 +194,7 @@ export function contextKeyOf(
   if (state.focus) return `tile:${state.focus}`
   return 'home'
 }
+
+/** What's open beside the chat, as an options context key (the right window's pills). */
+export const panelKeyOf = (state: Parameters<typeof contextKeyOf>[0]): ContextKey =>
+  contextKeyOf({ ...state, chatOpen: false })

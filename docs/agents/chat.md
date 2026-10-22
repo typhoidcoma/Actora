@@ -17,7 +17,8 @@ Her first words show on her line over the cards; the whole reply lives in the ch
 | Agent state: phase, line, reply, mood, reaction             | `src/stores/agent.ts`                                   |
 | Her line / chat sheet / activity trail                      | `src/ui/AgentLine.tsx`, `ChatSheet.tsx`, `Activity.tsx` |
 | When the chat opens on its own / goes back home             | `src/ui/autoChat.ts`, `src/ui/idleHome.ts`              |
-| Glances (she opens something while you chat)                | `src/ui/peek.ts`                                        |
+| Glances (she opens something while you chat, narrow screens) | `src/ui/peek.ts`                                       |
+| Side by side (wide: chat left, what's open right)           | `split`/`pair` in `src/stores/metrics.ts`, `ui.ts`      |
 
 ## Rules
 
@@ -29,6 +30,10 @@ Her first words show on her line over the cards; the whole reply lives in the ch
 - **Store the scrubbed reply, keep the raw one private.** Leaks can be split across tokens, so scrub the whole.
 - **The turn backstop is 250 s** (`TURN_TIMEOUT_MS`): Aelora ends turns by its own 240 s deadline. Don't shorten it;
   tool-heavy turns legitimately run past 3 minutes.
+- **Wide screens keep the chat up beside what's open.** With `metrics.split` (desktop, tablets held sideways), the
+  openers in `ui.ts` keep `chatOpen`, `openChat` keeps the panel, and nothing she opens is a glance: the chat slides
+  to `pair.left`, the panel takes `pair.right` with its own pills (`panelKeyOf`). Narrow screens are one window at a
+  time, as before. The 3D app sets `split` and `pair` from its own panel in `useHostMetrics`.
 - **The emoji opening her reply is her "got it"** on the user's message (`splitAck`), not part of her text.
 
 ## Recipes

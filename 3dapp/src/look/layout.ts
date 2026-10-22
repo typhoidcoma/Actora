@@ -149,29 +149,39 @@ interface FocusLayout {
  * up on the left, and the thing fills a full panel on the right. On a narrow
  * screen she stays at the top, head and shoulders, and the panel takes the rest.
  */
-const focusCache = new Map<number, FocusLayout>()
-/** Memoised per aspect: the camera rig reads it every frame while a panel is open. */
-export function focusLayout(aspect: number): FocusLayout {
-  let hit = focusCache.get(aspect)
+const focusCache = new Map<string, FocusLayout>()
+/**
+ * Memoised per aspect: the camera rig reads it every frame while a panel is open.
+ * `paired`: the chat and another window side by side (wide screens only).
+ */
+export function focusLayout(aspect: number, paired = false): FocusLayout {
+  const key = `${aspect}:${paired}`
+  let hit = focusCache.get(key)
   if (!hit) {
     if (focusCache.size > 16) focusCache.clear()
-    hit = computeFocusLayout(aspect)
-    focusCache.set(aspect, hit)
+    hit = computeFocusLayout(aspect, paired)
+    focusCache.set(key, hit)
   }
   return hit
 }
 
-function computeFocusLayout(aspect: number): FocusLayout {
+function computeFocusLayout(aspect: number, paired: boolean): FocusLayout {
   const portrait = aspect < 0.8
+  const two = paired && !portrait
   // She's the star: wide, the camera is in close (half the distance it was), her
   // head and shoulders beside the panel, for a more intimate conversation.
-  // Phones keep to her head and shoulders above the panel.
-  const viewH = portrait ? 1.3 : 0.74
+  // Phones keep to her head and shoulders above the panel. With two windows up
+  // the camera steps back and she stands in the strip left of them.
+  const viewH = portrait ? 1.3 : two ? 1.6 : 0.74
   const viewW = viewH * aspect
   const dist = viewH / 2 / T
   const her = portrait ? PORTRAIT.her : ([0, 0, 0] as Vec3)
-  const target: Vec3 = portrait ? [her[0], her[1] + 1.2, her[2]] : [0.26 * viewW, 1.5, 0]
-  const rect = portrait ? { x0: 0.03, y0: 0.32, x1: 0.97, y1: 0.985 } : { x0: 0.45, y0: 0.06, x1: 0.95, y1: 0.94 }
+  const target: Vec3 = portrait ? [her[0], her[1] + 1.2, her[2]] : [(two ? 0.4 : 0.26) * viewW, two ? 1.2 : 1.5, 0]
+  const rect = portrait
+    ? { x0: 0.03, y0: 0.32, x1: 0.97, y1: 0.985 }
+    : two
+      ? { x0: 0.2, y0: 0.05, x1: 0.975, y1: 0.95 }
+      : { x0: 0.45, y0: 0.06, x1: 0.95, y1: 0.94 }
   const cx = (rect.x0 + rect.x1) / 2
   const cy = (rect.y0 + rect.y1) / 2
   // On a phone the panel covers her body, so it stands in front of her (nearer the

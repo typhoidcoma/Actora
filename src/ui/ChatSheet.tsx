@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { loadEarlier } from '../aelora/client'
 import { useAgent, type ChatBubble } from '../stores/agent'
 import { useMetrics } from '../stores/metrics'
-import { ui, useUi } from '../stores/ui'
+import { sideBySide, ui, useUi } from '../stores/ui'
 import { clockTime, dayLabel, toolLabel } from './format'
 import { Activity } from './Activity'
 import { LazyMarkdown as Markdown } from './LazyMarkdown'
@@ -31,6 +31,9 @@ export function ChatSheet() {
 
 function Sheet() {
   const m = useMetrics()
+  // Something open beside it (wide screens): the chat slides to the left half, the same size as that window.
+  const paired = useUi(sideBySide) && m.split
+  const box = paired ? { ...m.pair.left, radius: m.sheet.radius } : m.sheet
   const drag = useDragControls()
   const [typing, setTyping] = useState(false)
   const onDragEnd = (_: unknown, info: PanInfo) => {
@@ -39,13 +42,16 @@ function Sheet() {
 
   return (
     <>
-      <motion.div
-        className="fixed inset-0 z-10 bg-scrim"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={ui.closeChat}
-      />
+      {/* Side by side, nothing is dimmed: both windows are there to be read. */}
+      {!paired && (
+        <motion.div
+          className="fixed inset-0 z-10 bg-scrim"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={ui.closeChat}
+        />
+      )}
       <motion.div
         layoutId="sheet"
         transition={morph}
@@ -59,11 +65,11 @@ function Sheet() {
         // Phones read a size down (chat-phone in index.css): more of the conversation fits.
         className={`glass glass-thick fixed z-20 flex flex-col overflow-hidden ${m.compact ? 'chat-phone' : ''}`}
         style={{
-          left: m.sheet.x,
-          top: m.sheet.y,
-          width: m.sheet.w,
-          height: m.sheet.h,
-          borderRadius: m.sheet.radius,
+          left: box.x,
+          top: box.y,
+          width: box.w,
+          height: box.h,
+          borderRadius: box.radius,
         }}
         role="dialog"
         aria-label={`Chat with ${agentName()}`}

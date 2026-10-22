@@ -6,7 +6,7 @@ import { signOut } from '@actora/auth/supabase'
 import { config } from '@actora/config'
 import { useContextKey } from '@actora/options/useOptions'
 import { useMetrics } from '@actora/stores/metrics'
-import { ui, useUi, type TileId } from '@actora/stores/ui'
+import { panelKeyOf, sideBySide, ui, useUi, type TileId } from '@actora/stores/ui'
 import { Panel } from '@actora/ui/cards/Panel'
 import { ChatSheet } from '@actora/ui/ChatSheet'
 import { MenuButton } from '@actora/ui/Menu'
@@ -15,7 +15,7 @@ import { useTypeAnywhere } from '@actora/ui/typeAnywhere'
 import { OptionRail } from '@actora/ui/OptionRail'
 import { Toaster } from '@actora/ui/Toast'
 import { ROLE } from '@actora/ui/brand'
-import { useFocused } from '../look/focus'
+import { roomForTwo, useFocused, usePaired } from '../look/focus'
 import { FOCUS_RADIUS, FOCUS_RAIL, useFocusHost } from '../look/focusHost'
 import { anchorRef } from '../scene/Anchor'
 import { useReady } from '../look/ready'
@@ -65,12 +65,21 @@ const onSignOut = config.mock ? undefined : () => void signOut()
  * The 2D app's metrics, re-pointed at the focus panel's host element. That
  * element is transformed into the scene (CSS3D), so it is the containing block
  * even for the chat sheet's `position: fixed`: its box starts at 0,0.
+ * Side by side, the two windows share that one panel: the chat its left half,
+ * the other window its right half with its pills at its foot.
  */
-function useHostMetrics(w: number, h: number, portrait: boolean) {
+function useHostMetrics(w: number, h: number, portrait: boolean, split: boolean) {
   useEffect(() => {
     if (!w || !h) return
     const grid = Math.min(w, h)
+    const half = Math.floor(w / 2)
     useMetrics.setState({
+      split,
+      pair: {
+        left: { x: 0, y: 0, w: half, h },
+        right: { x: half, y: 0, w: w - half, h: h - FOCUS_RAIL },
+        rightRail: { x: half, y: h - FOCUS_RAIL, w: w - half, h: FOCUS_RAIL },
+      },
       vw: window.innerWidth,
       vh: window.innerHeight,
       grid,
@@ -86,7 +95,7 @@ function useHostMetrics(w: number, h: number, portrait: boolean) {
     const s = document.documentElement.style
     s.setProperty('--grid', `${grid}px`)
     s.setProperty('--radius', `${FOCUS_RADIUS - 1}px`)
-  }, [w, h, portrait])
+  }, [w, h, portrait, split])
 }
 
 /**
@@ -107,8 +116,13 @@ export function Overlay() {
   const host = useFocusHost()
   const phone = window.innerWidth / window.innerHeight < 0.8
   const key = useContextKey()
-  useHostMetrics(host.w, host.h, phone)
+  const split = roomForTwo(window.innerWidth, window.innerHeight)
+  useHostMetrics(host.w, host.h, phone, split)
   useTypeAnywhere()
+  // The window narrows past room for two: her chat stays, the window beside it closes.
+  useEffect(() => {
+    if (!split && sideBySide(useUi.getState())) ui.closePanels()
+  }, [split])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && ui.closeAll()
@@ -156,8 +170,13 @@ export function Overlay() {
 
 /** The open thing, filling the in-scene panel; its options below it, never cut off. */
 function FocusContent({ focused }: { focused: boolean }) {
-  const m = useMetrics(useShallow((s) => ({ panel: s.panel, rail: s.rail })))
+  const m = useMetrics(useShallow((s) => ({ panel: s.panel, rail: s.rail, pair: s.pair })))
+  const paired = usePaired()
   const key = useContextKey()
+  const panelKey = useUi(panelKeyOf)
+  // Side by side: the window beside the chat, its pills under it, a line between the two.
+  const box = paired ? m.pair.right : m.panel
+  const rail = paired ? m.pair.rightRail : m.rail
   const chatOpen = useUi((s) => s.chatOpen)
   const focus = useUi((s) => s.focus)
   const selected = useUi((s) => s.selected)
@@ -168,7 +187,10 @@ function FocusContent({ focused }: { focused: boolean }) {
 
   return (
     <>
-      <div className="absolute" style={{ left: m.panel.x, top: m.panel.y, width: m.panel.w, height: m.panel.h }}>
+      <div
+        className={`absolute ${paired ? 'border-l border-line' : ''}`}
+        style={{ left: box.x, top: box.y, width: box.w, height: box.h }}
+      >
         <AnimatePresence>
           {focus && (
             <Suspense key={`list-${focus}`} fallback={null}>
@@ -197,12 +219,16 @@ function FocusContent({ focused }: { focused: boolean }) {
           )}
         </AnimatePresence>
       </div>
-      {focused && !chatOpen && (
+      {focused && (!chatOpen || paired) && (
         <div
-          className="absolute flex items-center border-t border-line px-5 pb-1"
-          style={{ left: m.rail.x, top: m.rail.y, width: m.rail.w, height: m.rail.h }}
+          className={`absolute flex items-center border-t border-line px-5 pb-1 ${paired ? 'border-l' : ''}`}
+          style={{ left: rail.x, top: rail.y, width: rail.w, height: rail.h }}
         >
-          <OptionRail className="w-full" contextKey={key} trailing={<MenuButton onSignOut={onSignOut} />} />
+          <OptionRail
+            className="w-full"
+            contextKey={paired ? panelKey : key}
+            trailing={<MenuButton onSignOut={onSignOut} />}
+          />
         </div>
       )}
       <ChatSheet />

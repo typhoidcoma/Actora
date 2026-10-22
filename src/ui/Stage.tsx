@@ -10,7 +10,7 @@ import { startPush } from '../push/start'
 import { agent, useAgent } from '../stores/agent'
 import { useEntities } from '../stores/entities'
 import { useMetrics, watchMetrics } from '../stores/metrics'
-import { contextKeyOf, ui, useUi, panelOpen } from '../stores/ui'
+import { contextKeyOf, panelKeyOf, ui, useUi, panelOpen, sideBySide } from '../stores/ui'
 import { Ambient } from '../weather/Ambient'
 import { ChatSheet } from './ChatSheet'
 import { Grid } from './Grid'
@@ -51,6 +51,10 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
   const rail = useMetrics((s) => s.rail)
   const compact = useMetrics((s) => s.compact)
   const keyboardUp = useMetrics((s) => s.keyboard)
+  const split = useMetrics((s) => s.split)
+  const rightRail = useMetrics((s) => s.pair.rightRail)
+  const paired = useUi(sideBySide) && split
+  const panelKey = useUi(panelKeyOf)
   useThemeSync()
   useTypeAnywhere()
 
@@ -97,6 +101,10 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
       }),
     [],
   )
+  // The window narrows past room for two: her chat stays, the window beside it closes.
+  useEffect(() => {
+    if (!split && sideBySide(useUi.getState())) ui.closePanels()
+  }, [split])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && ui.closeAll()
     window.addEventListener('keydown', onKey)
@@ -107,7 +115,7 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
     <MotionConfig reducedMotion="user">
       <Backdrop grain={false} />
       <MoodLight />
-      {focus && <div className="fixed inset-0" onClick={() => ui.focus(null)} aria-hidden />}
+      {focus && <div className="fixed inset-0" onClick={() => (paired ? ui.closeAll() : ui.focus(null))} aria-hidden />}
       <AnimatePresence>
         {/* A phone keyboard up: her line steps aside too (an open panel fills the screen above the keyboard). */}
         {!chatOpen && !keyboardUp && (
@@ -138,6 +146,21 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
             {/* Wide: the pills, then a message box with the mic, chat and menu beside it. */}
             <OptionRail contextKey={key} icons={compact} trailing={<MenuButton onSignOut={onSignOut} />} />
             {!compact && <HomeActions onSignOut={onSignOut} />}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {/* Side by side: the window beside the chat keeps its own pills, in a strip at its foot. */}
+        {paired && (
+          <motion.div
+            key="pair-rail"
+            className="fixed z-30 flex flex-col justify-center"
+            style={{ left: rightRail.x, top: rightRail.y, width: rightRail.w, height: rightRail.h }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+          >
+            <OptionRail contextKey={panelKey} />
           </motion.div>
         )}
       </AnimatePresence>

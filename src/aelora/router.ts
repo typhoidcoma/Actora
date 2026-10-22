@@ -59,6 +59,7 @@ import { actionArgs, AVAILABLE_ACTIONS, strayAction } from './actions'
 import { eventVerdict } from './owner'
 import { peekThenChat, talkKey } from '../ui/peek'
 import { play } from '../sound/sound'
+import { phone } from '../stores/phone'
 import { handleSocialFrame, socialConnected } from '../social/social'
 import { setActionRunner } from './chat'
 import { social, spoken, threadName, useSocial, waitingSummary } from '../stores/social'
@@ -142,6 +143,8 @@ function screen() {
     // The emoji she opened her last replies with (shown on the user's messages): vary them.
     ...(acks.length ? { yourRecentEmoji: acks.join(' ') } : {}),
     chat: u.chatOpen,
+    // A wide screen: what she opens sits beside the chat instead of over it.
+    split: phone.split(),
     vault: u.vault ? { open: true, query: v.query, category: v.category } : { open: false },
     // People: which part is up, and what's waiting there: unread counts with who they're
     // from (muted conversations left out) and who's asked to be friends. Never what anyone wrote.
@@ -302,6 +305,13 @@ let glancing = false
 /** Her screen move mid-conversation: skipped, run as a glance, or (false) run as is. */
 function asGlance(action: string, run: () => void): boolean {
   if (glancing || !useUi.getState().chatOpen) return false
+  // A wide screen has room for both: what she opens sits beside the chat, and
+  // going home closes just that window.
+  if (phone.split()) {
+    if (action !== 'home.show') return false
+    ui.closePanels()
+    return true
+  }
   if (CLOSES_EVERYTHING.has(action)) return true
   peekThenChat(() => {
     glancing = true

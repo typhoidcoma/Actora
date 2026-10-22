@@ -2,6 +2,7 @@ import { inkOf } from '../brand'
 import { motion, useDragControls, type PanInfo } from 'motion/react'
 import type { ReactNode } from 'react'
 import { useMetrics } from '../../stores/metrics'
+import { useUi } from '../../stores/ui'
 import { morph, press } from '../motion'
 import { sheen } from '../sheen'
 
@@ -33,6 +34,8 @@ export function Panel({
   const inset = useMetrics((s) => s.panelInset)
   // Typing on a phone (keyboard up): a slimmer header leaves the room to what you're writing in.
   const typing = useMetrics((s) => s.keyboard)
+  // Beside the chat (wide screens), the orb stays in the chat's header, so the title takes its place.
+  const orbHere = !useUi((s) => s.chatOpen)
   const drag = useDragControls()
   const onDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.y > 90 || info.velocity.y > 600) onClose()
@@ -68,7 +71,7 @@ export function Panel({
         layout="position"
         onPointerDown={(e) => drag.start(e)}
         // The orb docks on the left of every panel header (OrbDock), in front of the title.
-        className={`flex shrink-0 touch-none items-start justify-between gap-4 pt-5 pr-[84px] pl-[96px] ${typing ? 'min-h-[64px] pb-1' : 'min-h-[92px] pb-3'}`}
+        className={`flex shrink-0 touch-none items-start justify-between gap-4 pt-5 pr-[84px] ${orbHere ? 'pl-[96px]' : 'pl-6'} ${typing ? 'min-h-[64px] pb-1' : 'min-h-[92px] pb-3'}`}
         style={inset ? { paddingTop: 20 + inset } : undefined}
       >
         <div className="flex min-h-14 min-w-0 flex-col justify-center">

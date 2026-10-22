@@ -23,6 +23,7 @@ She drives the UI with ui_actions (`card.open`, `options.set`, `colors.set`, ...
 2. Handle it in `runUiAction`. Treat every argument as missing, wrong or cut off (`looseArgs`): ids must exist
    locally (`itemExists`), strings are capped, colours are hex, numbers are clamped. Ignore what doesn't validate.
 3. If it opens something while the chat is open, decide whether it's a glance (`SCREEN_MOVES` → `peekThenChat`).
+   On a wide screen (`phone.split()`) nothing is a glance: it opens beside the chat (`asGlance` returns early).
 4. Give it words in `describeUiAction` if it should show as a step.
 5. Describe it in `docs/agent-ui.md` **and** in Aelora's playbook (Aelora change = branch + PR).
 6. Tests in `src/aelora/actions.test.ts`; try it with `__actora.ui('name.verb', { ... })` in the mock.

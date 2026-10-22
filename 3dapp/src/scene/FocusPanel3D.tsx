@@ -2,7 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three/webgpu'
 import { CSS3DObject, CSS3DRenderer } from 'three/addons/renderers/CSS3DRenderer.js'
-import { useFocused } from '../look/focus'
+import { useFocused, usePaired } from '../look/focus'
 import { FOCUS_RADIUS, useFocusHost } from '../look/focusHost'
 import { focusLayout } from '../look/layout'
 import { useReady } from '../look/ready'
@@ -24,9 +24,10 @@ import { roundedRect } from './panels/Pane'
  */
 export function FocusPanel3D() {
   const focused = useFocused()
+  const paired = usePaired()
   const { size, camera, gl } = useThree()
   const look = useLook()
-  const f = focusLayout(size.width / size.height)
+  const f = focusLayout(size.width / size.height, paired)
 
   // The DOM size: the panel's on-screen size when it faces the camera, so text is crisp.
   const pxW = Math.round((f.rect.x1 - f.rect.x0) * size.width)

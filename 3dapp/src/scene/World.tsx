@@ -2,7 +2,7 @@ import { Canvas, extend, useFrame, useThree, type ThreeToJSXElements } from '@re
 import { useEffect, useRef } from 'react'
 import { markReady, useReady } from '../look/ready'
 import * as THREE from 'three/webgpu'
-import { useFocused } from '../look/focus'
+import { pairedNow, useFocused } from '../look/focus'
 import { FOV, focusLayout, useStage } from '../look/layout'
 import { UI_LAYER } from '../look/layers'
 import { damp } from '../look/motion'
@@ -47,7 +47,7 @@ function Rig() {
     // Phones hold the camera still: on touch, parallax only shifts the stack off the sides.
     const pointer = aspect < 0.8 ? still : p
     if (focused) {
-      const f = focusLayout(aspect)
+      const f = focusLayout(aspect, pairedNow())
       target.x = damp(target.x, f.target[0], 3.2, dt)
       target.y = damp(target.y, f.target[1], 3.2, dt)
       target.z = damp(target.z, f.target[2], 3.2, dt)

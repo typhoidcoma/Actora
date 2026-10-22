@@ -87,12 +87,16 @@ export function Grid() {
   const itemPanel = !focus && selected ? selected : null
   const openKey = finds ? 'finds' : itemPanel ? `${itemPanel.kind}:${itemPanel.id}` : focus ? `list:${focus}` : null
   const panelOpen = openKey !== null || memories || people
+  // Wide screens, the chat open too: the panel is the right-hand window beside it, at full strength.
+  const paired = chatOpen && panelOpen && m.split
+  const box = paired ? m.pair.right : m.panel
+  const dim = chatOpen && !paired
 
   return (
     <motion.div
       className="fixed"
       style={{ left: m.gridX, top: m.gridY, width: m.gridW, height: m.gridH }}
-      animate={{ scale: chatOpen ? 0.94 : 1, opacity: chatOpen ? 0.3 : 1 }}
+      animate={{ scale: dim ? 0.94 : 1, opacity: dim ? 0.3 : 1 }}
       transition={glide}
     >
       <div
@@ -146,10 +150,11 @@ export function Grid() {
           )
         })}
       </div>
-      {/* Panels fill the panel box: the grid itself, or on phones nearly the whole screen. */}
+      {/* Panels fill the panel box: the grid itself, on phones nearly the whole screen,
+          or beside the chat on a wide screen. */}
       <div
         className="pointer-events-none absolute"
-        style={{ left: m.panel.x - m.gridX, top: m.panel.y - m.gridY, width: m.panel.w, height: m.panel.h }}
+        style={{ left: box.x - m.gridX, top: box.y - m.gridY, width: box.w, height: box.h }}
       >
         <AnimatePresence>
           {focus && <ListPanel key={`list-${focus}`} id={focus} />}

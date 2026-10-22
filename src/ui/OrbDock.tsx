@@ -37,9 +37,11 @@ export function OrbDock() {
   let cx = m.cx
   let cy = m.cy
   if (chatOpen) {
+    // Side by side she stays in the chat's header (the left window).
+    const sheet = focus && m.split ? m.pair.left : m.sheet
     blob = 40
-    cx = m.sheet.x + 22 + blob / 2
-    cy = m.sheet.y + m.sheet.inset + 18 + blob / 2
+    cx = sheet.x + 22 + blob / 2
+    cy = sheet.y + m.sheet.inset + 18 + blob / 2
   } else if (focus) {
     // Any open panel (list, item, finds, Vault): she leads the header, in front of its title.
     blob = PANEL_ORB

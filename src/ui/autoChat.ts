@@ -1,4 +1,5 @@
 import { useAgent, type AgentState } from '../stores/agent'
+import { phone } from '../stores/phone'
 import { panelOpen, ui, useUi } from '../stores/ui'
 import { hasMore, isRichReply } from './markdownText'
 
@@ -11,7 +12,8 @@ import { hasMore, isRichReply } from './markdownText'
  * - Inside anything else (a task, a list, the Vault, the finds; never People): as soon as she
  *   talks, since those panels don't show her words at all.
  * If the user closes the chat during that turn it stays closed until the next
- * one, and a panel the agent opens herself mid-turn (card.open…) is left alone.
+ * one, and a panel the agent opens herself mid-turn (card.open…) is left alone
+ * (on a wide screen the chat opens beside it instead).
  */
 export function startAutoChat(): () => void {
   let dismissedTurn: string | null = null
@@ -54,7 +56,8 @@ export function startAutoChat(): () => void {
     // In People you're with friends: her words wait in her line and the chat, not on top of them.
     if (u.people) return
     if (panelOpen(u)) {
-      if (turn !== shownByAgent && s.streaming) ui.openChat()
+      // Wide screens: the chat opens beside it, so even a panel she opened herself stays in view.
+      if ((turn !== shownByAgent || phone.split()) && s.streaming) ui.openChat()
       return
     }
     const searching = s.phase === 'tool' && /search|browse|web|fetch/i.test(s.toolName ?? '')

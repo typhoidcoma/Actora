@@ -42,7 +42,19 @@ interface Metrics {
   panelInset: number
   /** A phone with its on-screen keyboard up: the option rail steps aside and panels fill what stays visible. */
   keyboard: boolean
+  /** Wide enough for two windows: her chat on the left, what's open beside it on the right. */
+  split: boolean
+  /**
+   * The two windows side by side, the same size: the chat (left), and the panel (right)
+   * with its pills in a strip at its foot.
+   */
+  pair: { left: Box; right: Box; rightRail: Box }
 }
+
+type Box = { x: number; y: number; w: number; h: number }
+
+/** The pills strip at the foot of the right window (two rows of pills). */
+const PAIR_RAIL = 118
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 
@@ -95,6 +107,34 @@ function measure(): Metrics {
   }
 }
 function layout(vh: number): Omit<Metrics, 'keyboard'> {
+  const m = layoutOne(vh)
+  return { ...m, ...pairOf(m.vw, vh, m.compact, m.sheet) }
+}
+
+/**
+ * Desktop and tablets held sideways: when the chat and another window are both
+ * open, they sit side by side at the chat's height, so her words and what she's
+ * showing are read together.
+ */
+export function pairOf(vw: number, vh: number, compact: boolean, sheet: Box): Pick<Metrics, 'split' | 'pair'> {
+  const split = !compact && vw >= 1100 && vw >= vh * 1.2
+  const gap = 16
+  const pairW = Math.round(Math.min(vw - 32, 1680))
+  const w = Math.floor((pairW - gap) / 2)
+  const x = Math.round((vw - pairW) / 2)
+  const left = { x, y: sheet.y, w, h: sheet.h }
+  const rightX = x + w + gap
+  return {
+    split,
+    pair: {
+      left,
+      right: { x: rightX, y: sheet.y, w, h: sheet.h - PAIR_RAIL },
+      rightRail: { x: rightX, y: sheet.y + sheet.h - PAIR_RAIL, w, h: PAIR_RAIL },
+    },
+  }
+}
+
+function layoutOne(vh: number): Omit<Metrics, 'keyboard' | 'split' | 'pair'> {
   const vw = window.innerWidth
 
   const safe = safeInsets()
@@ -241,6 +281,7 @@ function layout(vh: number): Omit<Metrics, 'keyboard'> {
 
 export const useMetrics = create<Metrics>(() => measure())
 phone.compact = () => useMetrics.getState().compact
+phone.split = () => useMetrics.getState().split
 
 function writeCssVars(m: Metrics) {
   const s = document.documentElement.style
