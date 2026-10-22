@@ -75,6 +75,9 @@ function Sheet() {
         aria-label={`Chat with ${agentName()}`}
       >
         <motion.div
+          // Kept at its true size while the sheet slides between centre and the left half
+          // (motion counter-scales it), so her words never stretch.
+          layout
           className="flex min-h-0 flex-1 flex-col"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1, transition: { delay: 0.12, duration: 0.25 } }}

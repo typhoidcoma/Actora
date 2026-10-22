@@ -86,7 +86,10 @@ function Rig() {
       camera.position.z = damp(camera.position.z, frame.center[2] + follow.z + dist, 3, dt)
     }
     camera.lookAt(target)
-  })
+    camera.updateMatrixWorld()
+    // Before everything else each frame: the focus panel is placed from this camera,
+    // and a frame behind it would shake as the camera moves.
+  }, -1)
   return null
 }
 

@@ -87,75 +87,77 @@ export function Grid() {
   const itemPanel = !focus && selected ? selected : null
   const openKey = finds ? 'finds' : itemPanel ? `${itemPanel.kind}:${itemPanel.id}` : focus ? `list:${focus}` : null
   const panelOpen = openKey !== null || memories || people
-  // Wide screens, the chat open too: the panel is the right-hand window beside it, at full strength.
+  // Wide screens, the chat open too: the panel is the right-hand window beside it.
   const paired = chatOpen && panelOpen && m.split
   const box = paired ? m.pair.right : m.panel
-  const dim = chatOpen && !paired
 
   return (
-    <motion.div
-      className="fixed"
-      style={{ left: m.gridX, top: m.gridY, width: m.gridW, height: m.gridH }}
-      animate={{ scale: dim ? 0.94 : 1, opacity: dim ? 0.3 : 1 }}
-      transition={glide}
-    >
-      <div
-        className={
-          m.stack
-            ? 'scroll-y grid h-full w-full grid-cols-1 content-start'
-            : 'grid h-full w-full grid-cols-2 grid-rows-2'
-        }
-        // Stacked: one column, most important first, each card a fixed height.
-        style={m.stack ? { gap: m.gap, gridAutoRows: m.cellH } : { gap: m.gap }}
+    <>
+      {/* The cards step back behind the chat. Only the cards: a panel inside this
+        scaling box would be measured mid-scale as it slides beside the chat, and shake. */}
+      <motion.div
+        className="fixed"
+        style={{ left: m.gridX, top: m.gridY, width: m.gridW, height: m.gridH }}
+        animate={{ scale: chatOpen ? 0.94 : 1, opacity: chatOpen ? 0.3 : 1 }}
+        transition={glide}
       >
-        {slots.map((slot, i) => {
-          // Stacked cards all read the same way (no orb notch, left-aligned).
-          const corner = (m.stack ? 0 : i) as Corner
-          // The open card unmounts so its layoutId can morph into the panel.
-          if (slot.key === openKey) return <div key={slot.key} />
-          // Something waiting for the user's OK takes box 4 until it's answered.
-          if (slot.type === 'finds')
-            return pendingAction ? (
-              <PendingCard key="pending" corner={corner} hidden={panelOpen} />
-            ) : (
-              <FindsCard key="finds" corner={corner} hidden={panelOpen} />
-            )
-          if (slot.type === 'message')
-            return <MessageCard key={slot.key} card={slot.card} corner={corner} hidden={panelOpen} compact={m.compact} />
-          if (slot.type === 'item') {
-            return (
-              <PriorityCard
-                key={slot.key}
-                item={slot.item}
-                rank={slot.rank}
-                corner={corner}
-                hidden={panelOpen}
-                compact={m.compact}
-              />
-            )
+        <div
+          className={
+            m.stack
+              ? 'scroll-y grid h-full w-full grid-cols-1 content-start'
+              : 'grid h-full w-full grid-cols-2 grid-rows-2'
           }
-          const def = LISTS[slot.tile]
-          return (
-            <CardShell
-              key={slot.key}
-              layoutId={`list-${slot.tile}`}
-              corner={corner}
-              accent={def.accent}
-              hidden={panelOpen}
-              label={`Open ${def.label}`}
-              onOpen={() => ui.focus(slot.tile)}
-            >
-              <def.Face corner={corner} />
-            </CardShell>
-          )
-        })}
-      </div>
+          // Stacked: one column, most important first, each card a fixed height.
+          style={m.stack ? { gap: m.gap, gridAutoRows: m.cellH } : { gap: m.gap }}
+        >
+          {slots.map((slot, i) => {
+            // Stacked cards all read the same way (no orb notch, left-aligned).
+            const corner = (m.stack ? 0 : i) as Corner
+            // The open card unmounts so its layoutId can morph into the panel.
+            if (slot.key === openKey) return <div key={slot.key} />
+            // Something waiting for the user's OK takes box 4 until it's answered.
+            if (slot.type === 'finds')
+              return pendingAction ? (
+                <PendingCard key="pending" corner={corner} hidden={panelOpen} />
+              ) : (
+                <FindsCard key="finds" corner={corner} hidden={panelOpen} />
+              )
+            if (slot.type === 'message')
+              return (
+                <MessageCard key={slot.key} card={slot.card} corner={corner} hidden={panelOpen} compact={m.compact} />
+              )
+            if (slot.type === 'item') {
+              return (
+                <PriorityCard
+                  key={slot.key}
+                  item={slot.item}
+                  rank={slot.rank}
+                  corner={corner}
+                  hidden={panelOpen}
+                  compact={m.compact}
+                />
+              )
+            }
+            const def = LISTS[slot.tile]
+            return (
+              <CardShell
+                key={slot.key}
+                layoutId={`list-${slot.tile}`}
+                corner={corner}
+                accent={def.accent}
+                hidden={panelOpen}
+                label={`Open ${def.label}`}
+                onOpen={() => ui.focus(slot.tile)}
+              >
+                <def.Face corner={corner} />
+              </CardShell>
+            )
+          })}
+        </div>
+      </motion.div>
       {/* Panels fill the panel box: the grid itself, on phones nearly the whole screen,
           or beside the chat on a wide screen. */}
-      <div
-        className="pointer-events-none absolute"
-        style={{ left: box.x - m.gridX, top: box.y - m.gridY, width: box.w, height: box.h }}
-      >
+      <div className="pointer-events-none fixed" style={{ left: box.x, top: box.y, width: box.w, height: box.h }}>
         <AnimatePresence>
           {focus && <ListPanel key={`list-${focus}`} id={focus} />}
           {itemPanel && <ItemPanel key={`item-${itemPanel.kind}:${itemPanel.id}`} item={itemPanel} />}
@@ -164,7 +166,7 @@ export function Grid() {
           {people && <PeoplePanel key="people" />}
         </AnimatePresence>
       </div>
-    </motion.div>
+    </>
   )
 }
 

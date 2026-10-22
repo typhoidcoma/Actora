@@ -107,7 +107,11 @@ export function FocusPanel3D() {
   // perspective keystones it (the far side looms, every line of text slopes).
   // The turn is only in the flight in and out.
   const turn = 0
-  useFrame((_, dt) => {
+  const tmp = useMemo(
+    () => ({ fwd: new THREE.Vector3(), local: new THREE.Vector3(), q: new THREE.Quaternion(), e: new THREE.Euler() }),
+    [],
+  )
+  useFrame(({ camera }, dt) => {
     const g = group.current
     if (!g) return
     const a = anim.current
@@ -115,12 +119,27 @@ export function FocusPanel3D() {
     const k = a.t < 0.002 ? 0 : a.t
     // From off to her right (or below, on a phone), turned away; settles turned a little toward her.
     const away = 1 - k
-    g.position.set(
-      f.panel.position[0] + (f.portrait ? 0 : away * 0.9),
-      f.panel.position[1] - (f.portrait ? away * 0.9 : 0),
-      f.panel.position[2] - away * 0.6,
-    )
-    g.rotation.set(f.portrait ? away * 0.5 : 0, turn - away * 0.7, 0)
+    // Held where the layout puts it on screen, wherever the camera is on its way:
+    // placed from the camera (which the rig has already moved this frame) and scaled by
+    // how far the camera is from her, so it never looms larger while the camera eases
+    // out (both windows side by side), and its text stays at true size for the layout
+    // animations inside, which measure it on screen. Once the camera settles this is
+    // exactly the layout's pose.
+    camera.getWorldDirection(tmp.fwd)
+    const along = tmp.fwd.z < -0.2 ? (camera.position.z - f.target[2]) / -tmp.fwd.z : f.dist
+    const s = Math.max(0.2, along / f.dist)
+    tmp.local
+      .set(
+        f.panel.position[0] - f.target[0] + (f.portrait ? 0 : away * 0.9),
+        f.panel.position[1] - f.target[1] - (f.portrait ? away * 0.9 : 0),
+        f.panel.position[2] - (f.target[2] + f.dist) - away * 0.6,
+      )
+      .multiplyScalar(s)
+      .applyQuaternion(camera.quaternion)
+    g.position.copy(camera.position).add(tmp.local)
+    tmp.e.set(f.portrait ? away * 0.5 : 0, turn - away * 0.7, 0)
+    g.quaternion.copy(camera.quaternion).multiply(tmp.q.setFromEuler(tmp.e))
+    g.scale.setScalar(s)
     // Drawn (at zero opacity) until the scene is ready, so its glass shader compiles
     // under the loader, not as the camera first comes in.
     g.visible = k > 0 || !useReady.getState().ready
@@ -130,7 +149,7 @@ export function FocusPanel3D() {
 
     css.obj.position.copy(g.position)
     css.obj.quaternion.copy(g.quaternion)
-    css.obj.scale.setScalar(unit)
+    css.obj.scale.setScalar(unit * s)
     const opacity = String(Math.round(Math.min(1, k * 1.25) * 1000) / 1000)
     const pointer = focused && k > 0.9 ? 'auto' : 'none'
     const visibility = k > 0 ? 'visible' : 'hidden'
