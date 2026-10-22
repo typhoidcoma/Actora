@@ -62,6 +62,9 @@ function Sheet() {
         dragElastic={{ top: 0, bottom: 0.5 }}
         onDragEnd={onDragEnd}
         {...sheen}
+        // Closing: it fades and lets clicks through at once, so an empty sheet can never
+        // be left standing over the screen if its morph back into the orb doesn't finish.
+        exit={{ opacity: 0, pointerEvents: 'none', transition: { duration: 0.2 } }}
         // Phones read a size down (chat-phone in index.css): more of the conversation fits.
         className={`glass glass-thick fixed z-20 flex flex-col overflow-hidden ${m.compact ? 'chat-phone' : ''}`}
         style={{
@@ -75,9 +78,6 @@ function Sheet() {
         aria-label={`Chat with ${agentName()}`}
       >
         <motion.div
-          // Kept at its true size while the sheet slides between centre and the left half
-          // (motion counter-scales it), so her words never stretch.
-          layout
           className="flex min-h-0 flex-1 flex-col"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1, transition: { delay: 0.12, duration: 0.25 } }}
