@@ -1,5 +1,5 @@
 import { agentName } from '../stores/agent'
-import { AnimatePresence, motion, useDragControls, type PanInfo } from 'motion/react'
+import { AnimatePresence, motion, useDragControls, useIsPresent, type PanInfo } from 'motion/react'
 import { CopyButton } from './CopyButton'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { loadEarlier } from '../aelora/client'
@@ -32,7 +32,13 @@ export function ChatSheet() {
 function Sheet() {
   const m = useMetrics()
   // Something open beside it (wide screens): the chat slides to the left half, the same size as that window.
-  const paired = useUi(sideBySide) && m.split
+  // While it closes it keeps the place it had: closing reads as "not side by side" any more,
+  // and that would jump it back to the centre and bring up the dark backdrop over the
+  // window beside it, a new piece mid-exit that kept the sheet from ever being removed.
+  const live = useUi(sideBySide) && m.split
+  const present = useIsPresent()
+  const [paired, setPaired] = useState(live)
+  if (present && paired !== live) setPaired(live)
   const box = paired ? { ...m.pair.left, radius: m.sheet.radius } : m.sheet
   const drag = useDragControls()
   const [typing, setTyping] = useState(false)
