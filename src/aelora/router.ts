@@ -341,6 +341,7 @@ function runCommand(cmd: AgentCommand | undefined): void {
   switch (cmd.type) {
     case 'open_app': {
       const target = APP_TO_TILE[cmd.id]
+      if (!target) return refused('open_app', 'unknown app', { id: cmd.id })
       if (target === 'chat') herOpenChat()
       else if (asGlance('open_app', () => runCommand(cmd))) return
       else if (target === 'vault') ui.openVault()
@@ -387,6 +388,40 @@ const THEME_WORDS: Record<string, ThemeMode> = {
   system: 'auto',
 }
 const TILES = new Set<TileId>(TILE_IDS)
+/** Her words for the lists, not always ours: "Calendar", "events", "schedule", "todos". */
+const TILE_WORDS: Record<string, TileId> = {
+  task: 'tasks',
+  todo: 'tasks',
+  todos: 'tasks',
+  goal: 'goals',
+  event: 'calendar',
+  events: 'calendar',
+  schedule: 'calendar',
+  agenda: 'calendar',
+  notification: 'inbox',
+  notifications: 'inbox',
+  reminders: 'inbox',
+}
+const tileOf = (v: unknown): TileId | null => {
+  const w = typeof v === 'string' ? v.trim().toLowerCase() : ''
+  const t = TILE_WORDS[w] ?? w
+  return TILES.has(t as TileId) ? (t as TileId) : null
+}
+/** The kind of an item, read loosely too: "Task", "events", a calendar item. */
+const kindOf = (v: unknown): ItemKind | null => {
+  const w = typeof v === 'string' ? v.trim().toLowerCase().replace(/s$/, '') : ''
+  const k = w === 'calendar' ? 'event' : w
+  return ITEM_KINDS.has(k as ItemKind) ? (k as ItemKind) : null
+}
+
+/**
+ * What she did on screen, in the browser console, so "she said she opened it but
+ * nothing happened" can be told apart from "she never asked": each action as it
+ * arrives, and why one was turned down.
+ */
+const heard = (action: string, args: Record<string, unknown>) => console.info('[her action]', action, args)
+const refused = (action: string, why: string, args: Record<string, unknown>) =>
+  console.warn('[her action] refused', action, `(${why})`, args)
 
 function itemExists(kind: ItemKind, id: string): boolean {
   const e = useEntities.getState()
@@ -400,6 +435,7 @@ function itemExists(kind: ItemKind, id: string): boolean {
 setActionRunner((action, args) => runUiAction(action, args))
 
 export function runUiAction(action: string, args: Record<string, unknown>): void {
+  if (!glancing) heard(action, args)
   if (SCREEN_MOVES.has(action) && asGlance(action, () => runUiAction(action, args))) return
   switch (action) {
     case 'priorities.set': {
@@ -429,15 +465,14 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
     case 'list.open':
     case 'tile.focus': {
       // With an item, show it highlighted in its list; otherwise just the list.
-      if (
-        ITEM_KINDS.has(args.kind as ItemKind) &&
-        typeof args.id === 'string' &&
-        itemExists(args.kind as ItemKind, args.id)
-      ) {
-        return ui.reveal({ kind: args.kind as ItemKind, id: args.id })
+      const kind = kindOf(args.kind)
+      if (kind && typeof args.id === 'string' && itemExists(kind, args.id)) {
+        return ui.reveal({ kind, id: args.id })
       }
-      if (TILES.has(args.tile as TileId)) ui.focus(args.tile as TileId)
-      return
+      // The list by its name (whichever key she put it under), else the list her item belongs in.
+      const tile = tileOf(args.tile) ?? tileOf(args.list) ?? tileOf(args.name) ?? tileOf(args.kind)
+      if (tile) return ui.focus(tile)
+      return refused(action, 'no such list', args)
     }
     case 'tile.close':
       return ui.focus(null)
@@ -455,8 +490,9 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
       if (typeof args.id === 'string' && useFinds.getState().items.some((x) => x.id === args.id)) {
         ui.openFinds()
         ui.selectFind(args.id)
+        return
       }
-      return
+      return refused(action, 'no find with that id', args)
     case 'finds.refresh':
       return hunt()
     case 'reader.close':
@@ -466,15 +502,11 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
     case 'chat.close':
       return ui.closeChat()
     case 'card.open':
-    case 'item.focus':
-      if (
-        ITEM_KINDS.has(args.kind as ItemKind) &&
-        typeof args.id === 'string' &&
-        itemExists(args.kind as ItemKind, args.id)
-      ) {
-        ui.open({ kind: args.kind as ItemKind, id: args.id })
-      }
-      return
+    case 'item.focus': {
+      const kind = kindOf(args.kind)
+      if (kind && typeof args.id === 'string' && itemExists(kind, args.id)) return ui.open({ kind, id: args.id })
+      return refused(action, kind ? 'no item with that id' : 'unknown kind', args)
+    }
     case 'options.set': {
       const list = Array.isArray(args.options) ? args.options : []
       const options = list
@@ -510,8 +542,8 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
         .trim()
         .toLowerCase()
       const mode = THEME_WORDS[said] ?? said
-      if (THEMES.has(mode as ThemeMode)) ui.setTheme(mode as ThemeMode)
-      return
+      if (THEMES.has(mode as ThemeMode)) return ui.setTheme(mode as ThemeMode)
+      return refused(action, 'unknown mode', args)
     }
     case 'voice.listen':
       // Browsers need a user gesture to start the mic; surface the chip instead.
@@ -560,6 +592,8 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
         optionsStore.push(contextKeyOf(useUi.getState()), [actOption('Get reminders here', { type: 'installHelp' })])
       return
     }
+    default:
+      refused(action, 'not an action Actora has', args)
   }
 }
 

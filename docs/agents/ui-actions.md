@@ -28,6 +28,10 @@ She drives the UI with ui_actions (`card.open`, `options.set`, `colors.set`, ...
 5. Describe it in `docs/agent-ui.md` **and** in Aelora's playbook (Aelora change = branch + PR).
 6. Tests in `src/aelora/actions.test.ts`; try it with `__actora.ui('name.verb', { ... })` in the mock.
 
+**"She said she opened it but nothing happened."** The browser console logs every action she sends
+(`[her action] list.open {…}`) and every one turned down, with why (`[her action] refused …`). No line at all means
+she never sent it: that's her playbook, not the app.
+
 ## Add something she should see
 
 1. Add it to `screen()` (moves with the user) or `homeScreen()` (changes on its own).

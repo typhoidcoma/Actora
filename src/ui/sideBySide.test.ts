@@ -118,3 +118,26 @@ describe('the chat follows her words beside her window', () => {
     expect(useUi.getState()).toMatchObject({ chatOpen: false, people: true })
   })
 })
+
+describe('her words for the lists', () => {
+  it('opens the list whatever she calls it, and says why when she asks for one that is not there', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    for (const [said, tile] of [
+      [{ tile: 'Calendar' }, 'calendar'],
+      [{ tile: 'events' }, 'calendar'],
+      [{ list: 'schedule' }, 'calendar'],
+      [{ tile: 'todos' }, 'tasks'],
+      [{ kind: 'goal' }, 'goals'],
+    ] as const) {
+      ui.closeAll()
+      runUiAction('list.open', said)
+      expect(useUi.getState().focus).toBe(tile)
+    }
+    ui.closeAll()
+    runUiAction('list.open', { tile: 'weather' })
+    expect(useUi.getState().focus).toBe(null)
+    expect(warn).toHaveBeenCalledWith('[her action] refused', 'list.open', '(no such list)', { tile: 'weather' })
+    vi.restoreAllMocks()
+  })
+})
