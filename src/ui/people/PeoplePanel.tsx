@@ -140,7 +140,8 @@ function Home({ onAdd, onGroup, onBlocked }: { onAdd: () => void; onGroup: () =>
   const outgoing = friends.filter((f) => f.status === 'pending' && f.direction === 'outgoing')
 
   return (
-    <div className="grid gap-6">
+    // One column no wider than the window: a long message preview truncates instead of widening it.
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       <div className="flex flex-wrap gap-2">
         <motion.button
           whileTap={press}
