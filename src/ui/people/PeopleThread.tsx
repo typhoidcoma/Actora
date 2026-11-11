@@ -353,11 +353,16 @@ export function ThreadComposer({ id }: { id: string }) {
   const [asking, setAsking] = useState<string[]>([])
   const [text, setText] = useState('')
   const input = useRef<HTMLInputElement>(null)
+  const wasEditing = useRef(false)
   useEffect(() => {
     if (editing) {
       setText(editing.body)
       input.current?.focus()
+    } else if (wasEditing.current) {
+      // An edit given up (cancelled, or the thread changed): its old words mustn't go out as a new message.
+      setText('')
     }
+    wasEditing.current = !!editing
   }, [editing])
 
   const submit = (e?: React.FormEvent) => {

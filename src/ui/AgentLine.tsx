@@ -90,7 +90,7 @@ export function AgentLine() {
   // key so it isn't revealed a second time.
   const [streamed, setStreamed] = useState('')
   if (content.live && content.text !== streamed) setStreamed(content.text)
-  const displayKey = content.live || content.text === streamed ? content.key : `${content.key}:${content.text}`
+  const plainKey = content.live || content.text === streamed ? content.key : `${content.key}:${content.text}`
 
   // Once her words have sat still for a while, the line fades off and leaves the
   // grid clean; anything new brings it straight back. Things that need the user
@@ -105,13 +105,31 @@ export function AgentLine() {
   const signature = `${content.key}|${content.text}`
   // Whether it's new is decided once, when the text first appears, so a re-render
   // mid-reveal can't cut the animation short.
+  const live = !!content.live
   const [settled, setSettled] = useState({
     signature,
     faded: fadedAway.has(signature),
     fresh: !revealed.has(signature),
+    live,
+    key: content.key,
+    /** The live key carried on once streaming ends, so the line isn't swapped out. */
+    heldKey: null as string | null,
   })
-  if (settled.signature !== signature)
-    setSettled({ signature, faded: fadedAway.has(signature), fresh: !revealed.has(signature) })
+  if (settled.signature !== signature || settled.live !== live) {
+    // Words that just finished streaming in were read as they came: they stay put,
+    // with no second reveal and no exit-and-enter (her reply's key changes as it lands).
+    const finished =
+      settled.live && !live && (settled.key === content.key || (settled.key === 'reply-live' && content.key.startsWith('r:')))
+    const same = settled.signature === signature
+    setSettled({
+      signature,
+      faded: fadedAway.has(signature),
+      fresh: finished ? false : same ? settled.fresh : !revealed.has(signature),
+      live,
+      key: content.key,
+      heldKey: finished ? settled.key : same ? settled.heldKey : null,
+    })
+  }
   useEffect(() => {
     if (holds || !content.text) return
     const t = setTimeout(() => {
@@ -122,6 +140,7 @@ export function AgentLine() {
   }, [signature, holds, content.text])
   // Seen in full once (revealed, or streamed in live): from now on it just sits there.
   const seenBefore = settled.signature === signature && !settled.fresh
+  const displayKey = !content.live && settled.signature === signature && settled.heldKey ? settled.heldKey : plainKey
   useEffect(() => {
     if (content.text && !holds) revealed.add(signature)
   }, [signature, holds, content.text])

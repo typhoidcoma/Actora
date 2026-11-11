@@ -22,8 +22,9 @@ const ROLE_OF: Record<TileId, Role> = { calendar: 'event', tasks: 'task', goals:
 
 function useCalendarFace(): Face {
   const now = useNow(15_000)
-  const { upcoming, current, hydrated } = useAgenda(now)
+  const { upcoming, current, hydrated, failed } = useAgenda(now)
   if (!hydrated) return { label: 'Calendar', value: '—', line: 'Loading…' }
+  if (failed) return { label: 'Calendar', value: '—', line: "Couldn't load" }
   if (current) return { label: 'Now', value: clockTime(current.end_time), unit: 'ends', line: current.title }
   const next = upcoming.find((e) => e !== current && Date.parse(e.start_time) > now)
   if (!next) return { label: 'Calendar', value: 'Free', line: 'Nothing scheduled' }
@@ -32,14 +33,16 @@ function useCalendarFace(): Face {
 }
 
 function useTasksFace(): Face {
-  const { open, todayTotal, todayDone, hydrated } = useTasks()
+  const { open, todayTotal, todayDone, hydrated, failed } = useTasks()
   if (!hydrated) return { label: 'Tasks', value: '—', line: 'Loading…' }
+  if (failed) return { label: 'Tasks', value: '—', line: "Couldn't load" }
   return { label: 'Tasks', value: String(open.length), unit: 'open', line: open[0]?.title ?? 'All clear', dots: todayTotal > 0 ? { total: todayTotal, lit: todayDone } : undefined }
 }
 
 function useGoalsFace(): Face {
-  const { active, overall, hydrated } = useGoals()
+  const { active, overall, hydrated, failed } = useGoals()
   if (!hydrated) return { label: 'Goals', value: '—', line: 'Loading…' }
+  if (failed) return { label: 'Goals', value: '—', line: "Couldn't load" }
   return {
     label: 'Goals',
     value: String(Math.round(overall * 100)),
@@ -51,8 +54,9 @@ function useGoalsFace(): Face {
 
 function useInboxFace(): Face {
   const now = useNow(30_000)
-  const { items, unread, hydrated } = useInbox(now)
+  const { items, unread, hydrated, failed } = useInbox(now)
   if (!hydrated) return { label: 'Inbox', value: '—', line: 'Loading…' }
+  if (failed) return { label: 'Inbox', value: '—', line: "Couldn't load" }
   const latest = items.find((n) => !n.read_at) ?? items[0]
   return { label: 'Inbox', value: String(unread), unit: 'new', line: latest?.title ?? 'Nothing new', dots: unread > 0 ? { total: Math.min(unread, 8), lit: Math.min(unread, 8) } : undefined }
 }

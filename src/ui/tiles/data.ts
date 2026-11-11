@@ -25,11 +25,14 @@ interface TaskSummary {
   todayTotal: number
   todayDone: number
   hydrated: boolean
+  /** It couldn't be loaded: say so, never "Nothing on your list". */
+  failed: boolean
 }
 
 export function useTasks(): TaskSummary {
   const tasks = useEntities((s) => s.tasks)
   const hydrated = useEntities((s) => s.hydrated.tasks)
+  const failed = useEntities((s) => s.failed.tasks)
   return useMemo(() => {
     const today = todayStr()
     const all = Object.values(tasks)
@@ -46,8 +49,9 @@ export function useTasks(): TaskSummary {
       todayTotal: todays.length,
       todayDone: todays.filter((t) => t.status === 'done').length,
       hydrated,
+      failed,
     }
-  }, [tasks, hydrated])
+  }, [tasks, hydrated, failed])
 }
 
 export interface GoalRow {
@@ -63,10 +67,12 @@ export function useGoals(): {
   completed: GoalRow[]
   overall: number
   hydrated: boolean
+  failed: boolean
 } {
   const goals = useEntities((s) => s.goals)
   const tasks = useEntities((s) => s.tasks)
   const hydrated = useEntities((s) => s.hydrated.goals)
+  const failed = useEntities((s) => s.failed.goals)
   return useMemo(() => {
     const counts = new Map<string, { done: number; total: number }>()
     for (const t of Object.values(tasks)) {
@@ -87,8 +93,8 @@ export function useGoals(): {
         .sort((a, b) => order.indexOf(a.goal.timeframe ?? 'year') - order.indexOf(b.goal.timeframe ?? 'year'))
     const active = rows('active')
     const overall = active.length ? active.reduce((s, r) => s + r.progress, 0) / active.length : 0
-    return { active, paused: rows('paused'), completed: rows('completed'), overall, hydrated }
-  }, [goals, tasks, hydrated])
+    return { active, paused: rows('paused'), completed: rows('completed'), overall, hydrated, failed }
+  }, [goals, tasks, hydrated, failed])
 }
 
 /**
@@ -118,16 +124,18 @@ export function useAgenda(now: number): {
   upcoming: CalendarOccurrence[]
   current: CalendarOccurrence | null
   hydrated: boolean
+  failed: boolean
 } {
   const events = useEntities((s) => s.events)
   const hydrated = useEntities((s) => s.hydrated.events)
+  const failed = useEntities((s) => s.failed.events)
   return useMemo(() => {
     const live = Object.values(events)
       .filter((e) => Date.parse(e.end_time) > now)
       .sort((a, b) => Date.parse(a.occurrence_start ?? a.start_time) - Date.parse(b.occurrence_start ?? b.start_time))
     const current = live.find((e) => !e.all_day && Date.parse(e.start_time) <= now) ?? null
-    return { upcoming: live, current, hydrated }
-  }, [events, now, hydrated])
+    return { upcoming: live, current, hydrated, failed }
+  }, [events, now, hydrated, failed])
 }
 
 export function useInbox(now: number): {
@@ -136,9 +144,11 @@ export function useInbox(now: number): {
   /** Reminders set for later (not yet delivered), soonest first. */
   upcoming: Notification[]
   hydrated: boolean
+  failed: boolean
 } {
   const notes = useEntities((s) => s.notifications)
   const hydrated = useEntities((s) => s.hydrated.notifications)
+  const failed = useEntities((s) => s.failed.notifications)
   return useMemo(() => {
     const items = Object.values(notes)
       .filter((n) => n.sent_at || !n.scheduled_for || Date.parse(n.scheduled_for) <= now)
@@ -146,8 +156,8 @@ export function useInbox(now: number): {
     const upcoming = Object.values(notes)
       .filter((n) => !n.sent_at && n.scheduled_for && Date.parse(n.scheduled_for) > now)
       .sort((a, b) => a.scheduled_for!.localeCompare(b.scheduled_for!))
-    return { items, unread: items.filter((n) => !n.read_at).length, upcoming, hydrated }
-  }, [notes, hydrated, now])
+    return { items, unread: items.filter((n) => !n.read_at).length, upcoming, hydrated, failed }
+  }, [notes, hydrated, failed, now])
 }
 
 /** Is this row the selected one (its options are on the rail)? */

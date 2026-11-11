@@ -507,6 +507,8 @@ button {
 .md {
   font-size: 1rem;
   line-height: 1.55;
+  /* A bare link or a long address breaks rather than pushing the chat sideways on a phone. */
+  overflow-wrap: anywhere;
 }
 .md p {
   margin: 0 0 0.6em;
@@ -572,6 +574,11 @@ button {
   border-collapse: collapse;
   font-size: 0.9em;
   margin: 0.4em 0;
+  /* A wide table scrolls on its own; the chat around it never does. */
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-wrap: normal;
 }
 .md th,
 .md td {

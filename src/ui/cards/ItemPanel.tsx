@@ -91,7 +91,9 @@ export function ItemPanel({ item }: { item: Selected }) {
               clashWith ? ['Clashes with', clashWith] : null,
             ]}
           />
-          {ev.description && <p className="mt-4 text-[15px] leading-relaxed text-text">{ev.description}</p>}
+          {ev.description && (
+            <p className="mt-4 text-[15px] leading-relaxed [overflow-wrap:anywhere] text-text">{ev.description}</p>
+          )}
         </>
       )
     }
@@ -100,7 +102,7 @@ export function ItemPanel({ item }: { item: Selected }) {
     title = n.title
     body = (
       <>
-        {n.body && <p className="text-[17px] leading-relaxed text-text">{n.body}</p>}
+        {n.body && <p className="text-[17px] leading-relaxed [overflow-wrap:anywhere] text-text">{n.body}</p>}
         {n.origin_type === 'assistant' && <LeftForYou friendId={n.origin_user_id ?? null} />}
         <Facts
           rows={[
@@ -110,7 +112,9 @@ export function ItemPanel({ item }: { item: Selected }) {
                 ? botName
                 : n.origin_type === 'assistant'
                   ? `${friendName(n.origin_user_id ?? null)}, via your assistant`
-                  : n.origin_type,
+                  : n.origin_type === 'peer'
+                    ? friendName(n.origin_user_id ?? null)
+                    : 'Actora',
             ],
             ['Sent', ago(n.sent_at ?? n.created_at)],
             ['Status', n.read_at ? 'Read' : 'Unread'],
@@ -330,13 +334,14 @@ function repeatLabel(rrule?: string | null): string {
 
 function Facts({ rows }: { rows: Array<[string, string] | null> }) {
   return (
-    <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2.5 text-[15px]">
+    <dl className="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-2.5 text-[15px]">
       {rows
         .filter((r): r is [string, string] => r !== null)
         .map(([k, v]) => (
           <div key={k} className="contents">
             <dt className="text-muted">{k}</dt>
-            <dd className="text-strong">{v}</dd>
+            {/* A meeting link as the place: it breaks rather than pushing the panel sideways. */}
+            <dd className="min-w-0 [overflow-wrap:anywhere] text-strong">{v}</dd>
           </div>
         ))}
     </dl>

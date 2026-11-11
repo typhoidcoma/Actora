@@ -7,16 +7,17 @@ import { say } from '../../options/run'
 import { morph, press } from '../motion'
 import { useInbox, useNow, useSelected } from './data'
 import { Face, type Corner } from './Face'
-import { Empty, Loading, Section, SelectedWash } from './parts'
+import { Empty, LoadFailed, Loading, Section, SelectedWash } from './parts'
 import { ROLE } from '../brand'
 
 export const INBOX_ACCENT = ROLE.kind.notification
 
 export function InboxFace({ corner }: { corner: Corner }) {
   const now = useNow(30_000)
-  const { items, unread, hydrated } = useInbox(now)
+  const { items, unread, hydrated, failed } = useInbox(now)
   const latest = items.find((n) => !n.read_at) ?? items[0]
   if (!hydrated) return <Face corner={corner} accent={INBOX_ACCENT} label="Inbox" value="—" line="Loading…" />
+  if (failed) return <Face corner={corner} accent={INBOX_ACCENT} label="Inbox" value="—" line="Couldn't load" />
   return (
     <Face
       corner={corner}
@@ -47,8 +48,9 @@ export function InboxFace({ corner }: { corner: Corner }) {
 
 export function InboxDetail() {
   const now = useNow(30_000)
-  const { items, unread, upcoming, hydrated } = useInbox(now)
+  const { items, unread, upcoming, hydrated, failed } = useInbox(now)
   if (!hydrated) return <Loading />
+  if (failed) return <LoadFailed kind="notifications" />
   if (!items.length && !upcoming.length) return <Empty text="All quiet." />
   return (
     <>

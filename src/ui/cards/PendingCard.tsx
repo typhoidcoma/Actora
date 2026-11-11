@@ -54,7 +54,7 @@ export function PendingBody({
       <div className="display text-[clamp(17px,calc(var(--grid)*0.05),26px)] leading-tight font-bold text-strong">
         {k.label}
       </div>
-      <p className={`selectable text-[14px] leading-snug text-text ${compact ? 'line-clamp-3' : 'line-clamp-4'}`}>
+      <p className={`selectable text-[14px] leading-snug [overflow-wrap:anywhere] text-text ${compact ? 'line-clamp-3' : 'line-clamp-4'}`}>
         {p.summary || `${name} has it ready.`}
       </p>
     </div>

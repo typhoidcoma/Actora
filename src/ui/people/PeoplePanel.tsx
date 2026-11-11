@@ -86,7 +86,8 @@ export function PeoplePanel() {
       )
     title = thread ? threadName(thread) : 'Conversation'
     body = <ThreadBody key={dmThread} id={dmThread} />
-    footer = thread ? <ThreadComposer id={dmThread} /> : undefined
+    // Keyed by thread: a draft for one person never carries over to another.
+    footer = thread ? <ThreadComposer key={dmThread} id={dmThread} /> : undefined
   } else if (view === 'add') {
     kicker = back('People', () => setView('home'))
     title = 'Add a friend'

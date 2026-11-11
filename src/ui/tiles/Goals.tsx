@@ -5,14 +5,15 @@ import { AnimatedNumber } from '../AnimatedNumber'
 import { morph } from '../motion'
 import { useGoals, useSelected } from './data'
 import { Bar, Face, type Corner } from './Face'
-import { Empty, Loading, Section, SelectedWash } from './parts'
+import { Empty, LoadFailed, Loading, Section, SelectedWash } from './parts'
 import { ROLE } from '../brand'
 
 export const GOALS_ACCENT = ROLE.kind.goal
 
 export function GoalsFace({ corner }: { corner: Corner }) {
-  const { active, overall, hydrated } = useGoals()
+  const { active, overall, hydrated, failed } = useGoals()
   if (!hydrated) return <Face corner={corner} accent={GOALS_ACCENT} label="Goals" value="—" line="Loading…" />
+  if (failed) return <Face corner={corner} accent={GOALS_ACCENT} label="Goals" value="—" line="Couldn't load" />
   return (
     <Face
       corner={corner}
@@ -27,8 +28,9 @@ export function GoalsFace({ corner }: { corner: Corner }) {
 }
 
 export function GoalsDetail() {
-  const { active, paused, completed, hydrated } = useGoals()
+  const { active, paused, completed, hydrated, failed } = useGoals()
   if (!hydrated) return <Loading />
+  if (failed) return <LoadFailed kind="goals" />
   if (!active.length && !paused.length && !completed.length) return <Empty text="No goals yet." />
   return (
     <>

@@ -9,8 +9,8 @@ import { isFindsThread, startFinds, useFinds } from '../finds/finds'
 import { rememberMain } from './mainThread'
 import { setTokenSource } from './http'
 import type { ClientMessage, Goal, Notification, ServerFrame, Task } from './protocol'
-import { request } from './request'
-import { homeScreen, routeFrame, sendClientState } from './router'
+import { failInflight, request } from './request'
+import { homeScreen, reloadList, routeFrame, sendClientState } from './router'
 import { usePriorityStore } from '../stores/priority'
 import { usePending } from '../stores/pending'
 import { useOptionsStore } from '../stores/options'
@@ -79,7 +79,10 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
       connection: status,
       phase: status === 'open' ? (prev.phase === 'offline' ? 'idle' : prev.phase) : 'offline',
     })
-    if (status !== 'open') abortTurnOnDisconnect()
+    if (status !== 'open') {
+      abortTurnOnDisconnect()
+      failInflight()
+    }
   })
   // Keep the agent's idea of what's on screen in sync with what is actually on screen.
   const offUi = useUi.subscribe((s, prev) => {
@@ -174,6 +177,11 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
     entities.reset()
     agent.resetForUser()
   }
+}
+
+/** "Try again" on a list that couldn't load. */
+export function retryList(kind: 'tasks' | 'goals' | 'events' | 'notifications'): void {
+  if (socket) void reloadList(socket, kind)
 }
 
 export function reconnectAelora(): void {

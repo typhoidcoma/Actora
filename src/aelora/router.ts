@@ -223,33 +223,42 @@ function refreshCalendar(bus: FrameBus) {
 
 /**
  * A startup list, retried twice if it fails (a lost reply, a hiccup). If it still
- * fails it counts as loaded, so the greeting and finds don't wait on it forever.
+ * fails it counts as loaded, so the greeting and finds don't wait on it forever,
+ * but it's marked failed: the screens say it couldn't load, never "All clear".
  */
 async function loadList(
   fetch: () => Promise<unknown>,
-  kind: 'tasks' | 'goals' | 'events' | 'notifications',
+  kind: ListKind,
 ): Promise<void> {
   for (const wait of [0, 2000, 6000]) {
     if (wait) await new Promise((r) => setTimeout(r, wait))
     if (await fetch()) return
   }
-  entities.markHydrated(kind)
+  entities.markFailed(kind)
+}
+
+type ListKind = 'tasks' | 'goals' | 'events' | 'notifications'
+const LIST_FETCH: Record<ListKind, (bus: FrameBus) => Promise<unknown>> = {
+  notifications: (bus) => request(bus, { type: 'notification.list', deliveredOnly: false }, 'notification.list'),
+  tasks: (bus) => request(bus, { type: 'task.list' }, 'task.list'),
+  goals: (bus) => request(bus, { type: 'goal.list' }, 'goal.list'),
+  events: (bus) => refreshCalendar(bus),
+}
+
+/** "Try again" on a list that couldn't load. */
+export function reloadList(bus: FrameBus, kind: ListKind): Promise<void> {
+  return loadList(() => LIST_FETCH[kind](bus), kind)
 }
 
 /** Post-hello sequence (FRONTEND.md → "Reconnect checklist"). Different reply types may run concurrently. */
 function bootstrap(bus: FrameBus): void {
   bus.send({ type: 'tz.set', timezone: Intl.DateTimeFormat().resolvedOptions().timeZone })
   sendClientState(bus)
-  void loadList(
-    () => request(bus, { type: 'notification.list', deliveredOnly: false }, 'notification.list'),
-    'notifications',
-  )
+  void reloadList(bus, 'notifications')
   // Offline thoughts go on once the list is in (so one already there isn't added twice).
-  void loadList(() => request(bus, { type: 'task.list' }, 'task.list'), 'tasks').then(() =>
-    flushCaptures(bus, useAgent.getState().userId),
-  )
-  void loadList(() => request(bus, { type: 'goal.list' }, 'goal.list'), 'goals')
-  void loadList(() => refreshCalendar(bus), 'events')
+  void reloadList(bus, 'tasks').then(() => flushCaptures(bus, useAgent.getState().userId))
+  void reloadList(bus, 'goals')
+  void reloadList(bus, 'events')
   void resubscribe()
   void refreshGoogle()
   void request(bus, { type: 'session.list' }, 'session.list')

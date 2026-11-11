@@ -344,7 +344,7 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
         initial={{ opacity: 0, y: 10, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={morph}
-        className={`chat-user selectable relative max-w-[80%] self-end rounded-[6px] rounded-br-[3px] bg-accent/25 px-4 py-2.5 text-[15px] text-strong ${bubble.react ? 'mb-3' : ''}`}
+        className={`chat-user selectable relative max-w-[80%] self-end [overflow-wrap:anywhere] rounded-[6px] rounded-br-[3px] bg-accent/25 px-4 py-2.5 text-[15px] text-strong ${bubble.react ? 'mb-3' : ''}`}
       >
         {bubble.text}
         <Stamp at={bubble.at} className="mt-0.5 block text-right" />

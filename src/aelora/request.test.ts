@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ServerFrame } from './protocol'
-import { request, resetLateReplies } from './request'
+import { failInflight, request, resetLateReplies } from './request'
 import type { FrameBus } from './socket'
 
 /** A bus whose frames the test pushes by hand. */
@@ -19,6 +19,20 @@ describe('request correlation', () => {
   afterEach(() => {
     vi.useRealTimers()
     resetLateReplies()
+  })
+
+  it('a dropped socket fails what was in flight without swallowing the next reply', async () => {
+    vi.useFakeTimers()
+    const { bus, emit } = fakeBus()
+    const lost = request(bus, { type: 'focus.start' }, 'focus.started', 12_000)
+    await vi.advanceTimersByTimeAsync(0) // sent (it queues behind any of its kind first)
+    failInflight() // the socket dropped: its reply will never come
+    expect(await lost).toBeNull()
+    await vi.advanceTimersByTimeAsync(13_000) // the old timeout firing must not mark a reply late
+    const next = request(bus, { type: 'focus.start' }, 'focus.started', 12_000)
+    await vi.advanceTimersByTimeAsync(0)
+    emit({ type: 'focus.started', id: 's2' })
+    expect(await next).toMatchObject({ id: 's2' })
   })
 
   it("a reply that arrives after its request timed out doesn't resolve the next one", async () => {

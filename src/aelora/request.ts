@@ -18,7 +18,7 @@ export interface RequestOptions<T> {
 }
 
 const queues = new Map<string, Promise<unknown>>()
-const inflight: Array<{ fail: () => void; at: number }> = []
+const inflight: Array<{ drop: () => void; at: number }> = []
 /** Per reply type: when requests timed out unanswered (their replies may still come). */
 const late = new Map<string, number[]>()
 const LATE_TTL_MS = 30_000
@@ -65,7 +65,7 @@ function once<T extends ServerFrame>(
 ): Promise<T | null> {
   return new Promise((resolve) => {
     let settled = false
-    const entry = { fail: () => finish(null), at: Date.now() }
+    const entry = { drop: () => finish(null), at: Date.now() }
 
     const unsubscribe = bus.subscribe((frame) => {
       if (frame.type === replyType) {
@@ -107,5 +107,15 @@ function once<T extends ServerFrame>(
 
 /** Forget expected late replies (a new connection: the old socket's replies never come). */
 export function resetLateReplies(): void {
+  late.clear()
+}
+
+/**
+ * The socket dropped: every request in flight is lost with it. Fail them all now,
+ * without expecting their replies later, or each one's timeout would mark a reply
+ * as late and swallow the next good reply of its kind on the new connection.
+ */
+export function failInflight(): void {
+  for (const entry of [...inflight]) entry.drop()
   late.clear()
 }

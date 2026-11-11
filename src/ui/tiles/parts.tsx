@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
+import { retryList } from '../../aelora/client'
 import { agentName } from '../../stores/agent'
 import type { ReactNode } from 'react'
 import { useAgent } from '../../stores/agent'
@@ -27,6 +28,21 @@ export function Loading() {
       {[0.92, 0.7, 0.82, 0.6].map((w, i) => (
         <div key={i} className="shimmer h-11 rounded-[6px] bg-text/6" style={{ width: `${w * 100}%` }} />
       ))}
+    </div>
+  )
+}
+
+/** A list that couldn't be loaded: never shown as empty (a "Free" day that isn't). */
+export function LoadFailed({ kind }: { kind: 'tasks' | 'goals' | 'events' | 'notifications' }) {
+  return (
+    <div className="flex flex-col items-center gap-4 py-10">
+      <p className="display text-center text-2xl text-muted">Couldn't load this.</p>
+      <button
+        onClick={() => retryList(kind)}
+        className="glass-pill min-h-11 rounded-[8px] px-5 text-[15px] font-semibold text-strong"
+      >
+        Try again
+      </button>
     </div>
   )
 }

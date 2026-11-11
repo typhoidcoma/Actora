@@ -68,6 +68,10 @@ let rawGreeting = ''
 /** A message waiting for its new thread (sendChat with no main thread yet). */
 let pendingMessage: string | null = null
 let pendingBus: FrameBus | null = null
+/** The message in flight, to send once more if its thread turns out to be gone. */
+let lastSent: string | null = null
+let lastBus: FrameBus | null = null
+let retried = false
 let seq = 0
 let turnTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -128,6 +132,9 @@ export function sendChat(bus: FrameBus, text: string): boolean {
     ? bus.send({ type: 'chat', message, conversationId: target })
     : bus.send({ type: 'conversation.new' })
   if (!sent) return false
+  lastSent = message
+  lastBus = bus
+  retried = false
   play('sent')
   if (!target) {
     pendingMessage = message
@@ -171,15 +178,20 @@ export function sendGreeting(
     ...(s.phase === 'idle' ? { phase: 'thinking' as const } : {}),
   })
   clearTimeout(greetingTimer)
-  greetingTimer = setTimeout(() => {
-    const g = get()
-    set({
-      greetingPending: false,
-      greeting: { ...g.greeting, streaming: false },
-      ...(g.phase === 'thinking' && !g.turnId && !g.awaitingTurn ? { phase: 'idle' as const } : {}),
-    })
-  }, GREETING_TIMEOUT_MS)
+  greetingTimer = setTimeout(endGreetingWait, GREETING_TIMEOUT_MS)
   return true
+}
+
+/** Stop waiting for a welcome that isn't coming (failed, refused, or too slow). */
+function endGreetingWait(): void {
+  clearTimeout(greetingTimer)
+  greetingDone = undefined
+  const g = get()
+  set({
+    greetingPending: false,
+    greeting: { ...g.greeting, streaming: false },
+    ...(g.phase === 'thinking' && !g.turnId && !g.awaitingTurn ? { phase: 'idle' as const } : {}),
+  })
 }
 let greetingDone: ((text: string) => void) | undefined
 
@@ -345,29 +357,47 @@ export function handleChatFrame(f: ServerFrame): boolean {
 
     case 'error': {
       const code = String(f.code ?? '')
-      // Aelora turned the message away before it reached her (too many at once, or
-      // too long): say so now, not after the turn backstop.
-      if (code === 'rate_limited' || code === 'bad_request') {
-        if (f.request === 'system_chat' && s.greetingPending) {
-          clearTimeout(greetingTimer)
-          set({
-            greetingPending: false,
-            greeting: { ...s.greeting, streaming: false },
-            ...(s.phase === 'thinking' && !s.turnId && !s.awaitingTurn ? { phase: 'idle' as const } : {}),
-          })
+      // Her welcome or a check-in failing is theirs alone: it never ends the user's turn.
+      const forGreeting =
+        f.request === 'system_chat' ||
+        (!cid && typeof f.channelId === 'string' && f.channelId.startsWith('system:'))
+      if (forGreeting) {
+        if (s.greetingPending) endGreetingWait()
+        return true
+      }
+      const waiting = s.awaitingTurn && !s.turnId
+      // Aelora turned the message away before it reached her: say so now, not after the backstop.
+      if (f.request === 'chat' && waiting) {
+        if (code === 'not_found' || code === 'conversation_failed') {
+          // The thread was deleted elsewhere while this device was away: forget it
+          // and send the message once more on a fresh thread.
+          rememberMain(null)
+          set({ conversationId: null })
+          if (!retried && lastSent && lastBus) {
+            retried = true
+            pendingMessage = lastSent
+            pendingBus = lastBus
+            if (lastBus.send({ type: 'conversation.new' })) return true
+          }
+          failTurn()
           return true
         }
-        // Only a refusal that names the message: other requests fail this way too.
-        if (f.request !== 'chat' || (!s.awaitingTurn && !s.turnId)) return false
-        failTurn(code === 'rate_limited' ? 'is getting too many messages at once' : "couldn't take a message that long")
+        if (code === 'rate_limited' || code === 'bad_request') {
+          failTurn(code === 'rate_limited' ? 'is getting too many messages at once' : "couldn't take a message that long")
+          return true
+        }
+      }
+      // The new thread for a waiting message couldn't be made.
+      if (f.request === 'conversation.new' && waiting && pendingMessage) {
+        failTurn(code === 'rate_limited' ? 'is getting too many messages at once' : undefined)
         return true
       }
       if (!CHAT_ERROR_CODES.has(code)) return false
-      if (cid && !mine) return true
+      // Another conversation call failing (a finds rename, a Past chats list): not this turn.
+      if (f.request !== undefined && f.request !== 'chat') return false
+      if (cid && !mine && !(waiting && f.request === 'chat')) return true
       if (!s.turnId && !s.awaitingTurn) return true
-      // No thread named: it's ours only if we just sent a message and nothing has
-      // streamed yet. Otherwise it's some other conversation.* call failing (a
-      // finds rename, a Past chats list), and this turn carries on.
+      // No thread named: it's ours only if we just sent a message and nothing has streamed yet.
       if (!cid && !s.awaitingTurn) return true
       // The thread is gone: start a fresh one next time instead of failing again.
       if (code === 'conversation_failed') {
@@ -472,6 +502,8 @@ function failTurn(why = "couldn't answer that"): void {
   pendingMessage = null
   pendingBus = null
   const s = get()
+  // A stale backstop (from before a sign-out, say) mustn't end some later turn or post an error.
+  if (!s.turnId && !s.awaitingTurn) return
   set({
     messages: [...s.messages, { id: bubbleId(), role: 'error', text: `${s.botName} ${why}. Try again.` }],
     streaming: null,

@@ -9,6 +9,8 @@ export interface EntitiesState {
   events: ById<CalendarOccurrence>
   notifications: ById<Notification>
   hydrated: { tasks: boolean; goals: boolean; events: boolean; notifications: boolean }
+  /** Lists that couldn't be loaded: counted as loaded, but the screens say so instead of "All clear". */
+  failed: { tasks: boolean; goals: boolean; events: boolean; notifications: boolean }
 }
 
 const initial = (): EntitiesState => ({
@@ -17,6 +19,14 @@ const initial = (): EntitiesState => ({
   events: {},
   notifications: {},
   hydrated: { tasks: false, goals: false, events: false, notifications: false },
+  failed: { tasks: false, goals: false, events: false, notifications: false },
+})
+
+type Kind = keyof EntitiesState['hydrated']
+/** A list arrived: it's loaded, and whatever failed before is fine now. */
+const loaded = (s: EntitiesState, kind: Kind) => ({
+  hydrated: { ...s.hydrated, [kind]: true },
+  failed: { ...s.failed, [kind]: false },
 })
 
 export const useEntities = create<EntitiesState>(initial)
@@ -52,29 +62,28 @@ function removeFrom(kind: 'tasks' | 'goals' | 'notifications', id: string): void
 
 export const entities = {
   reset: () => set(initial()),
-  /** A list that couldn't be loaded: count it as loaded (empty) so nothing waits on it forever. */
-  markHydrated: (kind: keyof EntitiesState['hydrated']) => set((s) => ({ hydrated: { ...s.hydrated, [kind]: true } })),
+  /** A list that couldn't be loaded: count it as loaded so nothing waits on it forever, and say it failed. */
+  markFailed: (kind: Kind) =>
+    set((s) => ({ hydrated: { ...s.hydrated, [kind]: true }, failed: { ...s.failed, [kind]: true } })),
 
-  setTasks: (list: Task[]) =>
-    set((s) => ({ tasks: index(list, (t) => t.id), hydrated: { ...s.hydrated, tasks: true } })),
+  setTasks: (list: Task[]) => set((s) => ({ tasks: index(list, (t) => t.id), ...loaded(s, 'tasks') })),
   upsertTask: (t: Task) => upsertInto('tasks', t),
   removeTask: (id: string) => removeFrom('tasks', id),
 
-  setGoals: (list: Goal[]) =>
-    set((s) => ({ goals: index(list, (g) => g.id), hydrated: { ...s.hydrated, goals: true } })),
+  setGoals: (list: Goal[]) => set((s) => ({ goals: index(list, (g) => g.id), ...loaded(s, 'goals') })),
   upsertGoal: (g: Goal) => upsertInto('goals', g),
   removeGoal: (id: string) => removeFrom('goals', id),
 
   setNotifications: (list: Notification[]) =>
     set((s) => ({
       notifications: index(list, (n) => n.id),
-      hydrated: { ...s.hydrated, notifications: true },
+      ...loaded(s, 'notifications'),
     })),
   upsertNotification: (n: Notification) => set((s) => ({ notifications: { ...s.notifications, [n.id]: n } })),
   removeNotification: (id: string) => removeFrom('notifications', id),
 
   setEvents: (list: CalendarOccurrence[]) =>
-    set((s) => ({ events: index(list, occurrenceKey), hydrated: { ...s.hydrated, events: true } })),
+    set((s) => ({ events: index(list, occurrenceKey), ...loaded(s, 'events') })),
   /** Replace every occurrence of one event id (a series collapses to its id). */
   upsertEvent: (e: CalendarOccurrence) =>
     set((s) => {

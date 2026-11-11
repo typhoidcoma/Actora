@@ -154,7 +154,7 @@ function Sheet({
       >
         <span className={status.tone === 'ok' ? 'text-strong' : ''}>{status.text}</span>
       </div>
-      <div className="px-3 pb-2 text-xs text-muted">
+      <div className="truncate px-3 pb-2 text-xs text-muted" title={email ?? undefined}>
         <span className="num">{clockTime(now)}</span>
         {sky.source === 'live' && sky.temp !== null && (
           <>

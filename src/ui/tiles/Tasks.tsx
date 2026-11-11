@@ -8,14 +8,15 @@ import { dueLabel } from '../format'
 import { morph, press } from '../motion'
 import { useTasks, useSelected } from './data'
 import { DashRun, Face, type Corner } from './Face'
-import { Empty, Loading, Section, SelectedWash } from './parts'
+import { Empty, LoadFailed, Loading, Section, SelectedWash } from './parts'
 import { ROLE } from '../brand'
 
 export const TASKS_ACCENT = ROLE.kind.task
 
 export function TasksFace({ corner }: { corner: Corner }) {
-  const { open, todayTotal, todayDone, hydrated } = useTasks()
+  const { open, todayTotal, todayDone, hydrated, failed } = useTasks()
   if (!hydrated) return <Face corner={corner} accent={TASKS_ACCENT} label="Tasks" value="—" line="Loading…" />
+  if (failed) return <Face corner={corner} accent={TASKS_ACCENT} label="Tasks" value="—" line="Couldn't load" />
   return (
     <Face
       corner={corner}
@@ -30,8 +31,9 @@ export function TasksFace({ corner }: { corner: Corner }) {
 }
 
 export function TasksDetail() {
-  const { open, done, hydrated } = useTasks()
+  const { open, done, hydrated, failed } = useTasks()
   if (!hydrated) return <Loading />
+  if (failed) return <LoadFailed kind="tasks" />
   if (!open.length && !done.length) return <Empty text="Nothing on your list." />
   return (
     <>

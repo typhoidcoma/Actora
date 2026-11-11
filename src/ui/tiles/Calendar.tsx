@@ -6,16 +6,17 @@ import { clockTime, countdownParts, dayLabel, until } from '../format'
 import { morph } from '../motion'
 import { clashes, useAgenda, useNow, useSelected } from './data'
 import { Face, type Corner } from './Face'
-import { Empty, Loading, Section, SelectedWash } from './parts'
+import { Empty, LoadFailed, Loading, Section, SelectedWash } from './parts'
 import { ROLE } from '../brand'
 
 export const CALENDAR_ACCENT = ROLE.kind.event
 
 export function CalendarFace({ corner }: { corner: Corner }) {
   const now = useNow(15_000)
-  const { upcoming, current, hydrated } = useAgenda(now)
+  const { upcoming, current, hydrated, failed } = useAgenda(now)
   const next = upcoming.find((e) => e !== current && Date.parse(e.start_time) > now)
   if (!hydrated) return <Face corner={corner} accent={CALENDAR_ACCENT} label="Calendar" value="—" line="Loading…" />
+  if (failed) return <Face corner={corner} accent={CALENDAR_ACCENT} label="Calendar" value="—" line="Couldn't load" />
 
   if (current) {
     return (
@@ -47,8 +48,9 @@ export function CalendarFace({ corner }: { corner: Corner }) {
 
 export function CalendarDetail() {
   const now = useNow(15_000)
-  const { upcoming, hydrated } = useAgenda(now)
+  const { upcoming, hydrated, failed } = useAgenda(now)
   if (!hydrated) return <Loading />
+  if (failed) return <LoadFailed kind="events" />
   if (!upcoming.length) return <Empty text="Your next two weeks are open." />
 
   const clash = clashes(upcoming)

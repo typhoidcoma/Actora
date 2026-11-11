@@ -103,6 +103,11 @@ function seed() {
 }
 
 const REPLIES: Array<[RegExp, string, string?]> = [
+  // Wide content, for checking nothing scrolls sideways on a 360 px phone.
+  [
+    /^\/wide$/,
+    'Here it is: https://meet.google.com/abc-defg-hij?authuser=firstname.lastname%40company-domain.example.com&hs=122 and reply to firstname.lastname@company-domain.example.com\n\n| Day | Time | Where | Notes |\n| --- | --- | --- | --- |\n| Monday | 09:00–10:30 | Studio B, third floor | Bring the tile morph prototype and the notes |\n| Tuesday | 14:00–15:00 | Online | Review the quarterly roadmap with everyone |',
+  ],
   [
     /plan|today|day/i,
     "Here's your shape for today:\n\n- **Design sync** in under an hour\n- Two tasks for *Ship Actora v1*\n- Tempo run before dinner\n\nWant me to block focus time after the sync?",
