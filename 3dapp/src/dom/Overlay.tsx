@@ -149,9 +149,15 @@ export function Overlay() {
           animate={{ opacity: focused || !ready ? 0 : 1, y: ready ? 0 : 10 }}
           transition={{ delay: focused ? 0 : 0.6, duration: 0.4 }}
         >
-          {/* Wide: the rail is just its pills; chat, mic and menu sit beside the message box. */}
-          <OptionRail contextKey={key} icons={phone} trailing={<MenuButton onSignOut={onSignOut} />} />
+          {/* Wide: the message box (chat, mic and menu beside it), then the option boxes under it. */}
           {!phone && <HomeActions onSignOut={onSignOut} />}
+          <OptionRail
+            contextKey={key}
+            icons={phone}
+            // Wide: the same width as the message box above, so the boxes line up under it.
+            className={phone ? '' : 'mx-auto w-full max-w-[780px]'}
+            trailing={<MenuButton onSignOut={onSignOut} />}
+          />
         </motion.div>
         </div>
         <Thinking hidden={focused || !ready} />

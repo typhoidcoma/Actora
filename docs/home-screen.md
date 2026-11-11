@@ -280,10 +280,13 @@ pills at all, so nothing private reaches a prompt.
 
 ### Layout (`src/ui/OptionRail.tsx`, `src/options/slots.ts`)
 
-Wide screens: up to 6 pills over two rows, overflow clipped. Phones: a fixed
-2x2 grid where each pill keeps its slot as the list changes; hidden while the
-keyboard is up or the chat is typing; a single "Listening..." pill while the
-mic is on. Act pills are slightly bolder. The rail reports the labels it
+Fixed boxes on every screen, never free-sized chips, so the rail never changes
+size or moves what's around it. Wide screens: a 3x2 grid (6 boxes) the width of
+the message box, under it on home. Phones: a 2x2 grid; hidden while the keyboard
+is up or the chat is typing. Each option keeps its box as the list changes and
+only the words in a changed box cross-fade; empty boxes shimmer while her options
+load, and stay as invisible space where there are none (People). While the mic is
+on, one "Listening..." box fills the grid. Act pills are slightly bolder. The rail reports the labels it
 actually shows with `optionsStore.setVisible(key, labels)`.
 
 ## What goes back to Aelora

@@ -112,9 +112,15 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 12 }}
           >
-            {/* Wide: the pills, then a message box with the mic, chat and menu beside it. */}
-            <OptionRail contextKey={key} icons={compact} trailing={<MenuButton onSignOut={onSignOut} />} />
+            {/* Wide: the message box with the mic, chat and menu beside it, then the option boxes under it. */}
             {!compact && <HomeActions onSignOut={onSignOut} />}
+            <OptionRail
+              contextKey={key}
+              icons={compact}
+              // Wide: the same width as the message box above, so the boxes line up under it.
+              className={compact ? '' : 'mx-auto w-full max-w-[780px]'}
+              trailing={<MenuButton onSignOut={onSignOut} />}
+            />
           </motion.div>
         )}
       </AnimatePresence>

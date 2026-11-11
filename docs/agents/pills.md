@@ -24,7 +24,10 @@ approval answers). Full reference: [home-screen.md](../home-screen.md) ("The pil
   changes.
 - **People gets no pills at all**, so no conversation reaches a prompt.
 - Only labels are reported to her (`screen.pills`), never `say` text.
-- Labels are short; `shortLabel` cuts at whole words with no ellipsis. Phones show a fixed 2×2.
+- Labels are short; `shortLabel` cuts at whole words with no ellipsis.
+- **Pills are fixed boxes, never sized to their labels.** Phones show a 2×2 grid, wide screens a 3×2 under the
+  message box. A box never moves or resizes; only its words cross-fade. Don't bring back `layout` animation or
+  wrapping chips: the rail changing shape reflowed every card and window around it.
 
 ## Add a local pill
 
@@ -36,5 +39,5 @@ approval answers). Full reference: [home-screen.md](../home-screen.md) ("The pil
 
 ## Check
 
-`src/options/options.test.ts`, `label.test.ts`, `slots.test.ts`. On screen at 360 px: four pills, no overflow, each
-keeps its slot as the list changes.
+`src/options/options.test.ts`, `label.test.ts`, `slots.test.ts`. On screen at 360 px: four boxes, no overflow; wide: six. Each
+keeps its slot as the list changes, and the rail's size never changes.

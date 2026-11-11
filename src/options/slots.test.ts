@@ -5,7 +5,7 @@ import { sayOption } from './types'
 const o = (l: string) => sayOption(l)
 const labels = (s: ReturnType<typeof placeInSlots>) => s.map((x) => x?.label ?? null)
 
-describe('phone tile slots', () => {
+describe('option boxes', () => {
   it('fills in order, leaving the rest empty', () => {
     expect(labels(placeInSlots([], [o('A'), o('B')], 4))).toEqual(['A', 'B', null, null])
   })
@@ -31,5 +31,14 @@ describe('phone tile slots', () => {
       'Ease me in',
       'One big win',
     ])
+  })
+})
+
+describe('wide screens: six boxes', () => {
+  it('her options arriving keep the instant ones where they were and fill the rest', () => {
+    const first = placeInSlots([], [o('A'), o('B'), o('C')], 6)
+    expect(labels(first)).toEqual(['A', 'B', 'C', null, null, null])
+    const next = placeInSlots(first, [o('D'), o('C'), o('E'), o('A'), o('F'), o('G'), o('H')], 6)
+    expect(labels(next)).toEqual(['A', 'D', 'C', 'E', 'F', 'G'])
   })
 })
