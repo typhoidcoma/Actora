@@ -115,16 +115,6 @@ let endWait: (() => void) | null = null
 export function onGoogleMessage(e: { origin: string; data: unknown }): void {
   if (e.origin !== new URL(config.baseUrl).origin) return
   const d = (e.data ?? {}) as { type?: unknown; code?: unknown; state?: unknown }
-  // An Aelora from before the fix links Google itself and just says so.
-  // TODO: remove once the Aelora security release is deployed.
-  if (d.type === 'aelora:gcal-connected') {
-    endWait?.()
-    void refreshGoogle().then((s) => {
-      useGoogle.setState({ busy: false })
-      if (s?.connected) connectedToast(s)
-    })
-    return
-  }
   if (d.type !== 'aelora:gcal-code') return
   if (typeof d.code !== 'string' || !d.code || typeof d.state !== 'string' || !d.state) return
   if (redeemed.has(d.code)) return

@@ -54,8 +54,6 @@ this file says so.
   - If the popup closes or 3 minutes pass with no answer and status still isn't connected, a toast offers
     **Use Google sign-in** (`signInWithGoogle()` → `connect-token`), which needs no popup. This covers the iPad
     home-screen app, where a popup can't reach its opener.
-  - The older `aelora:gcal-connected` message (an Aelora from before the security fix) just re-reads status. Remove
-    it once that release is deployed.
   - Never send `Cross-Origin-Opener-Policy: same-origin` from Actora (see `deploy/nginx.conf.template`): it cuts the
     popup off from the app.
   - A 503 means Google isn't set up on the server.

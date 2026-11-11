@@ -108,11 +108,11 @@ describe('connecting Google through the popup', () => {
     expect(connectError(500, undefined)).toBe("Couldn't connect Google.")
   })
 
-  it('still hears an Aelora from before the fix', async () => {
+  it('ignores the old "connected" message: only a redeemed code links Google', async () => {
     const { onGoogleMessage } = await import('./google')
     onGoogleMessage({ origin: AELORA, data: { type: 'aelora:gcal-connected' } })
     await settle()
-    expect(calls.map((c) => c.url)).toEqual([`${AELORA}/api/google/calendar/status`])
+    expect(calls).toHaveLength(0)
   })
 })
 
