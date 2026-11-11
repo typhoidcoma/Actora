@@ -281,8 +281,8 @@ pills at all, so nothing private reaches a prompt.
 ### Layout (`src/ui/OptionRail.tsx`, `src/options/slots.ts`)
 
 Fixed boxes on every screen, never free-sized chips, so the rail never changes
-size or moves what's around it. Wide screens: a 3x2 grid (6 boxes) the width of
-the message box, under it on home. Phones: a 2x2 grid; hidden while the keyboard
+size or moves what's around it. Wide screens: a 3x2 grid (6 slim one-line
+boxes, 30 px) the width of the message box, under it on home. Phones: a 2x2 grid; hidden while the keyboard
 is up or the chat is typing. Each option keeps its box as the list changes and
 only the words in a changed box cross-fade; empty boxes shimmer while her options
 load, and stay as invisible space where there are none (People). While the mic is

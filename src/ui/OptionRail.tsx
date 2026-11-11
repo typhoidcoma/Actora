@@ -85,8 +85,11 @@ export function OptionRail({
   // chat has its own message box).
   const grid = (
     <div
-      className={`grid min-w-0 flex-1 grid-rows-[44px_44px] gap-2 ${
-        narrow ? 'grid-cols-[repeat(2,minmax(0,1fr))]' : 'grid-cols-[repeat(3,minmax(0,1fr))]'
+      // Phones keep full 44 px tiles (thumbs); wide screens get slim one-line boxes that stay out of the way.
+      className={`grid min-w-0 flex-1 ${
+        narrow
+          ? 'grid-cols-[repeat(2,minmax(0,1fr))] grid-rows-[44px_44px] gap-2'
+          : 'grid-cols-[repeat(3,minmax(0,1fr))] grid-rows-[30px_30px] gap-1.5'
       }`}
     >
       <AnimatePresence mode="popLayout" initial={false}>
@@ -98,11 +101,11 @@ export function OptionRail({
             exit={{ opacity: 0 }}
             onClick={toggleVoice}
             className={`glass-pill col-span-full row-span-2 flex min-w-0 items-center gap-3 rounded-[8px] px-4 text-left text-strong ${
-              narrow ? 'text-[15px]' : 'text-[16px]'
+              narrow ? 'text-[15px]' : 'text-[13px]'
             }`}
           >
             <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-urgent" aria-hidden />
-            <span className="line-clamp-2">{interim || 'Listening…'}</span>
+            <span className={narrow ? 'line-clamp-2' : 'min-w-0 truncate'}>{interim || 'Listening…'}</span>
           </motion.button>
         ) : (
           stableSlots.map((o, i) => (
@@ -166,7 +169,7 @@ function useStableSlots(options: Option[], n: number): Array<Option | null> {
 }
 
 /**
- * An option: one fixed box of the grid, up to two lines. The cell
+ * An option: one fixed box of the grid (two lines on a phone, one wide). The cell
  * stays put; only its words cross-fade when the option in it changes. An empty
  * cell is a quiet placeholder (shimmering while the agent's options are on the way).
  */
@@ -179,7 +182,7 @@ function Tile({
 }: {
   option: Option | null
   loading: boolean
-  /** Wide screens: a box with more room, so the words are a touch bigger (as the old pills were). */
+  /** Wide screens: a slim one-line box, so the options stay quiet beside everything else. */
   wide?: boolean
   disabled: boolean
   blank?: boolean
@@ -195,7 +198,7 @@ function Tile({
       aria-hidden={option ? undefined : true}
       aria-label={option?.label}
       onClick={() => option && runOption(option)}
-      className={`glass-pill flex min-w-0 items-center overflow-hidden rounded-[8px] px-3 text-left leading-[1.2] ${wide ? 'text-[15px]' : 'text-[13.5px]'} transition-opacity ${blank ? 'invisible' : ''} ${
+      className={`glass-pill flex min-w-0 items-center overflow-hidden text-left leading-[1.2] ${wide ? 'rounded-[6px] px-2.5 text-[12.5px]' : 'rounded-[8px] px-3 text-[13.5px]'} transition-opacity ${blank ? 'invisible' : ''} ${
         !option ? `opacity-50 ${loading ? 'shimmer' : ''}` : 'disabled:opacity-40'
       } ${option?.act ? 'font-medium text-strong' : 'text-text'}`}
     >
@@ -203,7 +206,8 @@ function Tile({
         {option && (
           <motion.span
             key={option.id}
-            className="line-clamp-2"
+            // Wide boxes are one slim line; a phone tile has room for two.
+            className={wide ? 'min-w-0 truncate' : 'line-clamp-2'}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
