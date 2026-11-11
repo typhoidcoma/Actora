@@ -1,6 +1,7 @@
 import { motion } from 'motion/react'
 import { useState, type FormEvent } from 'react'
 import { captureTask } from '../aelora/client'
+import { MAX_CHAT_CHARS } from '../aelora/protocol'
 import { say, toggleVoice } from '../options/run'
 import { useAgent } from '../stores/agent'
 import { useOptionsStore } from '../stores/options'
@@ -32,6 +33,7 @@ export function Composer() {
     <form onSubmit={submit} className="flex items-center gap-2">
       <input
         name="message"
+        maxLength={MAX_CHAT_CHARS}
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={

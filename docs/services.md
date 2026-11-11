@@ -44,8 +44,20 @@ this file says so.
   - **Disconnect Google** when connected (`POST /api/google/calendar/disconnect`).
 - `connectGoogle()` is the separate, popup consent flow:
   - Opens a blank window inside the tap (popup blockers), then points it at the URL from
-    `GET /api/google/calendar/connect`. A blocked popup falls back to the same tab.
-  - Finishes on a `message` from Aelora's origin, the popup closing, or after 3 minutes; then re-reads status.
+    `GET /api/google/calendar/connect`. A blocked popup only says "Allow pop-ups to connect Google." with a
+    **Try again**. Going to Google in the same tab would strand the answer, because it has to come back to a window.
+  - Aelora's callback links nothing itself. It posts `{ type: "aelora:gcal-code", code, state }` to this window, and
+    `onGoogleMessage` (listening for the rest of the page's life, origin checked) redeems it once with
+    `POST /api/google/calendar/finish` and the user's JWT. That way a consent link sent to someone else can't link
+    their Google to this account. Refusals become plain words in `connectError()` (expired link, another account,
+    `no_refresh_token`).
+  - If the popup closes or 3 minutes pass with no answer and status still isn't connected, a toast offers
+    **Use Google sign-in** (`signInWithGoogle()` → `connect-token`), which needs no popup. This covers the iPad
+    home-screen app, where a popup can't reach its opener.
+  - The older `aelora:gcal-connected` message (an Aelora from before the security fix) just re-reads status. Remove
+    it once that release is deployed.
+  - Never send `Cross-Origin-Opener-Policy: same-origin` from Actora (see `deploy/nginx.conf.template`): it cuts the
+    popup off from the app.
   - A 503 means Google isn't set up on the server.
 
 ### Google-needed errors

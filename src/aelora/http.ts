@@ -13,13 +13,14 @@ export function setTokenSource(fn: (() => Promise<string | null>) | null): void 
 export async function api<T = Record<string, unknown>>(
   path: string,
   method: 'GET' | 'POST' = 'GET',
+  payload?: unknown,
 ): Promise<{ ok: boolean; status: number; body: T }> {
   const token = await tokenSource?.()
   if (!token) return { ok: false, status: 401, body: {} as T }
   const res = await fetch(`${config.baseUrl}${path}`, {
     method,
     headers: { Authorization: `Bearer ${token}`, ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}) },
-    ...(method === 'POST' ? { body: '{}' } : {}),
+    ...(method === 'POST' ? { body: JSON.stringify(payload ?? {}) } : {}),
   })
   const body = (await res.json().catch(() => ({}))) as T
   return { ok: res.ok, status: res.status, body }

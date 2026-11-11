@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useState, type FormEvent } from 'react'
 import { say } from '../options/run'
 import { captureTask } from '../aelora/client'
+import { MAX_CHAT_CHARS } from '../aelora/protocol'
 import { useAgent } from '../stores/agent'
 import { useMetrics } from '../stores/metrics'
 import { ui, useUi } from '../stores/ui'
@@ -67,6 +68,7 @@ function Sheet() {
       >
         <input
           name="message"
+          maxLength={MAX_CHAT_CHARS}
           autoFocus
           value={text}
           onChange={(e) => setText(e.target.value)}

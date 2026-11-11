@@ -27,6 +27,19 @@ describe('waiting for the user OK (pending_action)', () => {
     expect(opts.every((o) => !o.act)).toBe(true)
   })
 
+  it("the yes pill reads as the user's own go-ahead (Aelora confirms only on one)", () => {
+    pending.apply({ type: 'pending_action:created', id: 'a3', kind: 'send_email', summary: 'x' })
+    pending.apply({ type: 'pending_action:retryable', id: 'a3' })
+    for (const p of [
+      waiting(usePending.getState().items)[0],
+      { ...waiting(usePending.getState().items)[0], status: 'waiting' as const },
+    ]) {
+      const yes = approvalOptions(p)[0].say ?? ''
+      expect(yes).toMatch(/^yes\b/i)
+      expect(yes.length).toBeLessThanOrEqual(200)
+    }
+  })
+
   it('drops actions older than a day', () => {
     usePending.setState({
       items: { old: { id: 'old', kind: 'trash', summary: '', status: 'waiting', at: Date.now() - 25 * 3600_000 } },

@@ -1,4 +1,4 @@
-import { CHAT_ERROR_CODES } from './protocol'
+import { CHAT_ERROR_CODES, MAX_CHAT_CHARS } from './protocol'
 import { play } from '../sound/sound'
 import { orbSignals, useAgent, type ChatBubble } from '../stores/agent'
 import type { MoodState, ServerFrame, TranscriptMessage } from './protocol'
@@ -117,7 +117,7 @@ const get = useAgent.getState
 export function sendChat(bus: FrameBus, text: string): boolean {
   const message = text.trim()
   const s = get()
-  if (!message || s.awaitingTurn || s.turnId) return false
+  if (!message || message.length > MAX_CHAT_CHARS || s.awaitingTurn || s.turnId) return false
 
   // Always address the user's own thread. Without an id the server would use its
   // most recent thread, which after a finds hunt is the "Fun finds" one: the reply
@@ -345,6 +345,23 @@ export function handleChatFrame(f: ServerFrame): boolean {
 
     case 'error': {
       const code = String(f.code ?? '')
+      // Aelora turned the message away before it reached her (too many at once, or
+      // too long): say so now, not after the turn backstop.
+      if (code === 'rate_limited' || code === 'bad_request') {
+        if (f.request === 'system_chat' && s.greetingPending) {
+          clearTimeout(greetingTimer)
+          set({
+            greetingPending: false,
+            greeting: { ...s.greeting, streaming: false },
+            ...(s.phase === 'thinking' && !s.turnId && !s.awaitingTurn ? { phase: 'idle' as const } : {}),
+          })
+          return true
+        }
+        // Only a refusal that names the message: other requests fail this way too.
+        if (f.request !== 'chat' || (!s.awaitingTurn && !s.turnId)) return false
+        failTurn(code === 'rate_limited' ? 'is getting too many messages at once' : "couldn't take a message that long")
+        return true
+      }
       if (!CHAT_ERROR_CODES.has(code)) return false
       if (cid && !mine) return true
       if (!s.turnId && !s.awaitingTurn) return true

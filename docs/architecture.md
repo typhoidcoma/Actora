@@ -263,7 +263,9 @@ rejected over HTTP).
   (`auth/supabase.ts`) and the VAPID key (`push/push.ts`).
 - **Google** (`google/google.ts`): `status`, `connect`, `sync` and `disconnect` under `/api/google/calendar/` through
   `api()`. After a Google sign-in, `linkGoogleFromSession` posts the session's `provider_refresh_token` to
-  `/api/google/calendar/connect-token`, so one sign-in also connects calendar and Gmail. It is skipped in mock mode.
+  `/api/google/calendar/connect-token`, so one sign-in also connects calendar and Gmail. The popup Connect flow gets a
+  code back from Aelora's callback page (`aelora:gcal-code`) and redeems it with `POST /api/google/calendar/finish`
+  (`api()` takes a JSON body for this). It is skipped in mock mode.
 
 ## The mock backend
 

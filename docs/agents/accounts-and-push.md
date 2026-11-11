@@ -21,6 +21,9 @@ doorbell for when the app is closed; while it's open they arrive over the socket
 - **`GOOGLE_SCOPES` must match Aelora's** (`src/integrations/google-calendar/google-oauth.ts` there).
 - **Sign-in always shows the account chooser and consent.** The `prompt` and `access_type` query params are what
   make Google return a refresh token every time. Don't "simplify" them away.
+- **The popup Connect finishes in the app.** Aelora's callback only hands back a code; `onGoogleMessage` must check the
+  origin and redeem it with `/finish` as the signed-in user. Don't bring back the same-tab fallback, and don't add
+  `Cross-Origin-Opener-Policy: same-origin`: either one means the code never arrives.
 - **The socket pins the JWT at connect.** Both apps call `reconnectAelora()` on `TOKEN_REFRESHED`; keep that.
 - **`enablePush()` must run from a tap**, and asks permission before any `await` (Safari drops the gesture).
 - **`resubscribe()` runs on every `hello`**; iOS drops subscriptions silently.

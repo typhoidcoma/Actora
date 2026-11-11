@@ -221,6 +221,8 @@ export class MockWebSocket implements WebSocketLike {
         })
       }
       case 'chat':
+        // Aelora's per-user limit turning a message away, to see how her line shows it.
+        if (msg.message === '/ratelimit') return this.reply({ type: 'error', code: 'rate_limited', request: 'chat' })
         return this.chat(
           String(msg.message ?? ''),
           typeof msg.conversationId === 'string' ? msg.conversationId : undefined,

@@ -49,6 +49,8 @@ server {
   }
 
   # Single-page app: every other path is the app shell, always revalidated.
+  # No Cross-Origin-Opener-Policy here or on /3d/ (or at most same-origin-allow-popups):
+  # same-origin cuts the Google connect popup off from the app, and its answer never arrives.
   location / {
     try_files $uri $uri/ /index.html;
     # (add_header in a location replaces the server's, so these live here.)

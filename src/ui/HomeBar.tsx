@@ -1,4 +1,5 @@
 import { motion } from 'motion/react'
+import { MAX_CHAT_CHARS } from '../aelora/protocol'
 import { say, toggleVoice } from '../options/run'
 import { agentName } from '../stores/agent'
 import { useOptionsStore } from '../stores/options'
@@ -42,6 +43,7 @@ function MessageBox() {
   return (
     <input
       name="message"
+      maxLength={MAX_CHAT_CHARS}
       value={text}
       onChange={(e) => useDraft.setState({ text: e.target.value })}
       onKeyDown={(e) => {
