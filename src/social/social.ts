@@ -69,10 +69,17 @@ function out(msg: { type: string } & Record<string, unknown>): boolean {
 
 let focusHooked = false
 
-/** After every hello (a token refresh is a reconnect too): the connect sequence. */
+/** "Try again" when People couldn't load. */
+export function retryProfile(): void {
+  social.setError('load', null)
+  if (!out({ type: 'profile.get' })) social.setError('load', 'offline')
+}
+
+/** After every hello: the connect sequence. */
 export function socialConnected(b: FrameBus): void {
   bus = b
   readSent.clear()
+  social.setError('load', null)
   b.send({ type: 'profile.get' })
   b.send({ type: 'friends.list' })
   b.send({ type: 'dm.threads' })
@@ -117,11 +124,13 @@ function sync(only?: string[]): void {
 /** Claim (or change) your handle. A leading @ is fine. */
 export function claimHandle(handle: string, displayName?: string): void {
   social.setError('claim', null)
-  out({
+  const sent = out({
     type: 'profile.claim',
     handle: handle.trim().replace(/^@/, ''),
     ...(displayName?.trim() ? { displayName: displayName.trim() } : {}),
   })
+  // No connection: the form says so rather than waiting forever on "Saving…".
+  if (!sent) social.setError('claim', 'offline')
 }
 
 /** Your display name ("" clears it) and who can find you. */
@@ -139,7 +148,7 @@ export function updateProfile(p: {
   assistantAvatarPath?: string
 }): void {
   social.setError('profile', null)
-  out({ type: 'profile.update', ...p })
+  if (!out({ type: 'profile.update', ...p })) social.setError('profile', 'offline')
 }
 
 /** What friends' messages can make your receptionist share: exactly the query she uses. */
@@ -356,6 +365,12 @@ function newId(): string {
 
 function put(list: DmMessage[]): void {
   if (!list.length) return
+  // A message that came back from the server (a sync after a dropped connection) was
+  // delivered: its "Sending…" / "Not sent" copy goes, or it shows twice with an error.
+  for (const m of list) {
+    clearTimer(m.clientMsgId)
+    dropPending(m.clientMsgId)
+  }
   useSocial.setState((s) => {
     let next: Pick<SocialState, 'messages' | 'threads'> = { messages: s.messages, threads: s.threads }
     for (const m of list) next = withMessage({ ...next, baselines: s.baselines }, m, me())
@@ -633,6 +648,11 @@ function socialError(f: ServerFrame): boolean {
   }
   if (code === 'profile_required') {
     useSocial.setState({ profile: null })
+    return true
+  }
+  // People couldn't load: it says so (with Try again) instead of shimmering forever.
+  if (request === 'profile.get') {
+    social.setError('load', code)
     return true
   }
   if (request === 'dm.send' && typeof f.clientMsgId === 'string') {

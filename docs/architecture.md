@@ -63,9 +63,9 @@ Supabase session (App.tsx)
 
 1. **Auth.** `App.tsx` gets a Supabase client from `getSupabase()` (`src/auth/supabase.ts`). The URL and anon key come
    from `VITE_SUPABASE_*`, or else from `GET /api/public-config`. Once signed in, `Connected` calls `startAelora` with
-   `getToken` (the current access token) and `onReauth` (refresh the session). On `TOKEN_REFRESHED` it calls
-   `reconnectAelora()`, because the JWT is pinned into the socket URL at connect time. Mock mode skips auth and
-   passes the token `'mock'`.
+   `getToken` (the current access token) and `onReauth` (refresh the session). The socket sends the token as its
+   first frame (`{type:"auth", token}`), not in the URL. Aelora checks it only at connect, so `TOKEN_REFRESHED` needs
+   no reconnect (one would end her reply mid-turn). Mock mode skips auth and passes the token `'mock'`.
 2. **Socket.** `startAelora` (`src/aelora/client.ts`) builds an `AeloraSocket`. In mock mode it lazily imports
    `MockWebSocket`. It returns a stop function synchronously, so a React StrictMode double mount cancels cleanly.
 3. **hello.** The socket counts as `open` only once `hello` arrives. `client.ts` refuses a `hello` for a different

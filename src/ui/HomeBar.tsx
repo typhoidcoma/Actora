@@ -1,7 +1,8 @@
 import { motion } from 'motion/react'
 import { MAX_CHAT_CHARS } from '../aelora/protocol'
 import { say, toggleVoice } from '../options/run'
-import { agentName } from '../stores/agent'
+import { captureTask } from '../aelora/client'
+import { agentName, useAgent } from '../stores/agent'
 import { useOptionsStore } from '../stores/options'
 import { ui } from '../stores/ui'
 import { MenuButton } from './Menu'
@@ -40,6 +41,11 @@ export function HomeActions({ onSignOut, className = '' }: { onSignOut?: () => v
 
 function MessageBox() {
   const text = useDraft((s) => s.text)
+  // She can't take it right now (mid-answer, or no connection): Enter keeps it as a
+  // task, as the chat's own box does, rather than doing nothing.
+  const busy = useAgent((s) => s.awaitingTurn || s.turnId !== null)
+  const offline = useAgent((s) => s.connection !== 'open')
+  const captureOnly = busy || offline
   return (
     <input
       name="message"
@@ -48,10 +54,19 @@ function MessageBox() {
       onChange={(e) => useDraft.setState({ text: e.target.value })}
       onKeyDown={(e) => {
         if (e.key !== 'Enter' || !text.trim()) return
-        if (say(text.trim())) useDraft.setState({ text: '' })
+        if (captureOnly) {
+          void captureTask(text.trim())
+          useDraft.setState({ text: '' })
+        } else if (say(text.trim())) useDraft.setState({ text: '' })
       }}
-      placeholder={`Say something to ${agentName()}`}
-      aria-label="Message"
+      placeholder={
+        captureOnly
+          ? offline
+            ? 'Offline: jot down a task'
+            : `Jot a task while ${agentName()} answers`
+          : `Say something to ${agentName()}`
+      }
+      aria-label={captureOnly ? 'Save as a task' : 'Message'}
       className="glass-pill h-11 min-w-0 flex-1 rounded-full px-5 text-[15px] text-strong outline-none placeholder:text-muted"
     />
   )

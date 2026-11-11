@@ -86,7 +86,8 @@ function Sheet() {
         <motion.div
           className="flex min-h-0 flex-1 flex-col"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1, transition: { delay: 0.12, duration: 0.25 } }}
+          // A quick fade with no wait: the words inside are readable as the sheet opens.
+          animate={{ opacity: 1, transition: { duration: 0.15 } }}
           exit={{ opacity: 0, transition: { duration: 0.08 } }}
         >
           <SheetHeader onPointerDown={(e) => drag.start(e)} />

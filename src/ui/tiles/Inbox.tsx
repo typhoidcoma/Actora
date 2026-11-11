@@ -4,6 +4,8 @@ import { ui } from '../../stores/ui'
 import { AnimatedNumber } from '../AnimatedNumber'
 import { ago, clockTime } from '../format'
 import { say } from '../../options/run'
+import { agentName } from '../../stores/agent'
+import { toast } from '../../stores/toast'
 import { morph, press } from '../motion'
 import { useInbox, useNow, useSelected } from './data'
 import { Face, type Corner } from './Face'
@@ -87,8 +89,11 @@ function UpcomingRow({ note: n, index, now }: { note: Notification; index: numbe
       <span className="num w-[4.5rem] shrink-0 text-sm text-muted">{when}</span>
       <span className="min-w-0 flex-1 truncate text-[16px] text-strong">{n.title}</span>
       <button
-        onClick={() => say(`Cancel my reminder "${n.title}".`)}
-        className="h-10 shrink-0 rounded-[6px] px-3 text-[13px] font-semibold text-muted hover:text-urgent"
+        onClick={() => {
+          // She's mid-answer: say so rather than a tap that does nothing.
+          if (!say(`Cancel my reminder "${n.title}".`)) toast.show(`After ${agentName()} answers.`)
+        }}
+        className="h-11 shrink-0 rounded-[6px] px-3 text-[13px] font-semibold text-muted hover:text-urgent"
       >
         Cancel
       </button>

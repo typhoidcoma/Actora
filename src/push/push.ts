@@ -226,6 +226,17 @@ export async function disablePush(): Promise<void> {
   agent.showMessage('Reminders are off. They still show here while the app is open.')
 }
 
+/**
+ * Signing out: Aelora stops sending this person's reminders and messages to this
+ * device. The browser keeps its subscription, so whoever signs in next (the same
+ * person, usually) gets theirs again from the next hello's resubscribe.
+ */
+export async function releasePushForSignOut(): Promise<void> {
+  const sub = await existingSubscription().catch(() => null)
+  if (!sub) return
+  await ask({ type: 'push.unsubscribe', endpoint: sub.endpoint }, 'push.unsubscribed')
+}
+
 /** push.test: sends a fixed payload to this user's devices, bypassing all gates. */
 export async function testPush(): Promise<void> {
   const r = await ask<{ type: string; devices?: number; sent?: number; failed?: number }>(

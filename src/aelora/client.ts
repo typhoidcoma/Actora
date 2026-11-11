@@ -4,13 +4,13 @@ import { agent, useAgent } from '../stores/agent'
 import { entities, useEntities } from '../stores/entities'
 import { ui, useUi } from '../stores/ui'
 import { useSocial, waitingSummary } from '../stores/social'
-import { abortTurnOnDisconnect, sendChat, sendGreeting } from './chat'
+import { abortTurnOnDisconnect, resetChatTurn, sendChat, sendGreeting } from './chat'
 import { isFindsThread, startFinds, useFinds } from '../finds/finds'
 import { rememberMain } from './mainThread'
 import { setTokenSource } from './http'
 import type { ClientMessage, Goal, Notification, ServerFrame, Task } from './protocol'
 import { failInflight, request } from './request'
-import { homeScreen, reloadList, routeFrame, sendClientState } from './router'
+import { dropUserState, homeScreen, reloadList, routeFrame, sendClientState } from './router'
 import { usePriorityStore } from '../stores/priority'
 import { usePending } from '../stores/pending'
 import { useOptionsStore } from '../stores/options'
@@ -60,10 +60,8 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
   const sock = new AeloraSocket({
     getToken: opts.getToken,
     onReauth: opts.onReauth,
-    open: (token) =>
-      Mock
-        ? new Mock()
-        : (new WebSocket(`${config.wsUrl}?token=${encodeURIComponent(token)}`) as unknown as WebSocketLike),
+    // The socket sends the token as its first frame once open (socket.ts).
+    open: () => (Mock ? new Mock() : (new WebSocket(config.wsUrl) as unknown as WebSocketLike)),
   })
   socket = sock
 
@@ -176,6 +174,8 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
     }
     entities.reset()
     agent.resetForUser()
+    dropUserState()
+    resetChatTurn()
   }
 }
 
@@ -353,12 +353,16 @@ export function deleteItem(kind: Deletable, id: string, title: string, occurrenc
   withUndo(
     `Deleted ${quote(title)}`,
     () => {},
-    () =>
+    () => {
+      // Signed out meanwhile (the Undo window closing as the page goes): there's no
+      // reply to wait for, and nothing to put back into someone else's screen.
+      const sentOn = socket
       void sendDelete(kind, id, occurrenceStart).then((reply) => {
-        if (reply) return
+        if (reply || socket !== sentOn) return
         restore()
         toast.error(`Couldn't delete ${quote(title)}, so it's back.`)
-      }),
+      })
+    },
     restore,
   )
 }
@@ -445,9 +449,20 @@ export async function listThreads(before?: string): Promise<{ threads: ThreadSum
   return { threads: (r.conversations ?? []).filter((c) => !isFindsThread(c.id)), next: r.nextBefore ?? null }
 }
 
+/**
+ * While she's answering, the thread stays put: switching now would stream her
+ * reply into the other thread's view and send the next message to the wrong one.
+ */
+function turnRunning(): boolean {
+  const a = useAgent.getState()
+  if (!a.turnId && !a.awaitingTurn) return false
+  toast.show(`After ${a.botName} answers.`)
+  return true
+}
+
 /** Make a past thread the conversation, load it, and open the chat. */
 export function openThread(id: string): void {
-  if (!socket) return
+  if (!socket || turnRunning()) return
   rememberMain(id)
   useAgent.setState({ conversationId: id, messages: [], history: { hasMore: false, cursor: null } })
   void request(socket, { type: 'conversation.open', conversationId: id, limit: 40 }, 'conversation.messages')
@@ -456,6 +471,7 @@ export function openThread(id: string): void {
 
 /** A clean slate: the next message starts a new thread. */
 export function newThread(open = true): void {
+  if (turnRunning()) return
   rememberMain(null)
   useAgent.setState({ conversationId: null, messages: [], history: { hasMore: false, cursor: null } })
   if (open) ui.openChat()

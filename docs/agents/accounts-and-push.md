@@ -24,7 +24,11 @@ doorbell for when the app is closed; while it's open they arrive over the socket
 - **The popup Connect finishes in the app.** Aelora's callback only hands back a code; `onGoogleMessage` must check the
   origin and redeem it with `/finish` as the signed-in user. Don't bring back the same-tab fallback, and don't add
   `Cross-Origin-Opener-Policy: same-origin`: either one means the code never arrives.
-- **The socket pins the JWT at connect.** Both apps call `reconnectAelora()` on `TOKEN_REFRESHED`; keep that.
+- **The token goes in the socket's first frame** (`{type:"auth", token}`, `socket.ts`), never in the address, so it
+  stays out of request logs. Aelora checks it only at connect, so neither app reconnects on `TOKEN_REFRESHED`: that
+  would end any reply she's in the middle of. A 1008 close re-auths and reconnects with the fresh token.
+- **Sign-out** releases this device's push for that person (`releasePushForSignOut`) and clears every per-person store
+  (`dropUserState` in `router.ts`), so nothing of theirs shows for the next person.
 - **`enablePush()` must run from a tap**, and asks permission before any `await` (Safari drops the gesture).
 - **`resubscribe()` runs on every `hello`**; iOS drops subscriptions silently.
 - **The service worker always shows a notification** for a push, and never caches.

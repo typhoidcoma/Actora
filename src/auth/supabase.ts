@@ -64,6 +64,12 @@ export async function signInWithGoogle(): Promise<void> {
 }
 
 export async function signOut(): Promise<void> {
+  // While still signed in: stop this person's pushes reaching this device. Never
+  // holds sign-out up for more than a moment.
+  await Promise.race([
+    import('../push/push').then((m) => m.releasePushForSignOut()).catch(() => {}),
+    new Promise((r) => setTimeout(r, 2500)),
+  ])
   const sb = await getSupabase()
   await sb.auth.signOut()
 }

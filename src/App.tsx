@@ -1,6 +1,6 @@
 import type { Session, SupabaseClient } from '@supabase/supabase-js'
 import { useEffect, useState } from 'react'
-import { reconnectAelora, startAelora } from './aelora/client'
+import { startAelora } from './aelora/client'
 import { getSupabase, signOut } from './auth/supabase'
 import { linkGoogleFromSession } from './google/google'
 import { SignIn } from './auth/SignIn'
@@ -73,11 +73,10 @@ function AuthedApp() {
         // A failed OAuth return (denied consent, bad redirect, expired code) says why in the URL.
         const why = oauthError() ?? (data.session ? null : error?.message)
         if (why && !data.session) setAuth({ status: 'signed-out', error: why })
-        const sub = sb.auth.onAuthStateChange((event, session) => {
-          apply(sb, session)
-          // The JWT is pinned into the socket at connect time; reconnect with the new one.
-          if (event === 'TOKEN_REFRESHED') reconnectAelora()
-        })
+        // No reconnect on TOKEN_REFRESHED: Aelora checks the token only when the socket
+        // connects, and a reconnect would end any reply she's in the middle of. The next
+        // connect (and every HTTP call) reads the fresh token itself.
+        const sub = sb.auth.onAuthStateChange((...[, session]) => apply(sb, session))
         off = () => sub.data.subscription.unsubscribe()
       })
       .catch((e: unknown) =>

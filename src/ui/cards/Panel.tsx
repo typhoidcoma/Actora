@@ -103,7 +103,7 @@ export function Panel({
       <motion.div
         className="scroll-y min-h-0 flex-1 px-6 pb-6"
         initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0, transition: { ...morph, delay: 0.1 } }}
+        animate={{ opacity: 1, y: 0, transition: morph }}
         exit={{ opacity: 0, transition: { duration: 0.08 } }}
       >
         {children}

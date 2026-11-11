@@ -1,5 +1,6 @@
 import { motion } from 'motion/react'
-import { useState, type FormEvent } from 'react'
+import { type FormEvent } from 'react'
+import { create } from 'zustand'
 import { captureTask } from '../aelora/client'
 import { MAX_CHAT_CHARS } from '../aelora/protocol'
 import { say, toggleVoice } from '../options/run'
@@ -13,9 +14,13 @@ import { jelly } from './motion'
  * mic talks instead. While the agent is busy or offline, what's typed is kept as a
  * task rather than lost.
  */
+/** What's typed in the chat's box, kept when the chat closes (she opens a card, Escape, a swipe down). */
+const useChatDraft = create<{ text: string }>(() => ({ text: '' }))
+const setText = (text: string) => useChatDraft.setState({ text })
+
 export function Composer() {
   const name = useAgent((s) => s.botName)
-  const [text, setText] = useState('')
+  const text = useChatDraft((s) => s.text)
   const busy = useAgent((s) => s.awaitingTurn || s.turnId !== null)
   const offline = useAgent((s) => s.connection !== 'open')
   const listening = useOptionsStore((s) => s.listening)

@@ -47,6 +47,7 @@ export class AeloraSocket implements FrameBus {
   private wanted = false
   private attempt = 0
   private reauthTried = false
+  private reauthing = false
   private lastFrameAt = 0
   private retryTimer: ReturnType<typeof setTimeout> | undefined
   private connectTimer: ReturnType<typeof setTimeout> | undefined
@@ -104,6 +105,9 @@ export class AeloraSocket implements FrameBus {
 
   private wake = () => {
     if (document.visibilityState !== 'visible' || !this.wanted) return
+    // Mid re-auth, the reconnect waits for the fresh token: opening now with the old
+    // one would be refused again and end in "signed out" for good.
+    if (this.reauthing) return
     if (this.status === 'reconnecting' && !this.ws) {
       clearTimeout(this.retryTimer)
       void this.open()
@@ -131,6 +135,10 @@ export class AeloraSocket implements FrameBus {
 
     const ws = this.opts.open(token)
     this.ws = ws
+    // The token goes in the first frame, not the address, so it stays out of request logs.
+    ws.onopen = () => {
+      if (this.ws === ws) ws.send(JSON.stringify({ type: 'auth', token }))
+    }
 
     this.connectTimer = setTimeout(() => {
       if (this.ws === ws && this.status !== 'open') {
@@ -184,8 +192,10 @@ export class AeloraSocket implements FrameBus {
         return
       }
       this.reauthTried = true
+      this.reauthing = true
       this.setStatus('reconnecting')
       void (this.opts.onReauth?.() ?? Promise.resolve()).finally(() => {
+        this.reauthing = false
         if (this.wanted && !this.ws) void this.open()
       })
       return

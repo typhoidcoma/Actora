@@ -67,7 +67,8 @@ this file says so.
 ### Token refresh
 
 - Supabase refreshes the JWT itself (`autoRefreshToken`).
-- The socket pins the JWT at connect time, so both apps call `reconnectAelora()` on `TOKEN_REFRESHED`.
+- Aelora checks the socket's token only at connect (sent as the first frame), so neither app reconnects on
+  `TOKEN_REFRESHED`; the next connect and every HTTP call read the fresh token. A 1008 close re-auths first.
 - Each fresh Google sign-in also hands Aelora a new Google refresh token, which renews calendar and Gmail access.
 
 ## 2. Push reminders

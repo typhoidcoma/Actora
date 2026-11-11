@@ -1,5 +1,5 @@
 import { motion } from 'motion/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { claimHandle, updateProfile } from '../../social/social'
 import { useSocial } from '../../stores/social'
 import { press } from '../motion'
@@ -24,13 +24,18 @@ export function ProfileView() {
   const [saved, setSaved] = useState<'name' | 'handle' | null>(null)
 
   // The server's answer lands as a new profile (or an error): settle the form on it.
+  // Any fresh profile after the save counts, even if the server tidied what was typed.
+  const atSave = useRef(profile)
   useEffect(() => {
     if (!saving || !profile) return
     const done =
-      saving === 'name'
+      profile !== atSave.current ||
+      (saving === 'name'
         ? (profile.displayName ?? '') === name.trim()
-        : profile.handle === handle.trim().replace(/^@/, '').toLowerCase()
+        : profile.handle === handle.trim().replace(/^@/, '').toLowerCase())
     if (done) {
+      if (saving === 'name') setName(profile.displayName ?? '')
+      else setHandle(profile.handle)
       setSaved(saving)
       setSaving(null)
     }
@@ -67,6 +72,7 @@ export function ProfileView() {
               onSubmit={(e) => {
                 e.preventDefault()
                 if (!nameChanged) return
+                atSave.current = profile
                 setSaving('name')
                 updateProfile({ displayName: name.trim() })
               }}
@@ -107,6 +113,7 @@ export function ProfileView() {
               onSubmit={(e) => {
                 e.preventDefault()
                 if (!handleChanged || !handleValid) return
+                atSave.current = profile
                 setSaving('handle')
                 claimHandle(cleanHandle)
               }}

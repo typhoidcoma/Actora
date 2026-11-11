@@ -63,21 +63,22 @@ export const sayPolicy = { openChatForLargeQuestions: true }
 /** Send a user turn. She answers in her line (and in the chat, when it is open). */
 export function say(text: string): boolean {
   const u = useUi.getState()
+  const sent = chat(text)
+  // Not sent (she's mid-answer, or offline): her line stays on what it was showing.
+  if (!sent) return false
   // One rule, wherever it was asked from: the line over her head carries this turn
   // (her thinking, then her answer). The chat is just the closer view of it.
   agent.showReply()
   // Asked from inside a task, list or other panel: answer in the main chat, so
   // the user sees her think and talk instead of a panel with no words in it.
   if (!u.chatOpen && panelOpen(u)) {
-    const sent = chat(text)
-    if (sent) ui.openChat()
-    return sent
+    ui.openChat()
+    return true
   }
-  const sent = chat(text)
   // A big question opens the chat straight away, so the whole answer can be
   // read (and replied to) as it streams in.
-  if (sent && !u.chatOpen && sayPolicy.openChatForLargeQuestions && isLargeQuestion(text)) ui.openChat()
-  return sent
+  if (!u.chatOpen && sayPolicy.openChatForLargeQuestions && isLargeQuestion(text)) ui.openChat()
+  return true
 }
 
 async function markAllRead(): Promise<void> {

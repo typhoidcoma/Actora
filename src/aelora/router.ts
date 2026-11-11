@@ -13,7 +13,7 @@ import { adoptMainUser, recallMain, rememberMain } from './mainThread'
 import { CATEGORIES, useVault, vault, type VaultEntry } from '../stores/vault'
 import { pending, usePending, waiting } from '../stores/pending'
 import { toast } from '../stores/toast'
-import { refreshGoogle } from '../google/google'
+import { refreshGoogle, useGoogle } from '../google/google'
 import { flushCaptures } from '../stores/captures'
 import { sessions } from '../stores/session'
 import { actOption, sayOption } from '../options/types'
@@ -37,7 +37,7 @@ import {
   type TileId,
 } from '../stores/ui'
 import { setCheckins, useCheckins } from '../checkins/checkins'
-import { greetingInContext, recentAcks, handleChatFrame, loadTranscript, reactToMessage } from './chat'
+import { endTurnForThread, greetingInContext, recentAcks, handleChatFrame, loadTranscript, reactToMessage } from './chat'
 import {
   isEventFrame,
   PLUTCHIK,
@@ -47,12 +47,13 @@ import {
   type Goal,
   type MoodState,
   type Notification,
+  type ReactionBus,
   type ServerFrame,
   type Task,
   type TranscriptMessage,
 } from './protocol'
 import { request, resetLateReplies } from './request'
-import { describeScheme, type SchemeInput } from '../color/scheme'
+import { describeScheme, ROLES, type SchemeInput } from '../color/scheme'
 import { resetColors, setColors, useScheme } from '../stores/scheme'
 import type { FrameBus } from './socket'
 import { actionArgs, AVAILABLE_ACTIONS, strayAction } from './actions'
@@ -349,7 +350,8 @@ function runCommand(cmd: AgentCommand | undefined): void {
   if (!cmd || typeof cmd !== 'object') return
   switch (cmd.type) {
     case 'open_app': {
-      const target = APP_TO_TILE[cmd.id]
+      // Own keys only: "constructor" or "toString" must not look like an app.
+      const target = typeof cmd.id === 'string' && Object.hasOwn(APP_TO_TILE, cmd.id) ? APP_TO_TILE[cmd.id] : undefined
       if (!target) return refused('open_app', 'unknown app', { id: cmd.id })
       if (target === 'chat') herOpenChat()
       else if (asGlance('open_app', () => runCommand(cmd))) return
@@ -358,7 +360,7 @@ function runCommand(cmd: AgentCommand | undefined): void {
       return
     }
     case 'close_app': {
-      const target = APP_TO_TILE[cmd.id]
+      const target = typeof cmd.id === 'string' && Object.hasOwn(APP_TO_TILE, cmd.id) ? APP_TO_TILE[cmd.id] : undefined
       const s = useUi.getState()
       if (target === 'chat' && s.chatOpen) ui.closeChat()
       else if (target === 'vault' && s.vault) ui.closeVault()
@@ -366,17 +368,20 @@ function runCommand(cmd: AgentCommand | undefined): void {
       return
     }
     case 'sequence':
-      for (const step of cmd.steps ?? []) runCommand(step)
+      if (!Array.isArray(cmd.steps)) return
+      for (const step of cmd.steps.slice(0, 20)) runCommand(step)
       return
     case 'ui_action':
       runUiAction(cmd.action, cmd.args ?? {})
       return
     case 'avatar.react': {
+      // A bus she doesn't have is dropped; strength and length stay in what the orb can show.
+      if (!REACTION_BUSES.has(cmd.bus)) return
       const reaction: Reaction = {
         bus: cmd.bus,
-        state: cmd.state,
-        intensity: typeof cmd.intensity === 'number' ? cmd.intensity : 0.6,
-        holdMs: typeof cmd.holdMs === 'number' ? cmd.holdMs : 1500,
+        state: typeof cmd.state === 'string' ? cmd.state.slice(0, 40) : 'idle',
+        intensity: clampNum(cmd.intensity, 0, 1.5, 0.6),
+        holdMs: clampNum(cmd.holdMs, 0, 10_000, 1500),
         at: performance.now(),
       }
       useAgent.setState({ reaction })
@@ -384,6 +389,37 @@ function runCommand(cmd: AgentCommand | undefined): void {
     }
   }
 }
+
+const HEX = /^#?[0-9a-f]{3,8}$/i
+const hexOf = (v: unknown): string | undefined => (typeof v === 'string' && HEX.test(v.trim()) ? v.trim() : undefined)
+const hexList = (v: unknown, max: number): string[] | undefined => {
+  if (!Array.isArray(v)) return undefined
+  const list = v.map(hexOf).filter((x): x is string => !!x).slice(0, max)
+  return list.length ? list : undefined
+}
+
+/** colors.set arguments down to what the scheme engine takes. */
+export function schemeArgs(args: Record<string, unknown>): SchemeInput {
+  const out: SchemeInput = {}
+  for (const role of ROLES) {
+    const c = hexOf(args[role])
+    if (c) out[role] = c
+  }
+  const seed = hexOf(args.seed)
+  if (seed) out.seed = seed
+  const neutral = hexOf(args.neutral)
+  if (neutral) out.neutral = neutral
+  if (typeof args.harmony === 'string' && args.harmony.length <= 20) out.harmony = args.harmony as SchemeInput['harmony']
+  const ambient = hexList(args.ambient, 6)
+  if (ambient) out.ambient = ambient
+  const orb = hexList(args.orb, 3)
+  if (orb) out.orb = orb
+  return out
+}
+
+const REACTION_BUSES = new Set<ReactionBus>(['positive', 'negative', 'cognitive'])
+const clampNum = (v: unknown, lo: number, hi: number, dflt: number) =>
+  typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : dflt
 
 const ITEM_KINDS = new Set<ItemKind>(['task', 'goal', 'event', 'notification'])
 const THEMES = new Set<ThemeMode>(['auto', 'day', 'dusk'])
@@ -559,9 +595,13 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
       optionsStore.push(contextKeyOf(useUi.getState()), [actOption('Tap to talk', { type: 'voice' })])
       return
     case 'colors.set': {
-      // Hex colours are checked by the scheme engine; hours must be a number, capped at 168.
-      const { hours, ...input } = args as SchemeInput & { hours?: unknown }
-      setColors(input, typeof hours === 'number' && Number.isFinite(hours) ? Math.min(hours, 168) : undefined)
+      // Only the keys the scheme knows, only hex colours: what's kept is saved to the
+      // account and read back to her, so nothing else rides along. Hours capped at 168.
+      const { hours } = args as { hours?: unknown }
+      setColors(
+        schemeArgs(args),
+        typeof hours === 'number' && Number.isFinite(hours) ? Math.min(hours, 168) : undefined,
+      )
       return
     }
     case 'vault.open':
@@ -627,11 +667,29 @@ function announce(n: Notification): void {
  */
 function threadGone(id: string | null): void {
   if (!id) return
+  endTurnForThread(id)
   forgetFindsThread(id)
   if (recallMain() === id) rememberMain(null)
   if (useAgent.getState().conversationId === id) {
     useAgent.setState({ conversationId: null, messages: [], history: { hasMore: false, cursor: null } })
   }
+}
+
+/**
+ * One person's things, gone: on sign-out, and when a different person's hello
+ * arrives. Their People, Vault, approvals, Google status and her pushed ranking
+ * never show on the next person's screen, even for the seconds before it loads.
+ */
+export function dropUserState(): void {
+  vault.reset()
+  pending.clear()
+  sessions.clear()
+  social.reset()
+  optionsStore.resetHistory()
+  priorityStore.setAgent(null)
+  priorityStore.clearPushed()
+  useGoogle.setState({ status: null, busy: false })
+  toast.dismiss()
 }
 
 /** Every thread was deleted (deleteAll, account wipe, or an admin purge). */
@@ -763,12 +821,7 @@ export function routeFrame(f: ServerFrame, bus: FrameBus): void {
       const prev = useAgent.getState().userId
       if (prev !== userId) {
         if (prev !== null) agent.resetForUser()
-        vault.reset()
-        pending.clear()
-        sessions.clear()
-        social.reset()
-        optionsStore.resetHistory()
-        toast.dismiss()
+        dropUserState()
       } else if (useUi.getState().vault) {
         void import('./client').then((m) => m.loadVault())
       }

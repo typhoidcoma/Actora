@@ -307,7 +307,8 @@ function FocusCaption() {
             textShadow: '0 1px 12px color-mix(in srgb, var(--t-bg) 70%, transparent)',
           }}
           initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0, transition: { delay: 0.5, duration: 0.35 } }}
+          // No delay: her words show the moment they arrive, never after a beat (rule 2).
+          animate={{ opacity: 1, y: 0, transition: { duration: 0.25 } }}
           exit={{ opacity: 0, transition: { duration: 0.2 } }}
         >
           {text}

@@ -514,6 +514,26 @@ function failTurn(why = "couldn't answer that"): void {
   })
 }
 
+/** Signed out: nothing of the last turn (its backstop, a waiting message) carries on. */
+export function resetChatTurn(): void {
+  clearTimeout(turnTimer)
+  clearTimeout(greetingTimer)
+  pendingMessage = null
+  pendingBus = null
+  lastSent = null
+  lastBus = null
+  greetingDone = undefined
+  rawReply = ''
+  rawGreeting = ''
+  ranWritten.clear()
+}
+
+/** The turn's thread was deleted: the server stops the turn and sends nothing more. */
+export function endTurnForThread(id: string): void {
+  const s = get()
+  if (s.turnId === id || (s.awaitingTurn && s.conversationId === id)) failTurn('stopped because that chat was deleted')
+}
+
 /** Socket dropped mid-turn: in-flight replies are lost, so close out the turn. */
 export function abortTurnOnDisconnect(): void {
   const s = get()

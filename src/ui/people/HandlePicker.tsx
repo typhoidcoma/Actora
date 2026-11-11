@@ -9,6 +9,7 @@ const SAY: Record<string, string> = {
   handle_reserved: "That one's reserved. Try another.",
   invalid_handle: '3 to 20 letters, numbers or _.',
   rate_limited: 'Too many tries. Give it a minute.',
+  offline: "Can't reach the server right now. Try again in a moment.",
 }
 
 /** First run: the name friends find you by. */

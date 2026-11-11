@@ -7,10 +7,10 @@ import { useContextKey } from '../options/useOptions'
 import { startAgentOptions } from '../options/agentOptions'
 import { startRanking } from '../priority/rank'
 import { startPush } from '../push/start'
-import { agent, useAgent } from '../stores/agent'
-import { useEntities } from '../stores/entities'
+import { useAgent } from '../stores/agent'
+import { startLineRelease } from '../stores/lineRelease'
 import { useMetrics, watchMetrics } from '../stores/metrics'
-import { contextKeyOf, panelKeyOf, ui, useUi, panelOpen, sideBySide } from '../stores/ui'
+import { panelKeyOf, ui, useUi, panelOpen, sideBySide } from '../stores/ui'
 import { Ambient } from '../weather/Ambient'
 import { ChatSheet } from './ChatSheet'
 import { Grid } from './Grid'
@@ -67,40 +67,8 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
   useEffect(() => startMoments(), [])
   useEffect(() => startCheckins(), [])
   useEffect(() => startPush(), [])
-  // Moving somewhere new returns the agent's line from a finished reply to her greeting.
-  // A reminder stays until it's acknowledged ("Got it" or read in the inbox).
-  useEffect(
-    () =>
-      useUi.subscribe((s, p) => {
-        const a = useAgent.getState()
-        const transient = a.line === 'reply' || a.line === 'message'
-        if (contextKeyOf(s) !== contextKeyOf(p) && transient && !a.turnId && !a.awaitingTurn) {
-          agent.showGreeting()
-        }
-        // Leaving home after her welcome has been said: it's been seen, and it
-        // mustn't greet again each time a window closes. (A check-in waits for its answer.)
-        const g = a.greeting
-        if (
-          contextKeyOf(p) === 'home' &&
-          contextKeyOf(s) !== 'home' &&
-          g.text &&
-          !g.streaming &&
-          !g.checkin &&
-          !g.spent
-        )
-          useAgent.setState({ greeting: { ...g, spent: true } })
-      }),
-    [],
-  )
-  // …and once it's read anywhere (inbox, "Mark all read", another device), the line lets it go.
-  useEffect(
-    () =>
-      useEntities.subscribe((s) => {
-        const a = useAgent.getState()
-        if (a.line === 'notice' && a.notice && s.notifications[a.notice.notificationId]?.read_at) agent.showGreeting()
-      }),
-    [],
-  )
+  // Her line letting go of a reply, a seen welcome, a reminder that's been read (shared with 3D).
+  useEffect(() => startLineRelease(), [])
   // The window narrows past room for two: her chat stays, the window beside it closes.
   useEffect(() => {
     if (!split && sideBySide(useUi.getState())) ui.closePanels()

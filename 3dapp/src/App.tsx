@@ -1,6 +1,6 @@
 import type { Session, SupabaseClient } from '@supabase/supabase-js'
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { reconnectAelora, startAelora } from '@actora/aelora/client'
+import { startAelora } from '@actora/aelora/client'
 import { startGreeting } from '@actora/aelora/greeting'
 import { getSupabase, signInWithGoogle } from '@actora/auth/supabase'
 import { linkGoogleFromSession } from '@actora/google/google'
@@ -18,6 +18,7 @@ import { loadWorld } from './look/loadWorld'
 import { Loader } from './dom/Loader'
 import { markReady } from './look/ready'
 import { useEntities } from '@actora/stores/entities'
+import { startLineRelease } from '@actora/stores/lineRelease'
 
 type Auth =
   | { status: 'loading' }
@@ -61,10 +62,8 @@ function AuthedApp() {
         const { data } = await sb.auth.getSession()
         if (cancelled) return
         apply(sb, data.session)
-        const sub = sb.auth.onAuthStateChange((event, session) => {
-          apply(sb, session)
-          if (event === 'TOKEN_REFRESHED') reconnectAelora()
-        })
+        // No reconnect on TOKEN_REFRESHED (as in 2D): it would end any reply she's in the middle of.
+        const sub = sb.auth.onAuthStateChange((...[, session]) => apply(sb, session))
         off = () => sub.data.subscription.unsubscribe()
       })
       .catch((e: unknown) =>
@@ -120,6 +119,8 @@ function Live() {
   // Reminders on the lock screen, like the 2D app; a tap opens this app on the reminder or the conversation.
   useEffect(() => startPush(), [])
   useEffect(() => startLongAnswers(), [])
+  // Her line letting go of a reply, a seen welcome, a reminder that's been read (as in 2D).
+  useEffect(() => startLineRelease(), [])
   useEffect(() => startThinkAway(), [])
   // Their data is in once tasks or the calendar have loaded (or the backend's
   // gone quiet for a few seconds: the scene doesn't wait on it forever).

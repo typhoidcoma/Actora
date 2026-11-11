@@ -204,6 +204,22 @@ describe('sending', () => {
     expect(sent.at(-1)).toMatchObject({ type: 'dm.send', clientMsgId: id })
   })
 
+  it('a "Not sent" message that the sync brings back was delivered: the error copy goes', () => {
+    vi.useFakeTimers()
+    const { bus, sent, frame } = fakeBus()
+    socialConnected(bus)
+    sendDm('t1', 'hey')
+    const id = String(sent.at(-1)!.clientMsgId)
+    vi.advanceTimersByTime(15_001) // its reply was lost with the connection
+    expect(useSocial.getState().pending[id]).toMatchObject({ state: 'failed' })
+    frame({
+      type: 'dm.synced',
+      threads: [{ threadId: 't1', messages: [msg(1, { senderId: ME, clientMsgId: id })], more: false }],
+    })
+    expect(useSocial.getState().pending).toEqual({})
+    expect(messagesFor(useSocial.getState().messages, 't1')).toHaveLength(1)
+  })
+
   it('no answer in 15 s fails it', () => {
     vi.useFakeTimers()
     const { bus } = fakeBus()

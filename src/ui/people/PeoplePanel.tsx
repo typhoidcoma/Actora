@@ -7,8 +7,10 @@ import {
   openDmWith,
   removeFriend,
   respondFriend,
+  retryProfile,
   unblockUser,
 } from '../../social/social'
+import { agentName, useAgent } from '../../stores/agent'
 import type { FriendRow, Thread } from '../../social/types'
 import { hiddenFrom, incomingRequests, nameOf, personIn, threadList, threadName, useSocial } from '../../stores/social'
 import { ui, useUi } from '../../stores/ui'
@@ -124,6 +126,26 @@ export function PeoplePanel() {
 }
 
 function Loading() {
+  const failed = useSocial((s) => !!s.errors.load)
+  const offline = useAgent((s) => s.connection !== 'open' && s.connection !== 'connecting')
+  // Refused, or no connection: say so with a way to try again, never shimmer forever.
+  if (failed || offline) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-8">
+        <p className="text-center text-[15px] text-muted">
+          {offline ? `People will load once ${agentName()}'s back.` : "Couldn't load People."}
+        </p>
+        {!offline && (
+          <button
+            onClick={retryProfile}
+            className="glass-pill min-h-11 rounded-[8px] px-5 text-[15px] font-semibold text-strong"
+          >
+            Try again
+          </button>
+        )}
+      </div>
+    )
+  }
   return (
     <div className="grid gap-3">
       {[0, 1, 2].map((i) => (

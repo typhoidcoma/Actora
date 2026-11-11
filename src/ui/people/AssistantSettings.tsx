@@ -24,7 +24,16 @@ export function AssistantSettings() {
   const on = profile?.assistantMode === 'friends'
   const shared = useMemo(() => new Set(profile?.assistantSharedCategories ?? []), [profile?.assistantSharedCategories])
   const [about, setAbout] = useState(profile?.assistantAbout ?? '')
-  const [aboutSaved, setAboutSaved] = useState(false)
+  // "Saved." only once the server has it; "Couldn't save" if it refused or there's no connection.
+  const [saving, setSaving] = useState(false)
+  const saveError = useSocial((s) => s.errors.profile ?? null)
+  const aboutState = !saving
+    ? null
+    : saveError
+      ? 'failed'
+      : (profile?.assistantAbout ?? '') === about.trim()
+        ? 'saved'
+        : 'saving'
 
   // Fresh whenever the settings change (and on opening): what she'd actually share now.
   const key = `${profile?.assistantMode}|${[...shared].sort().join(',')}|${profile?.assistantAbout ?? ''}`
@@ -32,10 +41,10 @@ export function AssistantSettings() {
     if (on) loadAssistantPreview()
   }, [key, on])
   useEffect(() => {
-    if (!aboutSaved) return
-    const t = setTimeout(() => setAboutSaved(false), 4000)
+    if (aboutState !== 'saved' && aboutState !== 'failed') return
+    const t = setTimeout(() => setSaving(false), 4000)
     return () => clearTimeout(t)
-  }, [aboutSaved])
+  }, [aboutState])
 
   if (!profile) return null
   const aboutChanged = about.trim() !== (profile.assistantAbout ?? '')
@@ -86,8 +95,8 @@ export function AssistantSettings() {
             onSubmit={(e) => {
               e.preventDefault()
               if (!aboutChanged) return
+              setSaving(true)
               updateProfile({ assistantAbout: about.trim() })
-              setAboutSaved(true)
             }}
           >
             <label className="mb-2 block text-[13px] text-muted" htmlFor="assistant-about">
@@ -96,13 +105,24 @@ export function AssistantSettings() {
             <textarea
               id="assistant-about"
               value={about}
-              onChange={(e) => setAbout(e.target.value.slice(0, ABOUT_MAX))}
+              onChange={(e) => {
+                setAbout(e.target.value.slice(0, ABOUT_MAX))
+                setSaving(false)
+              }}
               rows={3}
               className="glass-pill w-full resize-y rounded-[8px] bg-transparent px-4 py-3 text-[16px] leading-snug text-strong outline-none placeholder:text-faint"
               placeholder="e.g. Best to text after 6pm. Training for a half marathon."
             />
             <div className="mt-2 flex items-center justify-between gap-3">
-              <span className="text-[12px] text-faint">{aboutSaved ? 'Saved.' : `${about.length} / ${ABOUT_MAX}`}</span>
+              <span className={`text-[12px] ${aboutState === 'failed' ? 'text-urgent' : 'text-faint'}`}>
+                {aboutState === 'saving'
+                  ? 'Saving…'
+                  : aboutState === 'saved'
+                    ? 'Saved.'
+                    : aboutState === 'failed'
+                      ? "Couldn't save. Try again."
+                      : `${about.length} / ${ABOUT_MAX}`}
+              </span>
               <motion.button
                 whileTap={press}
                 type="submit"
