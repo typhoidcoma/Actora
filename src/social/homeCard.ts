@@ -1,38 +1,48 @@
 import { useMemo } from 'react'
-import { messageCard, useSocial, type MessageCardData } from '../stores/social'
+import type { RankedItem } from '../stores/priority'
+import { chatsCard, useSocial, type ChatsCardData } from '../stores/social'
+import type { ItemKind, TileId } from '../stores/ui'
 import { useNow } from '../ui/tiles/data'
 
 /**
- * Unread messages as a home card, kept out of the priority ranking itself: that
- * list goes to Wendy (client_state), and nothing from People ever does. The
- * card joins at display time instead (cardsWithMessage).
+ * The Chats box on home, kept out of the priority ranking itself: that list
+ * goes to Wendy (client_state), and nothing from People ever does. Chats joins
+ * at display time instead (homeSlots).
  */
-export function useMessageCard(): MessageCardData | null {
+export function useChatsCard(): ChatsCardData {
   const threads = useSocial((s) => s.threads)
   // Re-scored every half minute, so a message sinks as it ages.
   const now = useNow(30_000)
-  return useMemo(() => messageCard(threads, now), [threads, now])
+  return useMemo(() => chatsCard(threads, now), [threads, now])
 }
 
-export type HomeCard<T> = { type: 'item'; item: T } | { type: 'message'; card: MessageCardData }
+export type HomeSlot =
+  | { type: 'item'; key: string; item: RankedItem }
+  | { type: 'chats'; key: 'chats'; card: ChatsCardData }
+  | { type: 'list'; key: string; tile: TileId }
 
-/** The ranked cards with the message card slotted in by score, at most `max`. */
-export function cardsWithMessage<T extends { score: number }>(
-  ranked: T[],
-  card: MessageCardData | null,
-  max = 3,
-): HomeCard<T>[] {
-  const out: HomeCard<T>[] = ranked.map((item) => ({ type: 'item', item }))
-  if (card) {
-    const at = ranked.findIndex((r) => r.score < card.score)
-    out.splice(at < 0 ? out.length : at, 0, { type: 'message', card })
+const KIND_LIST: Record<ItemKind, TileId> = { task: 'tasks', event: 'calendar', notification: 'inbox', goal: 'goals' }
+const FILL_ORDER: TileId[] = ['calendar', 'tasks', 'inbox', 'goals']
+
+/**
+ * The three boxes before box 4, for both the 2D and the 3D grid. Two ranked
+ * cards (calm list summaries fill any gap), and Chats, always top right on a
+ * grid so it's always in the same place. In a phone's single column Chats is
+ * second, or first while a fresh message outranks the top card.
+ */
+export function homeSlots(ranked: RankedItem[], chats: ChatsCardData, stack: boolean): HomeSlot[] {
+  const rest: HomeSlot[] = ranked.slice(0, 2).map((item) => ({ type: 'item', key: item.key, item }))
+  const shown = new Set(ranked.map((r) => KIND_LIST[r.kind]))
+  for (const pass of [0, 1]) {
+    for (const tile of FILL_ORDER) {
+      if (rest.length >= 2) break
+      const taken = rest.some((s) => s.type === 'list' && s.tile === tile)
+      if (!taken && (pass === 1 || !shown.has(tile))) rest.push({ type: 'list', key: `list:${tile}`, tile })
+    }
   }
-  return out.slice(0, max)
-}
-
-/** "2 new messages · 3 min ago · 1 more chat": counts and time, never the text. */
-export function messageMeta(c: MessageCardData, ago: string): string {
-  const what = c.count === 1 ? 'New message' : `${c.count} new messages`
-  const more = c.more ? ` · ${c.more} more chat${c.more === 1 ? '' : 's'}` : ''
-  return `${what} · ${ago}${more}`
+  const box: HomeSlot = { type: 'chats', key: 'chats', card: chats }
+  const first = rest[0]
+  const topScore = first?.type === 'item' ? first.item.score : 0
+  if (stack && chats.score > topScore) return [box, ...rest]
+  return [...rest.slice(0, 1), box, ...rest.slice(1)]
 }

@@ -19,7 +19,7 @@ priority list, pills or logs breaks this rule. Don't.
 | Protocol: connect, every request, `handleSocialFrame` | `src/social/social.ts`                              |
 | Types (`Thread`, `DmMessage`, `SHAREABLE`, …)         | `src/social/types.ts`                               |
 | Store + pure helpers (unread, `isMine`, names)        | `src/stores/social.ts`                              |
-| Home message card                                     | `src/social/homeCard.ts`                            |
+| Home Chats box (always on home, top right)            | `src/social/homeCard.ts`, `src/ui/cards/ChatsCard.tsx` |
 | Profile pictures (crop, upload, URL)                  | `src/social/pictures.ts`                            |
 | Panel, thread, profile, receptionist settings         | `src/ui/people/*`                                   |
 | New group, group info (members, roles, her, leave)    | `NewGroup.tsx`, `GroupInfo.tsx` in `src/ui/people/` |

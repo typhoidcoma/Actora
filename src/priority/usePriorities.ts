@@ -14,7 +14,7 @@ function useCandidates(): PriorityItem[] {
   return useMemo(() => scoreItems(e, now), [e, now])
 }
 
-/** The three cards to show, in order. */
+/** The ranked cards to show (RANKED_CARDS), in order. */
 export function usePriorities(): RankedItem[] {
   const local = useCandidates()
   const ranked = usePriorityStore((s) => s.agent)

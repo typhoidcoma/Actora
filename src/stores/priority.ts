@@ -25,7 +25,13 @@ export const priorityStore = {
 export type RankedItem = PriorityItem & { whyFrom: 'local' | 'agent' }
 
 /**
- * Top 3 to show: The agent's pushed ranking, then her suggested ranking, then the
+ * How many ranked cards home shows. Two: of the four boxes, one is always Chats
+ * and one is box 4 (an approval, else her finds).
+ */
+export const RANKED_CARDS = 2
+
+/**
+ * The ranked cards to show: The agent's pushed ranking, then her suggested ranking, then the
  * local score. Keys that no longer exist (done, read, past) drop out at once,
  * and local items fill the gaps.
  */
@@ -33,7 +39,7 @@ export function mergePriorities(
   local: PriorityItem[],
   agent: RankEntry[] | null,
   pushed: RankEntry[] | null,
-  n = 3,
+  n = RANKED_CARDS,
 ): RankedItem[] {
   const byKey = new Map(local.map((i) => [i.key, i]))
   const out: RankedItem[] = []

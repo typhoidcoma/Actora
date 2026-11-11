@@ -115,10 +115,20 @@ describe('ranking', () => {
       local,
       [{ key: 'notification:c', why: 'Ping back' }, { key: 'task:gone' }],
       [{ key: 'task:a' }],
+      3,
     )
     expect(merged.map((m) => m.key)).toEqual(['task:a', 'notification:c', 'event:b'])
     expect(merged[1]).toMatchObject({ why: 'Ping back', whyFrom: 'agent' })
     expect(merged[0].whyFrom).toBe('local')
+  })
+
+  it('home shows two ranked cards (Chats holds a box of its own): a third pick drops', () => {
+    const local = scoreItems(
+      ents({ tasks: [task('a', '2026-10-05')], events: [event('b', 20)], notes: [note('c', 5)] }),
+      NOW,
+    )
+    const merged = mergePriorities(local, null, [{ key: 'task:a' }, { key: 'notification:c' }, { key: 'event:b' }])
+    expect(merged.map((m) => m.key)).toEqual(['task:a', 'notification:c'])
   })
 })
 

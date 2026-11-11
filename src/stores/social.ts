@@ -291,38 +291,64 @@ export function speakerOf(m: DmMessage, t: Thread, me: string | null, names: Rec
 /** What's waiting in People: unread messages plus friend requests (the menu's badge). */
 export const usePeopleWaiting = () => useSocial((s) => totalUnread(s.threads) + incomingRequests(s.friends).length)
 
-/** A card on the home grid for unread messages: who wrote, never what (anyone can see the screen). */
-export interface MessageCardData {
+/** One conversation on the home Chats card: who, how many unread, when. Never what was said. */
+export interface ChatRow {
   threadId: string
-  from: string
-  /** Unread in that conversation. */
-  count: number
-  /** Other conversations with unread messages too. */
-  more: number
-  at: string
-  /** 0–100, comparable with the priority cards': fresh mail ranks high, then sinks. */
-  score: number
+  name: string
+  kind: Thread['kind']
+  /** A friend's assistant you're talking to (shown with "AI"); your own receptionist's threads are a person's. */
+  theirAssistant: boolean
+  /** 0 when muted: a muted chat never calls for attention. */
+  unread: number
+  at: string | null
+  /** For the little faces: the other members (a group's first few). */
+  faces: Known[]
 }
 
+/** The Chats box on home: always there, so the user always knows where chat lives. */
+export interface ChatsCardData {
+  rows: ChatRow[]
+  /** Unread across chats that aren't muted. */
+  unread: number
+  /** 0–100, comparable with the priority cards': fresh mail ranks high, then sinks. 0 with nothing unread. */
+  score: number
+  /** The newest unread, unmuted chat: where a single tap on the card takes you. */
+  topUnread: string | null
+}
+
+/** How many conversations the card lists at most. */
+export const CHAT_ROWS = 4
+
 /**
- * The newest unread conversation (muted ones never count). Fresh within ten
- * minutes, it ranks with things due soon; over the next hour it sinks to the
- * level of calm items, and after that it only fills a free slot.
+ * The Chats card: conversations waiting on you first, then the most recent.
+ * Its score follows the newest unread: fresh within ten minutes it ranks with
+ * things due soon, over the next hour it sinks to the level of calm items.
+ * On phones that decides whether Chats leads the column.
  */
-export function messageCard(threads: Record<string, Thread>, now = Date.now()): MessageCardData | null {
-  const unread = threadList(threads).filter((t) => !t.muted && t.unread > 0 && t.lastMessageAt)
-  const t = unread[0]
-  if (!t) return null
-  const mins = Math.max(0, (now - Date.parse(t.lastMessageAt!)) / 60_000)
-  const score = mins <= 10 ? 82 : mins <= 60 ? 82 - ((mins - 10) / 50) * 42 : 30
-  const sender = t.members.find((m) => m.userId === t.lastMessage?.senderId) ?? t.members[0]
+export function chatsCard(threads: Record<string, Thread>, now = Date.now()): ChatsCardData {
+  const all = threadList(threads)
+  const waiting = (t: Thread) => !t.muted && t.unread > 0
+  const unread = all.filter((t) => waiting(t) && t.lastMessageAt)
+  const top = unread[0]
+  let score = 0
+  if (top) {
+    const mins = Math.max(0, (now - Date.parse(top.lastMessageAt!)) / 60_000)
+    score = Math.round(mins <= 10 ? 82 : mins <= 60 ? 82 - ((mins - 10) / 50) * 42 : 30)
+  }
+  const ordered = [...all.filter(waiting), ...all.filter((t) => !waiting(t))]
   return {
-    threadId: t.id,
-    from: t.kind === 'assistant' || t.title?.trim() ? threadName(t) : nameOf(sender),
-    count: t.unread,
-    more: unread.length - 1,
-    at: t.lastMessageAt!,
-    score: Math.round(score),
+    rows: ordered.slice(0, CHAT_ROWS).map((t) => ({
+      threadId: t.id,
+      name: threadName(t),
+      kind: t.kind,
+      theirAssistant: t.kind === 'assistant' && t.role !== 'owner',
+      unread: t.muted ? 0 : t.unread,
+      at: t.lastMessageAt ?? null,
+      faces: t.members.slice(0, 3),
+    })),
+    unread: totalUnread(threads),
+    score,
+    topUnread: top?.id ?? null,
   }
 }
 

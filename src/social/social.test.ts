@@ -259,52 +259,64 @@ describe('threads and unread', () => {
   })
 })
 
-describe('the message card', () => {
+describe('the Chats card', () => {
   const now = Date.parse('2026-10-13T12:00:00Z')
   const at = (minsAgo: number) => new Date(now - minsAgo * 60_000).toISOString()
 
-  it('shows the newest unread conversation, by name only, and counts the rest', async () => {
-    const { messageCard } = await import('../stores/social')
-    const card = messageCard(
+  it('lists waiting chats first, then the most recent, by name only', async () => {
+    const { chatsCard } = await import('../stores/social')
+    const card = chatsCard(
       {
-        t1: thread({ unread: 2, lastMessageAt: at(3), lastMessage: msg(5, { senderId: 'sam' }) }),
-        t2: thread({ id: 't2', unread: 1, lastMessageAt: at(30) }),
-        t3: thread({ id: 't3', unread: 5, lastMessageAt: at(1), muted: true }),
+        t1: thread({ unread: 2, lastMessageAt: at(30), lastMessage: msg(5, { senderId: 'sam' }) }),
+        t2: thread({ id: 't2', kind: 'group', title: 'Climbing', lastMessageAt: at(1) }),
+        t3: thread({ id: 't3', unread: 5, lastMessageAt: at(2), muted: true }),
+        t4: thread({ id: 't4', unread: 1, lastMessageAt: at(3) }),
+        t5: thread({ id: 't5', lastMessageAt: at(500) }),
       },
       now,
     )
-    expect(card).toMatchObject({ threadId: 't1', from: 'Sam', count: 2, more: 1, score: 82 })
-    expect(Object.keys(card!)).not.toContain('body')
+    expect(card.rows.map((r) => r.threadId)).toEqual(['t4', 't1', 't2', 't3'])
+    expect(card.rows[2]).toMatchObject({ name: 'Climbing', kind: 'group', unread: 0 })
+    // Muted: listed, but never counted.
+    expect(card.rows[3]!.unread).toBe(0)
+    expect(card).toMatchObject({ unread: 3, topUnread: 't4' })
+    expect(JSON.stringify(card)).not.toContain('hello')
   })
 
-  it('sinks over the hour, then only fills a gap; nothing unread is no card', async () => {
-    const { messageCard } = await import('../stores/social')
-    const score = (m: number) => messageCard({ t1: thread({ unread: 1, lastMessageAt: at(m) }) }, now)!.score
+  it('scores the newest waiting chat: fresh, then sinking over the hour; nothing waiting is 0', async () => {
+    const { chatsCard } = await import('../stores/social')
+    const score = (m: number) => chatsCard({ t1: thread({ unread: 1, lastMessageAt: at(m) }) }, now).score
+    expect(score(3)).toBe(82)
     expect(score(35)).toBe(61)
     expect(score(60)).toBe(40)
     expect(score(240)).toBe(30)
-    expect(messageCard({ t1: thread({ unread: 0, lastMessageAt: at(1) }) }, now)).toBeNull()
+    const quiet = chatsCard({ t1: thread({ unread: 0, lastMessageAt: at(1) }) }, now)
+    expect(quiet).toMatchObject({ score: 0, unread: 0, topUnread: null })
+    expect(quiet.rows).toHaveLength(1)
+    expect(chatsCard({}, now).rows).toEqual([])
   })
 })
 
-describe('messages on the home grid, and Wendy', () => {
-  it('slots the message card in by score, keeping three cards', async () => {
-    const { cardsWithMessage } = await import('./homeCard')
-    const ranked = [
-      { key: 'a', score: 95 },
-      { key: 'b', score: 70 },
-      { key: 'c', score: 50 },
-    ]
-    const card = { threadId: 't1', from: 'Sam', count: 1, more: 0, at: '', score: 82 }
-    expect(cardsWithMessage(ranked, card).map((c) => (c.type === 'message' ? 'dm' : c.item.key))).toEqual([
-      'a',
-      'dm',
-      'b',
-    ])
-    expect(
-      cardsWithMessage(ranked, { ...card, score: 30 }).map((c) => (c.type === 'message' ? 'dm' : c.item.key)),
-    ).toEqual(['a', 'b', 'c'])
-    expect(cardsWithMessage([], { ...card, score: 30 })).toHaveLength(1)
+describe('chats on the home grid, and Wendy', () => {
+  const item = (key: string, score: number, kind: 'task' | 'event' = 'task') =>
+    ({ key, score, kind }) as unknown as import('../stores/priority').RankedItem
+  const chats = (score: number) => ({ rows: [], unread: score ? 1 : 0, score, topUnread: null })
+  const keys = (s: import('./homeCard').HomeSlot[]) => s.map((x) => x.key)
+
+  it('keeps Chats top right on the grid, beside two ranked cards', async () => {
+    const { homeSlots } = await import('./homeCard')
+    expect(keys(homeSlots([item('a', 95), item('b', 70)], chats(82), false))).toEqual(['a', 'chats', 'b'])
+    expect(keys(homeSlots([item('a', 95), item('b', 70), item('c', 60)], chats(0), false))).toEqual(['a', 'chats', 'b'])
+    // Nothing to tackle: calm lists fill round it, and Chats stays put.
+    expect(keys(homeSlots([], chats(0), false))).toEqual(['list:calendar', 'chats', 'list:tasks'])
+  })
+
+  it('on a phone, Chats leads only while a fresh message outranks the top card', async () => {
+    const { homeSlots } = await import('./homeCard')
+    const ranked = [item('a', 70), item('b', 50, 'event')]
+    expect(keys(homeSlots(ranked, chats(82), true))).toEqual(['chats', 'a', 'b'])
+    expect(keys(homeSlots(ranked, chats(30), true))).toEqual(['a', 'chats', 'b'])
+    expect(keys(homeSlots([], chats(30), true))[0]).toBe('chats')
   })
 
   it('she can open People, and nothing from it is in what she is sent', async () => {

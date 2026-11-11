@@ -10,9 +10,9 @@ draws it differently. See `docs/agent-ui.md` for the agent's view of the UI.
 ```
  her line (AgentLine)             what she is saying right now
  +-----------------+-----------------+
- | slot 1          | slot 2          |  ranked priorities (any kind),
- +-----------------+-----------------+  a DM card, or calm list cards
- | slot 3          | box 4           |  box 4: pending approval, else finds
+ | priority 1      | Chats           |  two ranked priorities (any kind)
+ +-----------------+-----------------+  or calm list cards; Chats always
+ | priority 2      | box 4           |  box 4: pending approval, else finds
  +-----------------+-----------------+
  pill rail (OptionRail)            tap targets for the current context
 ```
@@ -20,20 +20,22 @@ draws it differently. See `docs/agent-ui.md` for the agent's view of the UI.
 | Piece               | 2D                                 | 3D                                                                   |
 | ------------------- | ---------------------------------- | -------------------------------------------------------------------- |
 | Her line            | `src/ui/AgentLine.tsx`             | `3dapp/src/scene/panels/AgentLine3D.tsx` (caption over her head)     |
-| Grid + slot picking | `src/ui/Grid.tsx` (`useSlots`)     | `3dapp/src/scene/panels/Grid3D.tsx` (its own `useSlots`, same rules) |
+| Grid + slot picking | `src/ui/Grid.tsx` (`homeSlots`)    | `3dapp/src/scene/panels/Grid3D.tsx` (the same `homeSlots`)           |
 | Priority card       | `src/ui/cards/PriorityCard.tsx`    | `PriorityCard3D.tsx`                                                 |
-| DM card             | `src/ui/cards/MessageCard.tsx`     | `MessageCard3D.tsx`                                                  |
+| Chats box           | `src/ui/cards/ChatsCard.tsx`       | `ChatsCard3D.tsx`                                                    |
 | List summary card   | `CardShell` + `src/ui/tiles/*Face` | `ListCard3D.tsx`                                                     |
 | Box 4               | `FindsCard` / `PendingCard`        | `Box4` in `Grid3D.tsx`: `FindsCard3D` / `PendingCard3D`              |
 | Pill rail           | `src/ui/OptionRail.tsx`            | same component, mounted in `3dapp/src/dom/Overlay.tsx`               |
 
 Notes:
 
-- Both grids build slots from the same inputs: `usePriorities()` (merged top 3),
-  `useMessageCard()` and `cardsWithMessage()`, then fill with list cards.
-  If you change slot rules, change both `useSlots` functions.
+- Both grids call `homeSlots(usePriorities(), useChatsCard(), stack)` in
+  `src/social/homeCard.ts`: two ranked cards (`RANKED_CARDS`), list cards in any
+  gap, and Chats at index 1 (top right). Change the rules there, once.
 - 2D: on narrow screens (`m.stack`) the grid becomes one column, most important
-  first. The open card unmounts so its `layoutId` can morph into the panel.
+  first: Chats is second, or first while its score beats the top card's (a
+  fresh message). 3D's phone strip does the same (`stage.portrait`). The open
+  card unmounts so its `layoutId` can morph into the panel.
 - 3D: `Box4` cross-fades. It holds the last `PendingAction` in local state while
   `PendingCard3D` eases out (`onGone`), so the card never empties mid-exit.
   Cards use `usePresence` to glide between corners and ease out when dropped.
@@ -106,21 +108,22 @@ interface PriorityItem {
 |                      | Unread, older                                 | 50                     | Still unread                          |
 |                      | Read, or scheduled for later                  | none                   |                                       |
 | Goal                 | Active day/week goal, < 30% of its tasks done | 35                     |                                       |
-| DM (not ranked here) | Newest unread unmuted thread < 10 min         | 82                     |                                       |
+| Chats (not ranked here; only orders the phone column) | Newest unread unmuted thread < 10 min | 82   |                                       |
 |                      | 10-60 min (linear)                            | 82 -> 40               |                                       |
 |                      | Older                                         | 30                     |                                       |
 
 - Sort by score, ties by title; keep the first of each `key` (a recurring
   series shows its next occurrence).
-- `topWithVariety`: at most 2 of one kind in the top 3.
+- `topWithVariety`: at most 2 of one kind (with two ranked cards, that only
+  matters to the candidates sent for her re-rank).
 - A notification with `origin_type: 'assistant'` is labelled "Message for you".
-- DM scoring lives in `messageCard()` in `src/stores/social.ts`, deliberately
+- Chats scoring lives in `chatsCard()` in `src/stores/social.ts`, deliberately
   outside `scoreItems`, because the ranked list goes to Wendy and nothing from
   People ever does.
 
-## Merge, DM card, list fill
+## Merge, Chats, list fill
 
-`mergePriorities(local, agent, pushed, n = 3)` in `src/stores/priority.ts`:
+`mergePriorities(local, agent, pushed, n = RANKED_CARDS)` (2) in `src/stores/priority.ts`:
 
 1. Pushed entries (`priorities.set`, while not expired), then agent re-rank
    entries. Each is looked up in the live local list, so a key that is done,
@@ -132,19 +135,20 @@ interface PriorityItem {
 
 Then, at display time:
 
-- `cardsWithMessage(ranked, card)` in `src/social/homeCard.ts` inserts the DM
-  card before the first item scoring strictly lower (ties keep the item ahead)
-  and cuts to 3. The card shows counts and time only, never message text.
-- `useSlots` fills empty slots with list cards in `FILL_ORDER`
-  (calendar, tasks, inbox, goals). First pass skips lists whose kind already
-  has a card; a second pass allows them if slots are still empty.
+- `homeSlots(ranked, chats, stack)` in `src/social/homeCard.ts` takes the two
+  ranked cards and fills any gap with list cards in `FILL_ORDER` (calendar,
+  tasks, inbox, goals). First pass skips lists whose kind already has a card;
+  a second pass allows them if slots are still empty.
+- Chats goes at index 1 (top right). In a single column it goes first instead
+  when its score is strictly higher than the top card's (ties keep the card
+  ahead). It shows names, counts and time only, never message text.
 - Slot 4 is always box 4.
 
 ## Agent influence on the cards
 
 | Mechanism                  | Where                                   | Details                                                                                                                                                                                                                                                 |
 | -------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `priorities.set` ui_action | `runUiAction` in `src/aelora/router.ts` | Up to 3 `{kind, id, why}`; only items that exist; `why` cut to 60 chars; pinned 30 min (`priorityStore.push`). Empty list clears.                                                                                                                       |
+| `priorities.set` ui_action | `runUiAction` in `src/aelora/router.ts` | Up to 3 `{kind, id, why}` (the first 2 show); only items that exist; `why` cut to 60 chars; pinned 30 min (`priorityStore.push`). Empty list clears.                                                                                                                       |
 | Re-rank over REST          | `src/priority/rank.ts`                  | Top 8 local candidates to `POST /api/llm` (`json:true`, `maxTokens:250`, `context:{profile:true}`), parses `{top:[{key, why}]}`; known keys only, max 3. Debounce 2 s, at most once per 2 min, skipped under 2 candidates, cached by candidate key set. |
 | Entity changes             | entity frames                           | When she creates/completes a task or marks a reminder read, the frames re-score the grid.                                                                                                                                                               |
 
@@ -230,7 +234,7 @@ she is busy; say pills are disabled mid-turn.
 
 Local rules in brief: on `home`, each card yields kind-specific pills
 (`cardOptions`: Prep/Remind for events, Start/Done for tasks, Got it/Later for
-reminders, Next step for goals); the top card's first is pinned, cards 2-3 add
+reminders, Next step for goals); the top card's first is pinned, card 2 adds
 their first, the rest are `alt`. Time-of-day pills ("Move N overdue to today",
 "Plan my day", "Wrap up") are pinned. Her line adds replies ("Yes please" /
 "Not right now" after a question). `tile:*`, `item:*`, `chat`, `finds`,
@@ -341,8 +345,8 @@ watcher, or Wendy will talk about a stale screen.
 2. Extend `PriorityItem['kind']` and add a scoring branch in
    `src/priority/score.ts`. Return `null` for anything not worth showing.
    Keep it pure on `(entities, now)`.
-3. Map the kind to a list in `KIND_LIST` in both `src/ui/Grid.tsx` and
-   `3dapp/src/scene/panels/Grid3D.tsx` (add a `TileId`/list if needed, and to
+3. Map the kind to a list in `KIND_LIST` in `src/social/homeCard.ts`
+   (shared by both grids; add a `TileId`/list if needed, and to
    `FILL_ORDER`).
 4. Render it: add an entry to the `KIND` map in `src/ui/cards/kinds.ts` (label, colour) used by `PriorityCard` / `PriorityCard3D`; check both for
    any kind-specific meta or primary action.
@@ -352,7 +356,7 @@ watcher, or Wendy will talk about a stale screen.
 7. Tests in `src/priority/priority.test.ts`.
 
 Something that must not reach Wendy (like DMs) should not go through
-`scoreItems`; join it at display time like `cardsWithMessage`.
+`scoreItems`; join it at display time like Chats (`homeSlots`).
 
 ### Add a new local pill
 
@@ -381,7 +385,7 @@ against what exists, add the name to `AVAILABLE_ACTIONS` in `src/aelora/actions.
 | Scoring                          | `src/priority/score.ts`                                                                                                              |
 | Merge, agent pin                 | `src/stores/priority.ts`, `src/priority/usePriorities.ts`                                                                            |
 | Re-rank                          | `src/priority/rank.ts`                                                                                                               |
-| DM card                          | `src/stores/social.ts` (`messageCard`), `src/social/homeCard.ts`                                                                     |
+| Chats box, slot rules            | `src/stores/social.ts` (`chatsCard`), `src/social/homeCard.ts` (`homeSlots`)                                                         |
 | Box 4                            | `src/stores/pending.ts`, `src/finds/finds.ts`                                                                                        |
 | Her line                         | `src/ui/AgentLine.tsx`, `src/stores/agent.ts`, `src/options/run.ts` (`say`)                                                          |
 | Pills                            | `src/options/{types,local,agentOptions,useOptions,run,slots}.ts`, `src/stores/options.ts`, `src/ui/OptionRail.tsx`, `src/ui/peek.ts` |

@@ -78,7 +78,7 @@ marks and push work as for a DM. Only making and running it is different (Aelora
 | `src/social/social.ts`                | Protocol: connect sequence, every outbound request, `handleSocialFrame` (inbound), social error routing, invite and deep-link handling.                                                                                                           |
 | `src/social/types.ts`                 | `Profile`, `OwnProfile`, `FriendRow`, `BlockRow`, `Member`, `DmMessage`, `Thread`, `Pending`, `Invite`, `AssistantPreview`, `SHAREABLE`.                                                                                                          |
 | `src/stores/social.ts`                | Zustand store `useSocial` and pure helpers (unit-tested).                                                                                                                                                                                         |
-| `src/social/homeCard.ts`              | `useMessageCard`, `cardsWithMessage`, `messageMeta`: the unread-message card on the home grid.                                                                                                                                                    |
+| `src/social/homeCard.ts`              | `useChatsCard` and `homeSlots`: the always-on Chats box on the home grid, and where it sits among the cards.                                                                                                                                      |
 | `src/social/pictures.ts`              | Picture crop, upload, URL, remove.                                                                                                                                                                                                                |
 | `src/ui/people/PeoplePanel.tsx`       | The panel: picks the body from guest / loading / no handle / thread / view.                                                                                                                                                                       |
 | `src/ui/people/PeopleThread.tsx`      | One conversation (`ThreadBody`) and its composer (`ThreadComposer`).                                                                                                                                                                              |
@@ -115,8 +115,10 @@ Helpers worth knowing:
   "Your assistant (AI)" or "Sam's assistant (AI)", and the owner stepping in by name.
 - **`threadName(t)`**: assistant threads read "Sam · your assistant" (owner side) or "Sam's assistant" (friend
   side); otherwise the title, else the members' names.
-- **`messageCard(threads, now)`**: the newest unread, unmuted conversation, sender name and count only.
-  Score 82 for ten minutes, sinking linearly to 40 at an hour, then 30.
+- **`chatsCard(threads, now)`**: the home Chats box. Up to `CHAT_ROWS` (4) conversations, waiting ones first,
+  then the most recent: name, kind, unread (0 when muted), time, faces. Never message text. `score` follows the
+  newest unread, unmuted chat: 82 for ten minutes, sinking linearly to 40 at an hour, then 30 (0 with nothing
+  unread). `topUnread` is that chat's id.
 - **`waitingSummary(s)`**: `{unread, from: [{name, count}], requests: [name]}` for Wendy. Up to five each, muted
   threads excluded, names flattened to one line and capped at 40 characters (they come from other users).
 - `totalUnread`, `incomingRequests`, `usePeopleWaiting` feed the menu badge.
@@ -220,7 +222,7 @@ People stays open until the user closes it:
   unless the user is mid-turn with her (`awaitingTurn` or a live `turnId`).
 
 Entry points: the menu ("People" with an `N new` hint, and "Profile" which opens the `profile` view), the menu
-badge, the home message card, a DM push, and the "Message for you" item panel.
+badge, the home Chats box, a DM push, and the "Message for you" item panel.
 
 ## What the agent knows
 
@@ -257,10 +259,11 @@ badge, the home message card, a DM push, and the "Message for you" item panel.
 - Action `people.open` with `{view?}` of `profile`, `add`, `blocked` (anything else falls back to home), and
   `people.close` (`src/aelora/actions.ts`, handled in `router.ts`). She can open a view but can't open a
   specific conversation. The agent-facing description is in `docs/agent-ui.md`.
-- The home-grid message card is joined at display time (`cardsWithMessage` in `homeCard.ts`), not in the
-  priority list, because that list is sent to Wendy. Rendered by `src/ui/cards/MessageCard.tsx` (and
-  `3dapp/src/scene/panels/MessageCard3D.tsx`): who wrote, count, time and "N more chats" (`messageMeta`), never
-  the text. Tapping opens that conversation.
+- The home Chats box is always on the grid (top right; on phones second, or first while a fresh message
+  outranks the top card). It is joined at display time (`homeSlots` in `homeCard.ts`), not in the priority list,
+  because that list is sent to Wendy. Rendered by `src/ui/cards/ChatsCard.tsx` (a row opens that conversation,
+  the rest of the card opens People) and `3dapp/src/scene/panels/ChatsCard3D.tsx` (one tap target: the newest
+  waiting chat, else People). Who, how many and when, never the text.
 - "Message for you": when a friend leaves a message with your assistant, the server creates a notification with
   `origin_type: 'assistant'` and `origin_user_id` (mock: "Sam left you a message" in `src/aelora/mock.ts`).
   `PriorityCard.tsx` labels it "Message for you"; `ItemPanel.tsx` shows "From: Sam, via your assistant" and a
@@ -278,14 +281,14 @@ badge, the home message card, a DM push, and the "Message for you" item panel.
 
 The 3D app (`3dapp/`) reuses the 2D People panel unchanged: `3dapp/src/dom/Overlay.tsx` lazy-loads
 `@actora/ui/people/PeoplePanel` into its DOM overlay when `ui.people` is true (prefetched on idle with the
-other panels). The home message card is `MessageCard3D` in `Grid3D.tsx`, fed by the same
-`useMessageCard` / `cardsWithMessage`. All protocol and state code is shared through `@actora/*`.
+other panels). The home Chats box is `ChatsCard3D` in `Grid3D.tsx`, fed by the same
+`useChatsCard` / `homeSlots`. All protocol and state code is shared through `@actora/*`.
 
 ## Tests
 
 | File                            | Covers                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/social/social.test.ts`     | Connect sequence, resend of pending sends, invite redeemed only with a handle, guest and `profile_required`; dedupe, seq order, contiguous sync and paging, read marks, deletes; optimistic send, failure, retry, 15 s timeout, length limits; unread, mute and badge; `dm.open` flow; the message card and its slotting; `people.open` and nothing from People in client state; recount, owner vs friend unread for agent replies, assistant labels, `assistant.open`, preview and Hide routing, late lookups, assistant errors, `waitingSummary`. |
+| `src/social/social.test.ts`     | Connect sequence, resend of pending sends, invite redeemed only with a handle, guest and `profile_required`; dedupe, seq order, contiguous sync and paging, read marks, deletes; optimistic send, failure, retry, 15 s timeout, length limits; unread, mute and badge; `dm.open` flow; the Chats box and where it sits; `people.open` and nothing from People in client state; recount, owner vs friend unread for agent replies, assistant labels, `assistant.open`, preview and Hide routing, late lookups, assistant errors, `waitingSummary`. |
 | `src/social/pictures.test.ts`   | Public URL and pass-through, centre crop, upload path and profile save then old-file removal, assistant field, refusals, failed upload leaves profile alone, remove.                                                                                                                                                                                                                                                                                                                                                                                |
 | `src/ui/idleHome.test.ts`       | Idle-home never closes People.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `src/ui/peek.test.ts`           | A chat peek that leads into People (profile view) leaves People open and the chat closed.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |

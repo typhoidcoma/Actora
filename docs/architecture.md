@@ -24,9 +24,9 @@ the code wins.
 - `google/`: Google connection status, connect, disconnect and sync, over Aelora's HTTP API.
 - `options/`: the tap options (pills). Local ones (`local.ts`), agent-written ones (`agentOptions.ts`), and what a tap
   does (`run.ts`).
-- `priority/`: the three priority cards. Local score (`score.ts`) and the agent's re-rank (`rank.ts`).
+- `priority/`: the two ranked priority cards. Local score (`score.ts`) and the agent's re-rank (`rank.ts`).
 - `push/`: Web Push subscription and in-app notifications.
-- `social/`: friends and direct messages (People). Frame handling and the home message card.
+- `social/`: friends and direct messages (People). Frame handling and the home Chats box.
 - `sound/`: a few quiet UI sounds from one audio sprite.
 - `stores/`: zustand stores. The app's state lives here.
 - `styles/`: the one stylesheet (`index.css`): Tailwind v4, theme tokens, glass.

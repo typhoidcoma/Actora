@@ -2,15 +2,13 @@ import { AnimatePresence, motion } from 'motion/react'
 import type { ComponentType } from 'react'
 import { usePriorities } from '../priority/usePriorities'
 import { useMetrics } from '../stores/metrics'
-import type { RankedItem } from '../stores/priority'
-import { ui, useUi, type ItemKind, type TileId } from '../stores/ui'
+import { ui, useUi, type TileId } from '../stores/ui'
 import { CardShell } from './cards/CardShell'
 import { ItemPanel } from './cards/ItemPanel'
 import { Panel } from './cards/Panel'
 import { PriorityCard } from './cards/PriorityCard'
-import { MessageCard } from './cards/MessageCard'
-import { cardsWithMessage, useMessageCard } from '../social/homeCard'
-import type { MessageCardData } from '../stores/social'
+import { ChatsCard } from './cards/ChatsCard'
+import { homeSlots, useChatsCard, type HomeSlot } from '../social/homeCard'
 import { FindsCard } from './cards/FindsCard'
 import { PendingCard } from './cards/PendingCard'
 import { usePendingAction } from '../stores/pending'
@@ -39,38 +37,18 @@ const LISTS: Record<TileId, ListDef> = {
   inbox: { label: 'Inbox', accent: INBOX_ACCENT, Face: InboxFace, Detail: InboxDetail },
 }
 
-const KIND_LIST: Record<ItemKind, TileId> = { task: 'tasks', event: 'calendar', notification: 'inbox', goal: 'goals' }
-const FILL_ORDER: TileId[] = ['calendar', 'tasks', 'inbox', 'goals']
-
-type Slot =
-  | { type: 'item'; key: string; item: RankedItem; rank: number }
-  | { type: 'message'; key: string; card: MessageCardData }
-  | { type: 'list'; key: string; tile: TileId }
-  | { type: 'finds'; key: 'finds' }
+type Slot = HomeSlot | { type: 'finds'; key: 'finds' }
 
 /**
- * Three ranked priority cards (any domain) plus the agent's answer in the bottom
- * right. Unread messages join by how fresh they are (never part of the ranking
- * she sees). If there are fewer than three things to tackle, calm domain
- * summaries fill the gaps. Cards glide to their new slot when the ranking changes.
+ * Two ranked priority cards (any domain), Chats top right (always there, so
+ * it's clear where conversations live; never part of the ranking she sees),
+ * and box 4 in the bottom right. If there are fewer than two things to tackle,
+ * calm domain summaries fill the gaps. Cards glide to their new slot when the
+ * ranking changes. The rules are shared with the 3D grid (homeSlots).
  */
-function useSlots(): Slot[] {
-  const ranked = usePriorities()
-  const message = useMessageCard()
-  const slots: Slot[] = cardsWithMessage(ranked, message).map((c, i) =>
-    c.type === 'message'
-      ? { type: 'message', key: `dm:${c.card.threadId}`, card: c.card }
-      : { type: 'item', key: c.item.key, item: c.item, rank: i + 1 },
-  )
-  const shown = new Set(ranked.map((r) => KIND_LIST[r.kind]))
-  for (const pass of [0, 1]) {
-    for (const tile of FILL_ORDER) {
-      if (slots.length >= 3) break
-      const taken = slots.some((s) => s.type === 'list' && s.tile === tile)
-      if (!taken && (pass === 1 || !shown.has(tile))) slots.push({ type: 'list', key: `list:${tile}`, tile })
-    }
-  }
-  return [...slots.slice(0, 3), { type: 'finds', key: 'finds' }]
+function useSlots(stack: boolean): Slot[] {
+  const slots: Slot[] = homeSlots(usePriorities(), useChatsCard(), stack)
+  return [...slots, { type: 'finds', key: 'finds' }]
 }
 
 export function Grid() {
@@ -81,7 +59,7 @@ export function Grid() {
   const memories = useUi((s) => s.vault)
   const people = useUi((s) => s.people)
   const chatOpen = useUi((s) => s.chatOpen)
-  const slots = useSlots()
+  const slots = useSlots(m.stack)
   const pendingAction = usePendingAction()
 
   const itemPanel = !focus && selected ? selected : null
@@ -122,16 +100,14 @@ export function Grid() {
               ) : (
                 <FindsCard key="finds" corner={corner} hidden={panelOpen} />
               )
-            if (slot.type === 'message')
-              return (
-                <MessageCard key={slot.key} card={slot.card} corner={corner} hidden={panelOpen} compact={m.compact} />
-              )
+            if (slot.type === 'chats')
+              return <ChatsCard key="chats" card={slot.card} corner={corner} hidden={panelOpen} />
             if (slot.type === 'item') {
               return (
                 <PriorityCard
                   key={slot.key}
                   item={slot.item}
-                  rank={slot.rank}
+                  rank={slots.filter((s) => s.type === 'item').indexOf(slot) + 1}
                   corner={corner}
                   hidden={panelOpen}
                   compact={m.compact}

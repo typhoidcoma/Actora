@@ -46,11 +46,12 @@ only its pure helpers (`markdownText`, `format`, `tiles/data`) are used; the car
 Drawn in WebGPU, in the same glass as the 2D pills: the room behind blurred, under a face painted on a canvas
 (`look/paint.ts`: wrapping, fonts, glass tint and sheen). `Pane.tsx` is that shared surface.
 
-- `Grid3D.tsx`: the 2D Grid's slots. Up to three ranked priorities (unread messages slotted in), then list summaries.
+- `Grid3D.tsx`: the 2D Grid's slots (`homeSlots`). Two ranked priorities, Chats top right, then list summaries.
 - `PriorityCard3D.tsx`: kind, title, meta line and urgency heat; the alarm (red edge, halo, "Got it") when a reminder
   rings.
-- `MessageCard3D.tsx`: who wrote, how many and when, never the text. A tap opens the conversation.
-- `ListCard3D.tsx`: a domain summary that fills a corner when there are fewer than three priorities.
+- `ChatsCard3D.tsx`: the user's conversations, waiting ones first: who, how many and when, never the text. A tap
+  opens the newest waiting chat, else People.
+- `ListCard3D.tsx`: a domain summary that fills a corner when there are fewer than two priorities.
 - `FindsCard3D.tsx`: box 4, her fun finds with rotating photos (only hosts that allow CORS can be a texture).
 - `PendingCard3D.tsx`: box 4 while something waits for your OK ("Waiting for your OK"); the answers are the pills.
   Grid3D swaps it with the finds, easing one out as the other comes in.
