@@ -120,6 +120,15 @@ export const ui = {
   /** Every panel closed, the chat left as it is (her "go home" while you're talking). */
   closePanels: () => useUi.setState((s) => ({ ...CLOSED, chatOpen: s.chatOpen })),
   closeAll: () => useUi.setState({ ...CLOSED, keyboardOpen: false, pastChats: false, picking: null }),
+  /** Escape: the topmost layer only (a sheet, then a panel, then the chat), never everything at once. */
+  closeTop: () => {
+    const s = useUi.getState()
+    if (s.picking) return useUi.setState({ picking: null })
+    if (s.keyboardOpen) return useUi.setState({ keyboardOpen: false })
+    if (s.pastChats) return useUi.setState({ pastChats: false })
+    if (panelOpen(s)) return useUi.setState((p) => ({ ...CLOSED, chatOpen: p.chatOpen }))
+    if (s.chatOpen) useUi.setState({ chatOpen: false })
+  },
   /** Open an item in its own panel (from a card, or when the agent points at it). */
   open: (item: Selected) => useUi.setState({ ...closed(), selected: item }),
   /** Open an item in its panel, already asking whether to delete it. */

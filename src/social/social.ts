@@ -436,6 +436,8 @@ export function handleSocialFrame(f: ServerFrame, b: FrameBus): boolean {
     case 'friends.responded':
     case 'friends.removed':
       out({ type: 'friends.list' })
+      // Their assistant thread closes with the friendship: the list catches up so it isn't left open to write into.
+      out({ type: 'dm.threads' })
       return true
     case 'friends.blocked':
     case 'friends.unblocked':
@@ -532,6 +534,7 @@ export function handleSocialFrame(f: ServerFrame, b: FrameBus): boolean {
       const threadId = String(f.threadId ?? '')
       put(messageList(f.messages))
       useSocial.setState((s) => ({ loading: { ...s.loading, [threadId]: false } }))
+      social.setError(`history:${threadId}`, null)
       return true
     }
     case 'dm.synced': {
@@ -662,6 +665,8 @@ function socialError(f: ServerFrame): boolean {
   if (request === 'dm.history' && typeof f.threadId === 'string') {
     const id = f.threadId
     useSocial.setState((s) => ({ loading: { ...s.loading, [id]: false } }))
+    // The thread says it couldn't load, not "No messages yet".
+    social.setError(`history:${id}`, code)
     return true
   }
   if (request === 'dm.open' || request === 'assistant.open' || request === 'group.create') opening = null

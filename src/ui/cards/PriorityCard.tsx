@@ -82,7 +82,7 @@ export function PriorityCard({
             runOption(actOption(item.primary!.label, item.primary!.act))
           }}
           aria-label={`${item.primary.label}: ${item.title}`}
-          className={`glass-pill grid shrink-0 ${tight ? 'h-8 min-w-8' : 'h-9 min-w-9'} place-items-center rounded-[6px] px-2.5 text-[12px] font-semibold text-strong`}
+          className={`hit glass-pill grid shrink-0 ${tight ? 'h-8 min-w-8' : 'h-9 min-w-9'} place-items-center rounded-[6px] px-2.5 text-[12px] font-semibold text-strong`}
         >
           {item.primary.label}
         </motion.button>

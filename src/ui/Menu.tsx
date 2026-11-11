@@ -63,8 +63,18 @@ export function MenuButton({ onSignOut, large }: { onSignOut?: () => void; large
   useEffect(() => {
     if (!open) return
     const off = (e: PointerEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false)
+    // Escape closes the menu, and only the menu (captured first, so the screen's Escape skips it).
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      setOpen(false)
+    }
     window.addEventListener('pointerdown', off)
-    return () => window.removeEventListener('pointerdown', off)
+    window.addEventListener('keydown', onKey, true)
+    return () => {
+      window.removeEventListener('pointerdown', off)
+      window.removeEventListener('keydown', onKey, true)
+    }
   }, [open])
 
   return (

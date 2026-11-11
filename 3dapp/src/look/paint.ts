@@ -14,21 +14,30 @@ export function wrap(text: string, fontSpec: string, max: number, cap = Infinity
   scratch.font = fontSpec
   scratch.letterSpacing = spacing
   const lines: string[] = []
+  const fits = (s: string) => scratch.measureText(s).width <= max
   for (const para of text.split('\n')) {
     let line = ''
     for (const word of para.split(/\s+/)) {
       const next = line ? `${line} ${word}` : word
-      if (scratch.measureText(next).width > max && line) {
+      if (!fits(next) && line) {
         lines.push(line)
         line = word
       } else line = next
+      // A word wider than the line (a link, an address) breaks across lines instead of running off the edge.
+      while (!fits(line) && line.length > 1) {
+        let cut = line.length - 1
+        while (cut > 1 && !fits(line.slice(0, cut))) cut--
+        lines.push(line.slice(0, cut))
+        line = line.slice(cut)
+      }
     }
     lines.push(line)
   }
   if (lines.length > cap) {
     const kept = lines.slice(0, cap)
     let last = kept[cap - 1]
-    while (last && scratch.measureText(`${last}…`).width > max) last = last.replace(/\s*\S*$/, '')
+    while (last && scratch.measureText(`${last}…`).width > max)
+      last = /\s/.test(last) ? last.replace(/\s*\S*$/, '') : last.slice(0, -1)
     kept[cap - 1] = `${last}…`
     return kept
   }

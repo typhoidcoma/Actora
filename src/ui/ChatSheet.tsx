@@ -374,7 +374,7 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
         {bubble.text}
         <button
           onClick={() => runOption(actOption('Try again', { type: 'retry' }))}
-          className="glass-pill h-9 rounded-[6px] px-3 text-[13px] font-semibold text-strong"
+          className="glass-pill h-11 shrink-0 rounded-[6px] px-4 text-[14px] font-semibold whitespace-nowrap text-strong"
         >
           Try again
         </button>
@@ -390,7 +390,7 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
         {/* Quiet until hovered on desktop; always there (faint) on touch. */}
         <CopyButton
           text={copyableText(bubble.text)}
-          className="chat-copy -ml-2 mt-0.5 opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
+          className="chat-copy hit -ml-2 mt-0.5 opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
         />
         <Stamp at={bubble.at} className="mt-0.5" />
       </div>

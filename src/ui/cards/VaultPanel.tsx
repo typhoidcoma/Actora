@@ -80,7 +80,7 @@ export function VaultPanel() {
             <button
               onClick={() => setQuery('')}
               aria-label="Clear search"
-              className="grid h-7 w-7 place-items-center text-muted"
+              className="hit grid h-7 w-7 place-items-center text-muted"
             >
               <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden>
                 <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />

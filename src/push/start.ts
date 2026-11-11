@@ -14,7 +14,13 @@ function openNotification(id: string): void {
     return true
   }
   if (tryMark()) return
-  const off = useEntities.subscribe(() => tryMark() && off())
+  // Waits for the list, but not forever (a reminder deleted meanwhile, or another account's).
+  const off = useEntities.subscribe(() => tryMark() && stop())
+  const giveUp = setTimeout(() => off(), 60_000)
+  const stop = () => {
+    clearTimeout(giveUp)
+    off()
+  }
 }
 
 /**

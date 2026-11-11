@@ -125,7 +125,8 @@ export function Overlay() {
   }, [split])
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && ui.closeAll()
+    // Escape closes the top layer only, as in 2D.
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !e.defaultPrevented && ui.closeTop()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])

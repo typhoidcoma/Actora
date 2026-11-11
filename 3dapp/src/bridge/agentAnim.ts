@@ -292,6 +292,22 @@ export class AgentAnimator {
     this.fades.clear()
     this.mixer.stopAllAction()
     this.mixer.uncacheRoot(this.mixer.getRoot())
+    // Her tablet and its light come off her hand with her: a second mount (StrictMode,
+    // a new model) mustn't leave one hidden in her hand and an extra light in the room.
+    const phone = this.phoneMesh
+    if (phone) {
+      phone.removeFromParent()
+      phone.traverse((o) => {
+        if (o instanceof THREE.Mesh) {
+          o.geometry.dispose()
+          const m = o.material as THREE.Material | THREE.Material[]
+          for (const mat of Array.isArray(m) ? m : [m]) mat.dispose()
+        }
+      })
+      this.phoneLight?.dispose()
+    }
+    this.phoneMesh = null
+    this.phoneLight = null
   }
 }
 

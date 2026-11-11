@@ -246,6 +246,14 @@ export function startGreeting(): () => void {
   const tryGreet = () => {
     if (!due) return
     const a = useAgent.getState()
+    // They started talking before she said hello: no welcome after the fact (it would
+    // land below their exchange as if she hadn't heard them).
+    if (a.awaitingTurn) {
+      due = false
+      arrival = null
+      markSeen()
+      return
+    }
     const hydrated = Object.values(useEntities.getState().hydrated).every(Boolean)
     if (a.connection !== 'open' || a.userId === null || !hydrated || a.turnId || a.awaitingTurn) return
     if (!a.transcriptReady && !waitedForChat) return

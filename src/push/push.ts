@@ -217,9 +217,10 @@ async function explain(e: unknown): Promise<string> {
 }
 
 export async function disablePush(): Promise<void> {
-  const sub = await existingSubscription()
+  const sub = await existingSubscription().catch(() => null)
   if (sub) {
-    await sub.unsubscribe()
+    // Tell Aelora either way: even if the browser fails to let go, nothing more is sent here.
+    await sub.unsubscribe().catch(() => false)
     await ask({ type: 'push.unsubscribe', endpoint: sub.endpoint }, 'push.unsubscribed')
   }
   usePush.setState({ status: 'off' })

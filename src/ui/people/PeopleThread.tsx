@@ -62,6 +62,7 @@ export function ThreadBody({ id }: { id: string }) {
   const byThread = useSocial((s) => s.messages[id])
   const pendingAll = useSocial((s) => s.pending)
   const loading = useSocial((s) => !!s.loading[id])
+  const loadFailed = useSocial((s) => !!s.errors[`history:${id}`])
   const me = useSocial((s) => s.profile?.userId ?? null)
   const names = useSocial((s) => s.names)
   const blocks = useSocial((s) => s.blocks)
@@ -156,9 +157,19 @@ export function ThreadBody({ id }: { id: string }) {
         </button>
       )}
       {!messages.length && !pending.length && (
-        <p className="my-auto text-center text-[15px] text-muted">
-          {loading ? 'Loading…' : 'No messages yet. Say hello.'}
-        </p>
+        <div className="my-auto flex flex-col items-center gap-3">
+          <p className="text-center text-[15px] text-muted">
+            {loading ? 'Loading…' : loadFailed ? "Couldn't load these messages." : 'No messages yet. Say hello.'}
+          </p>
+          {loadFailed && !loading && (
+            <button
+              onClick={() => openThread(id)}
+              className="glass-pill min-h-11 rounded-[8px] px-5 text-[15px] font-semibold text-strong"
+            >
+              Try again
+            </button>
+          )}
+        </div>
       )}
 
       <div className="mt-auto flex flex-col gap-1.5">
@@ -322,10 +333,10 @@ function PendingBubble({ p }: { p: Pending }) {
       {failed ? (
         <span className="mt-1 flex items-center gap-2 text-[12px]">
           <span className="text-urgent">{FAILED[p.error ?? ''] ?? 'Not sent'}</span>
-          <button onClick={() => retryDm(p.clientMsgId)} className="font-semibold text-strong">
+          <button onClick={() => retryDm(p.clientMsgId)} className="hit px-1 font-semibold text-strong">
             Retry
           </button>
-          <button onClick={() => discardDm(p.clientMsgId)} className="text-muted">
+          <button onClick={() => discardDm(p.clientMsgId)} className="hit ml-2 px-1 text-muted">
             Discard
           </button>
         </span>

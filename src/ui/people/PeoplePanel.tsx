@@ -407,7 +407,7 @@ function FriendItem({ f }: { f: FriendRow }) {
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? 'Fewer options' : `More for ${nameOf(f.profile)}`}
         aria-expanded={open}
-        className="grid h-9 w-7 shrink-0 place-items-center text-muted"
+        className="hit grid h-9 w-7 shrink-0 place-items-center text-muted"
       >
         <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden>
           <circle cx="3" cy="8" r="1.3" fill="currentColor" />

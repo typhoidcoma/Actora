@@ -260,7 +260,7 @@ function bootstrap(bus: FrameBus): void {
   void reloadList(bus, 'tasks').then(() => flushCaptures(bus, useAgent.getState().userId))
   void reloadList(bus, 'goals')
   void reloadList(bus, 'events')
-  void resubscribe()
+  resubscribe().catch(() => {}) // next hello tries again
   void refreshGoogle()
   void request(bus, { type: 'session.list' }, 'session.list')
   socialConnected(bus)
@@ -653,7 +653,8 @@ function announce(n: Notification): void {
   const fresh = now - Date.parse(n.sent_at ?? n.created_at) < 10 * 60_000
   if (!due || !fresh || n.read_at) return
   // Not looking at the app? Make it a real OS notification (the server sent no push).
-  void notifyInBackground(n)
+  // The OS can refuse (permission revoked, worker gone): the reminder is still on screen.
+  notifyInBackground(n).catch(() => {})
   // Looking at it: a gentle tone (silent in the background, where the OS notification speaks).
   play('reminder')
   if (useUi.getState().chatOpen) return

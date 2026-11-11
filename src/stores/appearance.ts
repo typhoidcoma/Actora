@@ -73,9 +73,12 @@ export function startAppearanceSync(sb: SupabaseClient): () => void {
   const push = () => {
     clearTimeout(timer)
     timer = setTimeout(() => {
-      void sb.auth.updateUser({ data: { [META_KEY]: snapshot() } }).then(({ error }) => {
-        if (error) console.warn(`[appearance] not saved: ${error.message}`)
-      })
+      void sb.auth
+        .updateUser({ data: { [META_KEY]: snapshot() } })
+        .then(({ error }) => {
+          if (error) console.warn(`[appearance] not saved: ${error.message}`)
+        })
+        .catch((e: unknown) => console.warn('[appearance] not saved:', e))
     }, 800)
   }
 

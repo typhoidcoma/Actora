@@ -154,7 +154,14 @@ export function OptionRail({
               </motion.button>
             ) : (
               slots.map((o, i) => (
-                <Tile key={`slot-${i}`} option={o} loading={loading} disabled={!o || offline || (busy && !o.act)} />
+                <Tile
+                  key={`slot-${i}`}
+                  option={o}
+                  loading={loading}
+                  disabled={!o || offline || (busy && !o.act)}
+                  // Nothing to offer here (People has no pills): no row of empty boxes that look broken.
+                  blank={!loading && slots.every((s) => !s)}
+                />
               ))
             )}
           </AnimatePresence>
@@ -207,7 +214,17 @@ function useStableSlots(options: Option[], n: number): Array<Option | null> {
  * stays put; only its words cross-fade when the option in it changes. An empty
  * cell is a quiet placeholder (shimmering while the agent's options are on the way).
  */
-function Tile({ option, loading, disabled }: { option: Option | null; loading: boolean; disabled: boolean }) {
+function Tile({
+  option,
+  loading,
+  disabled,
+  blank = false,
+}: {
+  option: Option | null
+  loading: boolean
+  disabled: boolean
+  blank?: boolean
+}) {
   // Always the same element, filled or not, so a slot filling in never remounts.
   return (
     <motion.button
@@ -219,7 +236,7 @@ function Tile({ option, loading, disabled }: { option: Option | null; loading: b
       aria-hidden={option ? undefined : true}
       aria-label={option?.label}
       onClick={() => option && runOption(option)}
-      className={`glass-pill flex min-w-0 items-center overflow-hidden rounded-[8px] px-3 text-left text-[13.5px] leading-[1.2] transition-opacity ${
+      className={`glass-pill flex min-w-0 items-center overflow-hidden rounded-[8px] px-3 text-left text-[13.5px] leading-[1.2] transition-opacity ${blank ? 'invisible' : ''} ${
         !option ? `opacity-50 ${loading ? 'shimmer' : ''}` : 'disabled:opacity-40'
       } ${option?.act ? 'font-medium text-strong' : 'text-text'}`}
     >

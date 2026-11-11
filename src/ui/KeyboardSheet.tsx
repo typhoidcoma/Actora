@@ -72,7 +72,6 @@ function Sheet() {
           autoFocus
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === 'Escape' && ui.keyboard(false)}
           placeholder={
             captureOnly
               ? offline

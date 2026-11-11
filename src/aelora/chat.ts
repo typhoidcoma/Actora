@@ -150,7 +150,8 @@ export function sendChat(bus: FrameBus, text: string): boolean {
     steps: [],
     turnAt: Date.now(),
     // Talking to her moves past her welcome (or check-in): it won't come back on the line.
-    ...(s.greeting.text ? { greeting: { ...s.greeting, spent: true } } : {}),
+    // (Also one still on its way: it mustn't land in the chat after this exchange.)
+    ...(s.greeting.text || s.greetingPending ? { greeting: { ...s.greeting, spent: true } } : {}),
   })
   clearTimeout(turnTimer)
   turnTimer = setTimeout(() => failTurn(), TURN_TIMEOUT_MS)
@@ -225,8 +226,9 @@ function handleSystemFrame(f: ServerFrame): boolean {
         greeting: { ...get().greeting, text, streaming: false },
         greetingPending: false,
         // Into the chat too, so answering it there reads as one conversation
-        // (an earlier, unanswered welcome gives way to the new one).
-        ...(text
+        // (an earlier, unanswered welcome gives way to the new one). Not if the user
+        // already talked past it while it streamed: it would land after their exchange.
+        ...(text && !get().greeting.spent
           ? {
               messages: [
                 ...get().messages.filter((m) => !m.greeting),

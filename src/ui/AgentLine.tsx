@@ -252,7 +252,7 @@ export function AgentLine() {
             {content.more && (
               <button
                 onClick={ui.openChat}
-                className="pointer-events-auto ml-3 align-middle font-sans text-[14px] font-semibold text-accent underline decoration-accent/40 underline-offset-4"
+                className="hit pointer-events-auto ml-3 align-middle font-sans text-[14px] font-semibold text-accent underline decoration-accent/40 underline-offset-4"
               >
                 {content.live ? 'Open chat' : 'Read all'}
               </button>

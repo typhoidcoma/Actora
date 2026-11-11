@@ -503,6 +503,20 @@ button {
   font-size: 12px;
 }
 
+/* A small control's tap area grown to at least 44 × 44 px, without moving anything around it. */
+.hit {
+  position: relative;
+}
+.hit::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
 /* The agent's Markdown */
 .md {
   font-size: 1rem;

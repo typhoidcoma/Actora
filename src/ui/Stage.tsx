@@ -74,7 +74,8 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
     if (!split && sideBySide(useUi.getState())) ui.closePanels()
   }, [split])
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && ui.closeAll()
+    // Escape closes the top layer only; a menu that handled it first (defaultPrevented) is all it closes.
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !e.defaultPrevented && ui.closeTop()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])

@@ -140,7 +140,9 @@ export function FindsCard({ corner, hidden }: { corner: Corner; hidden: boolean 
                   ? 'Fun finds need separate conversations, which this server has turned off.'
                   : hunting
                     ? 'Searching the web for things you’ll like.'
-                    : `Tap and ${name} will find you something fun.`}
+                    : status === 'error'
+                      ? `${name} couldn't find anything just now. Tap to try again.`
+                      : `Tap and ${name} will find you something fun.`}
               </motion.div>
             )}
           </AnimatePresence>

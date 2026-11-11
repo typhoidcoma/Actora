@@ -42,7 +42,8 @@ export function useCaption(): { text: string; color: string; present: boolean; l
       notice: s.notice,
       message: s.message,
       streaming: s.streaming,
-      last: s.messages.findLast((m) => m.role === 'assistant')?.text ?? null,
+      // Her last reply, or the turn that failed after it (the same message object, so shallow-equal).
+      last: s.messages.findLast((m) => m.role === 'assistant' || m.role === 'error') ?? null,
       greeting: s.greeting.text,
       checkin: !!s.greeting.checkin,
       busy: s.awaitingTurn || s.turnId !== null,
@@ -65,7 +66,11 @@ export function useCaption(): { text: string; color: string; present: boolean; l
     if (a.streaming) text = opening(a.streaming)
     // Working on it: the animated Activity shows over her head instead.
     else if (a.busy) text = ''
-    else text = opening(a.last ?? '')
+    // A turn that failed says so over her head, as the 2D line does (with Try again on the pills).
+    else if (a.last?.role === 'error') {
+      text = a.last.text
+      color = look.ink.urgent
+    } else text = opening(a.last?.text ?? '')
   } else text = a.greeting
 
   const holds = !!a.streaming || a.fatal || a.line === 'notice' || (a.line === 'greeting' && a.checkin)
