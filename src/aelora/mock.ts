@@ -102,7 +102,40 @@ function seed() {
   }
 }
 
+/** Her gifts in the mock: inline pictures (no storage here), shaped like Aelora's ImageRecord. */
+const giftPicture = (body: string) =>
+  `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'>${body}</svg>`)}`
+const GIFT_PICTURES = [
+  // A lighthouse at dusk.
+  "<rect width='512' height='512' fill='#2b2350'/><circle cx='380' cy='130' r='46' fill='#ffd88a'/><path d='M0 400 Q128 370 256 400 T512 400 V512 H0Z' fill='#1a3a5c'/><path d='M220 400 L236 200 H276 L292 400Z' fill='#f4efe6'/><rect x='230' y='170' width='52' height='34' rx='6' fill='#ffcf5c'/><path d='M282 186 L512 130 V250Z' fill='#ffcf5c' opacity='.35'/>",
+  // A small plant on a sill.
+  "<rect width='512' height='512' fill='#f6e7d2'/><rect y='360' width='512' height='152' fill='#d9b48f'/><path d='M206 360 H306 L292 440 H220Z' fill='#c4693c'/><path d='M256 360 C220 300 190 270 150 260 C190 250 230 280 256 330 C270 270 300 230 350 220 C320 250 290 300 256 360Z' fill='#4f9a5a'/>",
+  // Two mugs, steaming.
+  "<rect width='512' height='512' fill='#ffd7c2'/><rect x='120' y='250' width='120' height='140' rx='18' fill='#5b3f8c'/><rect x='272' y='250' width='120' height='140' rx='18' fill='#2eddba'/><path d='M160 230 q10 -30 0 -60 M200 230 q10 -30 0 -60 M312 230 q10 -30 0 -60 M352 230 q10 -30 0 -60' stroke='#fff' stroke-width='10' fill='none' stroke-linecap='round'/>",
+]
+const GIFT_NOTES = [
+  'A light for the late nights. You keep going even when it is dark out.',
+  'You said your desk needed something alive. This one never needs watering.',
+  'For the coffee with Sam you keep meaning to have.',
+]
+let giftSeq = 0
+function mockGift(i: number, minsAgo = 0): Record<string, unknown> {
+  return {
+    imageId: `gift-${++giftSeq}`,
+    prompt: 'a gift',
+    aspectRatio: '1:1',
+    imageSize: '1K',
+    mimeType: 'image/svg+xml',
+    width: 512,
+    height: 512,
+    createdAt: new Date(Date.now() - minsAgo * 60_000).toISOString(),
+    url: giftPicture(GIFT_PICTURES[i % GIFT_PICTURES.length]),
+    gift: { note: GIFT_NOTES[i % GIFT_NOTES.length], persona: 'wendy' },
+  }
+}
+
 const REPLIES: Array<[RegExp, string, string?]> = [
+  [/gift|picture|draw/i, "I made you something. It's on your profile too, whenever you want it.", 'give_gift'],
   // Wide content, for checking nothing scrolls sideways on a 360 px phone.
   [
     /^\/wide$/,
@@ -136,6 +169,8 @@ export class MockWebSocket implements WebSocketLike {
 
   private static db = seed()
   private static social = new MockSocial()
+  /** Her gifts, newest first. */
+  private static gifts: Array<Record<string, unknown>> = [mockGift(1, 60 * 26), mockGift(2, 60 * 24 * 4)]
   /** What Wendy "remembers" in the mock (the Vault). */
   private static vault = [
     ['identity', 'Lives in Seattle and works as a front-end engineer'],
@@ -198,6 +233,22 @@ export class MockWebSocket implements WebSocketLike {
         return this.reply({ type: 'notification.list', notifications: db.notifications })
       case 'calendar.list':
         return this.reply({ type: 'calendar.list', events: db.events })
+      case 'image.list': {
+        // Only gifts here (the app never asks for its own images).
+        const before = typeof msg.before === 'string' ? Date.parse(msg.before) : Infinity
+        const limit = Math.min(50, typeof msg.limit === 'number' ? msg.limit : 24)
+        const all = MockWebSocket.gifts.filter((g) => Date.parse(g.createdAt as string) < before)
+        const images = all.slice(0, limit)
+        return this.reply({
+          type: 'image.list',
+          gifts: true,
+          images,
+          nextBefore: all.length > limit ? (images.at(-1)?.createdAt as string) : null,
+        })
+      }
+      case 'image.delete':
+        MockWebSocket.gifts = MockWebSocket.gifts.filter((g) => g.imageId !== msg.imageId)
+        return this.reply({ type: 'image.deleted', imageId: msg.imageId })
       case 'conversation.open':
         return this.reply({
           type: 'conversation.messages',
@@ -468,6 +519,11 @@ export class MockWebSocket implements WebSocketLike {
           }
           MockWebSocket.db.tasks.push(task)
           this.event('task', { type: 'task:created', task })
+        }
+        if (tool === 'give_gift') {
+          const image = mockGift(giftSeq + 1)
+          MockWebSocket.gifts.unshift(image)
+          this.emit({ type: 'event', event: 'gift', userId: 'mock-user', data: { type: 'gift:created', image } })
         }
         if (tool === 'list_events') this.event('agent_command', { command: { type: 'open_app', id: 'calendar' } })
         if (text === FINDS_REPLY)

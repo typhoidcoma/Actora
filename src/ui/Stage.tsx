@@ -22,6 +22,7 @@ import { Toaster } from './Toast'
 import { startMoments } from './moments'
 import { startCheckins } from '../checkins/checkins'
 import { DateSheet } from './DateSheet'
+import { GiftViewer } from './gifts/GiftViewer'
 import { SessionChip } from './SessionChip'
 import { TypingPeek } from './TypingPeek'
 import { PastChats } from './PastChats'
@@ -144,6 +145,7 @@ export function Stage({ onSignOut }: { onSignOut?: () => void }) {
       <TypingPeek />
       <PastChats />
       <DateSheet />
+      <GiftViewer />
       <Toaster />
       <AnimatePresence>{fatal && <FatalCard key="fatal" />}</AnimatePresence>
       {/* Grain sits above the glass, as on a real render, rather than being blurred by it. */}

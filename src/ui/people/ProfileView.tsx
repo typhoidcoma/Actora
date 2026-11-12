@@ -1,6 +1,8 @@
 import { motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { claimHandle, updateProfile } from '../../social/social'
+import { useAgent } from '../../stores/agent'
+import { GiftShelf } from '../gifts/GiftShelf'
 import { useSocial } from '../../stores/social'
 import { press } from '../motion'
 import { AssistantSettings } from './AssistantSettings'
@@ -14,10 +16,11 @@ const HANDLE_SAY: Record<string, string> = {
   rate_limited: 'Too many changes today. Try again tomorrow.',
 }
 
-/** Your name, your handle, and who can find you. */
+/** Her gifts, your name, your handle, and who can find you. */
 export function ProfileView() {
   const profile = useSocial((s) => s.profile)
   const errors = useSocial((s) => s.errors)
+  const agent = useAgent((s) => s.botName)
   const [name, setName] = useState(profile?.displayName ?? '')
   const [handle, setHandle] = useState(profile?.handle ?? '')
   const [saving, setSaving] = useState<'name' | 'handle' | null>(null)
@@ -61,6 +64,11 @@ export function ProfileView() {
     <div className="@container">
       <div className="grid grid-cols-[minmax(0,1fr)] gap-x-12 gap-y-8 @2xl:grid-cols-2">
         <div className="grid content-start gap-6">
+          {/* What she made for you (give_gift): first, since it's what she points you to. */}
+          <section>
+            <h3 className="label mb-2">Gifts from {agent}</h3>
+            <GiftShelf />
+          </section>
           <section>
             <h3 className="label mb-2">Your picture</h3>
             <PictureEditor kind="me" />

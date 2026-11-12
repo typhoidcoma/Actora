@@ -3,6 +3,7 @@ import { config } from '../config'
 import { agent, useAgent } from '../stores/agent'
 import { entities, useEntities } from '../stores/entities'
 import { ui, useUi } from '../stores/ui'
+import { useGifts } from '../stores/gifts'
 import { useSocial, waitingSummary } from '../stores/social'
 import { abortTurnOnDisconnect, resetChatTurn, sendChat, sendGreeting } from './chat'
 import { isFindsThread, startFinds, useFinds } from '../finds/finds'
@@ -107,6 +108,17 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
     clearTimeout(waitingTimer)
     waitingTimer = setTimeout(() => sendClientState(sock), 800)
   })
+  // A gift landed, was opened or removed: she knows how many there are and how many are new.
+  const giftSig = (g: ReturnType<typeof useGifts.getState>) => `${g.status === 'ready' ? g.order.length : '-'}:${g.unseen.length}`
+  let giftsSig = giftSig(useGifts.getState())
+  let giftsTimer: ReturnType<typeof setTimeout> | undefined
+  const offGifts = useGifts.subscribe((g) => {
+    const sig = giftSig(g)
+    if (sig === giftsSig) return
+    giftsSig = sig
+    clearTimeout(giftsTimer)
+    giftsTimer = setTimeout(() => sendClientState(sock), 800)
+  })
   // The cards, box 4, approvals and pills change on their own (a reminder read, a
   // meeting starting, her options landing): she hears the settled result, not a
   // copy from the last time the user moved. One update per burst; a minute's tick
@@ -162,6 +174,8 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
     offGreeting()
     offSocial()
     clearTimeout(waitingTimer)
+    offGifts()
+    clearTimeout(giftsTimer)
     for (const off of offHome) off()
     clearTimeout(homeTimer)
     clearInterval(homeTick)

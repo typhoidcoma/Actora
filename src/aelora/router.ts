@@ -58,6 +58,8 @@ import { resetColors, setColors, useScheme } from '../stores/scheme'
 import type { FrameBus } from './socket'
 import { actionArgs, AVAILABLE_ACTIONS, strayAction } from './actions'
 import { eventVerdict } from './owner'
+import { gifts, useGifts } from '../stores/gifts'
+import { toGift } from '../gifts/gift'
 import { peekThenChat, talkKey } from '../ui/peek'
 import { play } from '../sound/sound'
 import { phone } from '../stores/phone'
@@ -115,6 +117,11 @@ function openThread(id: string): { id: string; with: string } {
   return { id, with: t ? spoken(threadName(t)) : 'someone' }
 }
 
+function giftCounts() {
+  const g = useGifts.getState()
+  return { count: g.status === 'ready' ? g.order.length : 'not loaded', unopened: g.unseen.length }
+}
+
 /** What the user is looking at, so a persona that reads the ui blob can refer to it. */
 function screen() {
   const u = useUi.getState()
@@ -165,6 +172,8 @@ function screen() {
     checkins: useCheckins.getState().on ? 'on' : 'off',
     ...homeScreen(),
     colors: describeScheme(useScheme.getState().scheme, useScheme.getState().source),
+    // Her gifts on the user's profile: how many, and how many not opened yet. Never her notes.
+    gifts: giftCounts(),
     visible: visible.slice(0, 12),
   }
 }
@@ -306,6 +315,7 @@ const SCREEN_MOVES = new Set([
   'vault.open',
   'vault.search',
   'people.open',
+  'gifts.open',
 ])
 const CLOSES_EVERYTHING = new Set(['home.show', 'tile.close'])
 
@@ -616,6 +626,15 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
     }
     case 'people.close':
       return ui.closePeople()
+    // Her gifts, on the user's profile; with an imageId, that one shown large.
+    case 'gifts.open': {
+      ui.openPeople(null, 'profile')
+      if (useGifts.getState().status === 'idle') void import('../gifts/gifts').then((m) => m.loadGifts())
+      if (args.imageId === undefined) return
+      const id = typeof args.imageId === 'string' ? args.imageId.trim() : ''
+      if (id && useGifts.getState().items[id]) return gifts.show(id)
+      return refused(action, 'no gift with that imageId (the shelf is open)', args)
+    }
     case 'vault.search': {
       const query = typeof args.query === 'string' ? args.query.trim().slice(0, 60) : ''
       const category = CATEGORIES.some((c) => c.id === args.category) ? (args.category as string) : null
@@ -644,6 +663,30 @@ export function runUiAction(action: string, args: Record<string, unknown>): void
     default:
       refused(action, 'not an action Actora has', args)
   }
+}
+
+/**
+ * She gave the user a gift: it goes on their profile, new until opened, and
+ * under her reply. With the chat closed, a note says so (with a way to open it).
+ */
+function giftArrived(image: unknown): void {
+  const g = toGift(image)
+  if (!g || useGifts.getState().items[g.imageId]) return
+  gifts.add(g)
+  agent.attachGift(g.imageId)
+  play('reminder')
+  // Mid-turn the chat often opens for her answer: decide once she's done.
+  const busy = (a: { turnId: string | null; awaitingTurn: boolean }) => !!a.turnId || a.awaitingTurn
+  const tell = () => {
+    if (useUi.getState().chatOpen || !useGifts.getState().items[g.imageId]) return
+    toast.show(`${agentName()} left you a gift`, { ms: 9000, action: { label: 'Open', run: () => gifts.show(g.imageId) } })
+  }
+  if (!busy(useAgent.getState())) return tell()
+  const stop = useAgent.subscribe((a) => {
+    if (busy(a)) return
+    stop()
+    tell()
+  })
 }
 
 /** A delivered reminder arrived while the app is open: The agent says it in her line. */
@@ -686,6 +729,7 @@ export function dropUserState(): void {
   pending.clear()
   sessions.clear()
   social.reset()
+  gifts.reset()
   optionsStore.resetHistory()
   priorityStore.setAgent(null)
   priorityStore.clearPushed()
@@ -714,6 +758,8 @@ function refetchOwn(bus: FrameBus, event: string): void {
       else if (event === 'calendar') void refreshCalendar(bus)
       else if (event === 'vault' && useVault.getState().status === 'ready')
         void import('./client').then((m) => m.loadVault())
+      else if (event === 'gift' && useGifts.getState().status !== 'idle')
+        void import('../gifts/gifts').then((m) => m.loadGifts())
     }, 400),
   )
 }
@@ -760,6 +806,9 @@ function routeEvent(bus: FrameBus, event: string, data: Record<string, unknown> 
       return
     case 'agent_command':
       runCommand(data.command as AgentCommand | undefined)
+      return
+    case 'gift':
+      if (sub === 'gift:created') giftArrived(data.image)
       return
     case 'conversation': {
       const s = useAgent.getState()

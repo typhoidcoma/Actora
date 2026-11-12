@@ -24,6 +24,7 @@ priority list, pills or logs breaks this rule. Don't.
 | Panel, thread, profile, receptionist settings         | `src/ui/people/*`                                   |
 | New group, group info (members, roles, her, leave)    | `NewGroup.tsx`, `GroupInfo.tsx` in `src/ui/people/` |
 | Mock (Sam, Priya, Jo, a group, a handle to claim)     | `src/aelora/mockSocial.ts`                          |
+| Her gifts on the profile (shelf, viewer, chat card)   | `src/ui/gifts/*`, `src/gifts/*`, `src/stores/gifts.ts` |
 
 ## Rules
 
@@ -40,6 +41,11 @@ priority list, pills or logs breaks this rule. Don't.
   line up. Block is only offered in one-to-one threads: a group's `members[0]` is not "the other person".
 - Group controls follow `thread.role` (owner/admin manage, only the owner sets roles). Someone who left still needs a
   name: `personIn(t, id, names)`.
+
+- **Gifts are hers to the user, not People data.** `give_gift` arrives as `event: gift` and goes on the profile's
+  shelf (fetched with `image.list {gifts: true}` when Profile first opens). Picture addresses are signed for a week:
+  keep the `imageId`, never the URL; a picture that fails to load fetches the list again (`refreshGifts`).
+  `client_state` carries only counts (`screen.gifts`), never her notes.
 
 ## Check
 

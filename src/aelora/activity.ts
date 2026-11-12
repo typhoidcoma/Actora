@@ -48,6 +48,7 @@ export function describeTool(name: string): ToolWords {
     return { doing: 'Searching the web', done: 'Searched the web', icon: 'search' }
   if (/fetch|browse|read_?url|open_?url|scrape|page|web_?read|crawl/.test(n))
     return { doing: 'Reading a page', done: 'Read a page', icon: 'read' }
+  if (n === 'give_gift') return { doing: 'Making you something', done: 'Made you something', icon: 'image' }
   if (/image|photo|picture/.test(n)) return { doing: 'Finding pictures', done: 'Found pictures', icon: 'image' }
   if (/conversation|history|transcript/.test(n))
     return { doing: 'Looking back through our chats', done: 'Looked back through our chats', icon: 'memory' }

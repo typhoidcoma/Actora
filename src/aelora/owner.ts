@@ -11,7 +11,7 @@ type Verdict = 'apply' | 'drop' | 'refetch'
 /** Events that drive the screen or the agent's state: never act on one we can't prove is ours. */
 const SCREEN = new Set(['agent_command', 'ui', 'mood', 'emotion', 'mindmap', 'persona.reloaded'])
 /** Data events whose payload may not name its owner: our own copy can be refetched. */
-const DATA = new Set(['task', 'goal', 'notification', 'vault', 'calendar'])
+const DATA = new Set(['task', 'goal', 'notification', 'vault', 'calendar', 'gift'])
 /**
  * The user's own approvals: Aelora no longer fans these out to admins' app
  * sockets (#254), and hiding an admin's own pending email would be worse.

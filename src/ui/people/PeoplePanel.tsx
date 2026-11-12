@@ -14,6 +14,7 @@ import { agentName, useAgent } from '../../stores/agent'
 import type { FriendRow, Thread } from '../../social/types'
 import { hiddenFrom, incomingRequests, nameOf, personIn, threadList, threadName, useSocial } from '../../stores/social'
 import { ui, useUi } from '../../stores/ui'
+import { useGifts } from '../../stores/gifts'
 import { ROLE } from '../brand'
 import { Panel } from '../cards/Panel'
 import { ago } from '../format'
@@ -34,6 +35,7 @@ export function PeoplePanel() {
   const { profile, guest, threads } = useSocial()
   const dmThread = useUi((s) => s.dmThread)
   const view = useUi((s) => s.peopleView)
+  const newGifts = useGifts((s) => s.unseen.length)
   const setView = ui.peopleView
   const thread = dmThread ? threads[dmThread] : undefined
   // A group's info (members, name, leave) in place of its messages; a new conversation starts on its messages.
@@ -53,10 +55,14 @@ export function PeoplePanel() {
   let kicker: React.ReactNode = profile ? (
     <button
       onClick={() => setView('profile')}
-      aria-label={`Your profile, @${profile.handle}`}
-      className="underline decoration-current/30 underline-offset-4"
+      aria-label={`Your profile, @${profile.handle}${newGifts ? ', a new gift' : ''}`}
+      className="relative underline decoration-current/30 underline-offset-4"
     >
       @{profile.handle}
+      {/* A gift from her waits on the profile. */}
+      {newGifts > 0 && view !== 'profile' && (
+        <span aria-hidden className="absolute -right-3 top-0 h-2 w-2 rounded-full bg-accent" />
+      )}
     </button>
   ) : (
     'Friends and messages'

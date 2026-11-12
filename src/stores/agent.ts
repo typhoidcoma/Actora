@@ -20,6 +20,8 @@ export interface ChatBubble {
   greeting?: true
   /** An emoji the agent put on the user's message (message.react): her "got it" at a glance. */
   react?: string
+  /** A gift she gave in this reply (its imageId): shown under her words. Not in the server's history. */
+  gift?: string
 }
 
 export interface Reaction {
@@ -106,6 +108,8 @@ export interface AgentState {
   notice: Notice | null
   /** Free text for line mode 'message' (e.g. push test results, install steps). */
   message: string | null
+  /** A gift she gave mid-turn, before her reply landed: it goes on that reply. */
+  pendingGift: string | null
 }
 
 const NAME_KEY = 'actora.agentName.v1'
@@ -153,6 +157,7 @@ export const useAgent = create<AgentState>(() => ({
   line: 'greeting',
   notice: null,
   message: null,
+  pendingGift: null,
 }))
 
 export const agent = {
@@ -178,7 +183,23 @@ export const agent = {
       emotion: {},
       reaction: null,
       toolName: null,
+      pendingGift: null,
     }),
+  /**
+   * A gift she just gave: under the reply she's writing now (once it lands),
+   * or, with no turn under way, under her last words.
+   */
+  attachGift(id: string) {
+    const s = useAgent.getState()
+    if (s.turnId || s.awaitingTurn) return useAgent.setState({ pendingGift: id })
+    const i = s.messages.findLastIndex((m) => m.role === 'assistant')
+    // Only words she's just said: a gift from nowhere doesn't go on yesterday's reply.
+    const at = Date.parse(s.messages[i]?.at ?? '')
+    if (i < 0 || s.messages[i].gift || !(Date.now() - at < 120_000)) return
+    const messages = [...s.messages]
+    messages[i] = { ...messages[i], gift: id }
+    useAgent.setState({ messages })
+  },
   showReply: () => useAgent.setState({ line: 'reply' }),
   showNotice: (notice: Notice) => useAgent.setState({ line: 'notice', notice }),
   showMessage: (message: string) => useAgent.setState({ line: 'message', message }),

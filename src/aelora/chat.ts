@@ -341,6 +341,7 @@ export function handleChatFrame(f: ServerFrame): boolean {
         role: 'assistant',
         text: scrubToolLeaks(rest),
         at: new Date().toISOString(),
+        ...(s.pendingGift ? { gift: s.pendingGift } : {}),
       }
       offerSayLinks(raw)
       runWrittenActions(raw)
@@ -350,6 +351,7 @@ export function handleChatFrame(f: ServerFrame): boolean {
         messages: [...get().messages, bubble],
         streaming: null,
         turnId: null,
+        pendingGift: null,
         phase: 'idle',
         toolName: null,
         ...(f.mood && typeof f.mood === 'object' ? { mood: f.mood as MoodState } : {}),
@@ -511,6 +513,8 @@ function failTurn(why = "couldn't answer that"): void {
     streaming: null,
     turnId: null,
     awaitingTurn: false,
+    // A gift she gave before the turn failed is still on the profile, with its dot.
+    pendingGift: null,
     phase: s.connection === 'open' ? 'idle' : 'offline',
     toolName: null,
   })

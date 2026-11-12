@@ -9,6 +9,7 @@ import { sideBySide, ui, useUi } from '../stores/ui'
 import { clockTime, dayLabel, toolLabel } from './format'
 import { Activity } from './Activity'
 import { LazyMarkdown as Markdown } from './LazyMarkdown'
+import { GiftChip } from './gifts/GiftChip'
 import { copyableText, stableMarkdown } from './markdownText'
 import { glide, morph, press } from './motion'
 import { OptionRail } from './OptionRail'
@@ -337,8 +338,14 @@ function Transcript() {
 }
 
 function Bubble({ bubble }: { bubble: ChatBubble }) {
-  // A reply that was nothing but her "got it" emoji (now on the user's message) leaves no bubble.
-  if (bubble.role === 'assistant' && !bubble.text.trim()) return null
+  // A reply that was nothing but her "got it" emoji (now on the user's message) leaves no bubble,
+  // unless she gave a gift with it.
+  if (bubble.role === 'assistant' && !bubble.text.trim())
+    return bubble.gift ? (
+      <div className="w-full self-start">
+        <GiftChip id={bubble.gift} />
+      </div>
+    ) : null
   if (bubble.role === 'user') {
     return (
       <motion.div
@@ -386,6 +393,8 @@ function Bubble({ bubble }: { bubble: ChatBubble }) {
       <div className="selectable">
         <Markdown text={bubble.text} />
       </div>
+      {/* Her gift, under her words: they never wait for it. */}
+      {bubble.gift && <GiftChip id={bubble.gift} />}
       <div className="flex items-center gap-2">
         {/* Quiet until hovered on desktop; always there (faint) on touch. */}
         <CopyButton

@@ -16,6 +16,7 @@ import { useMetrics } from '../stores/metrics'
 import { resetColors, useScheme } from '../stores/scheme'
 import { toast } from '../stores/toast'
 import { usePeopleWaiting } from '../stores/social'
+import { useGifts } from '../stores/gifts'
 import { setCheckins, useCheckins } from '../checkins/checkins'
 import { sound, useSound } from '../sound/sound'
 import { connectGoogle, disconnectGoogle, googleHint, googleNeedsAction, syncGoogle, useGoogle } from '../google/google'
@@ -58,6 +59,7 @@ export function MenuButton({ onSignOut, large }: { onSignOut?: () => void; large
   const status = useStatus()
   const compact = useMetrics((m) => m.compact)
   const waiting = usePeopleWaiting()
+  const newGifts = useGifts((s) => s.unseen.length)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -82,7 +84,7 @@ export function MenuButton({ onSignOut, large }: { onSignOut?: () => void; large
       <motion.button
         whileTap={jelly}
         onClick={() => setOpen((v) => !v)}
-        aria-label={`Menu · ${status.text}${waiting ? ` · ${waiting} new in People` : ''}`}
+        aria-label={`Menu · ${status.text}${waiting ? ` · ${waiting} new in People` : ''}${newGifts ? ' · a new gift' : ''}`}
         aria-expanded={open}
         className={`glass-pill relative grid place-items-center rounded-[8px] text-muted ${compact || large ? 'h-[44px] w-11' : 'h-10 w-10'}`}
       >
@@ -94,8 +96,8 @@ export function MenuButton({ onSignOut, large }: { onSignOut?: () => void; large
         >
           <MenuIcon />
         </motion.span>
-        {/* Messages or friend requests waiting in People. */}
-        {waiting > 0 && (
+        {/* Messages or friend requests waiting in People, or a gift not opened yet. */}
+        {(waiting > 0 || newGifts > 0) && (
           <span aria-hidden className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-accent" />
         )}
       </motion.button>
@@ -127,6 +129,7 @@ function Sheet({
   const email = useAgent((s) => s.email)
   const theme = useUi((s) => s.theme)
   const waiting = usePeopleWaiting()
+  const newGifts = useGifts((s) => s.unseen.length)
   const push = usePush((s) => s.status)
   const counts = useEntities(
     useShallow((s) => ({
@@ -207,7 +210,9 @@ function Sheet({
         People
       </Item>
       {/* Your name, handle, who can find you and your assistant (People → Your profile). */}
-      <Item onClick={go(() => ui.openPeople(null, 'profile'))}>Profile</Item>
+      <Item onClick={go(() => ui.openPeople(null, 'profile'))} hint={newGifts ? `${newGifts} new gift${newGifts > 1 ? 's' : ''}` : undefined}>
+        Profile
+      </Item>
       <Item onClick={go(() => ui.openVault())}>Vault</Item>
       <Item onClick={go(() => ui.pastChats(true))}>Past chats</Item>
       {/* The agent's now-and-then "how's it going?" while the app is open. */}

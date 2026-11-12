@@ -23,6 +23,7 @@ import { useCaption } from '../look/caption'
 import { Loader } from './Loader'
 import { Activity } from '@actora/ui/Activity'
 import { useAgent } from '@actora/stores/agent'
+import { useGifts } from '@actora/stores/gifts'
 
 // Panels shown only once something is opened: their own chunks, fetched on idle
 // after the scene is revealed (prefetchPanels), so opening one is still instant.
@@ -38,6 +39,7 @@ const panels = {
   date: () => import('@actora/ui/DateSheet'),
   keyboard: () => import('@actora/ui/KeyboardSheet'),
   past: () => import('@actora/ui/PastChats'),
+  gift: () => import('@actora/ui/gifts/GiftViewer'),
 }
 const ItemPanel = lazy(() => panels.item().then((m) => ({ default: m.ItemPanel })))
 const FindsPanel = lazy(() => panels.finds().then((m) => ({ default: m.FindsPanel })))
@@ -46,6 +48,7 @@ const PeoplePanel = lazy(() => panels.people().then((m) => ({ default: m.PeopleP
 const DateSheet = lazy(() => panels.date().then((m) => ({ default: m.DateSheet })))
 const KeyboardSheet = lazy(() => panels.keyboard().then((m) => ({ default: m.KeyboardSheet })))
 const PastChats = lazy(() => panels.past().then((m) => ({ default: m.PastChats })))
+const GiftViewer = lazy(() => panels.gift().then((m) => ({ default: m.GiftViewer })))
 function prefetchPanels(): void {
   const go = () => Object.values(panels).forEach((load) => void load().catch(() => {}))
   if ('requestIdleCallback' in window) window.requestIdleCallback(go, { timeout: 4000 })
@@ -168,6 +171,7 @@ export function Overlay() {
         {sheets.keyboard && <KeyboardSheet />}
         {sheets.past && <PastChats />}
         {sheets.date && <DateSheet />}
+        {sheets.gift && <GiftViewer />}
       </Suspense>
       <Toaster />
       <Loader />
@@ -326,10 +330,17 @@ function FocusCaption() {
 }
 
 /** Which of the screen-level sheets have been wanted yet: each mounts on first use and stays. */
-function useSheetsWanted(): { keyboard: boolean; past: boolean; date: boolean } {
+function useSheetsWanted(): { keyboard: boolean; past: boolean; date: boolean; gift: boolean } {
   const now = useUi(useShallow((s) => ({ keyboard: s.keyboardOpen, past: s.pastChats, date: s.picking !== null })))
-  const [seen, setSeen] = useState(now)
-  if ((now.keyboard && !seen.keyboard) || (now.past && !seen.past) || (now.date && !seen.date))
-    setSeen({ keyboard: seen.keyboard || now.keyboard, past: seen.past || now.past, date: seen.date || now.date })
+  // Her gift, shown large (from the chat, the profile or "Open" on its note).
+  const gift = useGifts((s) => s.open !== null)
+  const [seen, setSeen] = useState({ ...now, gift })
+  if ((now.keyboard && !seen.keyboard) || (now.past && !seen.past) || (now.date && !seen.date) || (gift && !seen.gift))
+    setSeen({
+      keyboard: seen.keyboard || now.keyboard,
+      past: seen.past || now.past,
+      date: seen.date || now.date,
+      gift: seen.gift || gift,
+    })
   return seen
 }
