@@ -73,9 +73,9 @@ function AuthedApp() {
         // A failed OAuth return (denied consent, bad redirect, expired code) says why in the URL.
         const why = oauthError() ?? (data.session ? null : error?.message)
         if (why && !data.session) setAuth({ status: 'signed-out', error: why })
-        // No reconnect on TOKEN_REFRESHED: Aelora checks the token only when the socket
-        // connects, and a reconnect would end any reply she's in the middle of. The next
-        // connect (and every HTTP call) reads the fresh token itself.
+        // No reconnect on TOKEN_REFRESHED: a reconnect would end any reply she's in the
+        // middle of. The socket swaps to a fresh token itself before its own runs out,
+        // between replies (socket.ts renew). Every HTTP call reads the fresh token itself.
         const sub = sb.auth.onAuthStateChange((...[, session]) => apply(sb, session))
         off = () => sub.data.subscription.unsubscribe()
       })

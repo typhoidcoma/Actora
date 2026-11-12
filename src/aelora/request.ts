@@ -115,6 +115,9 @@ export function resetLateReplies(): void {
  * without expecting their replies later, or each one's timeout would mark a reply
  * as late and swallow the next good reply of its kind on the new connection.
  */
+/** A request is waiting for its answer (a reconnect now would fail it). */
+export const hasInflight = (): boolean => inflight.length > 0
+
 export function failInflight(): void {
   for (const entry of [...inflight]) entry.drop()
   late.clear()

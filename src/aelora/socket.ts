@@ -26,12 +26,30 @@ interface Options {
   open: (token: string) => WebSocketLike
   /** Called once after a 1008 close so the session can be refreshed before retrying. */
   onReauth?: () => Promise<void>
+  /** True while a reconnect would cost something (her reply under way, a save awaiting its answer). */
+  busy?: () => boolean
 }
 
 const OPEN = 1
 const CONNECT_TIMEOUT_MS = 25_000 // Cloud Run cold starts are slow
 const PING_EVERY_MS = 25_000
 const STALE_AFTER_MS = 60_000
+/** Swap to a fresh token this long before the socket's one runs out. */
+const RENEW_BEFORE_MS = 2 * 60_000
+/** While she's busy, how often to look again for a quiet moment to swap. */
+const BUSY_RETRY_MS = 10_000
+
+/** When a sign-in token runs out (ms), or null if it isn't a token we can read (the mock's). */
+export function tokenExpiry(token: string): number | null {
+  try {
+    const part = token.split('.')[1]
+    if (!part) return null
+    const json = JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/')))
+    return typeof json.exp === 'number' ? json.exp * 1000 : null
+  } catch {
+    return null
+  }
+}
 
 /**
  * One Aelora connection with the reconnect policy from FRONTEND.md:
@@ -52,6 +70,10 @@ export class AeloraSocket implements FrameBus {
   private retryTimer: ReturnType<typeof setTimeout> | undefined
   private connectTimer: ReturnType<typeof setTimeout> | undefined
   private pingTimer: ReturnType<typeof setInterval> | undefined
+  private renewTimer: ReturnType<typeof setTimeout> | undefined
+  /** When this socket's token runs out (0: unknown). */
+  private tokenExp = 0
+  private renewing = false
   private readonly frameListeners = new Set<(f: ServerFrame) => void>()
   private readonly statusListeners = new Set<(s: SocketStatus) => void>()
   private readonly opts: Options
@@ -113,7 +135,47 @@ export class AeloraSocket implements FrameBus {
       void this.open()
     } else if (this.status === 'open' && Date.now() - this.lastFrameAt > STALE_AFTER_MS) {
       this.reconnect()
+    } else if (this.status === 'open' && this.tokenExp && Date.now() > this.tokenExp - RENEW_BEFORE_MS) {
+      // A sleeping tab's timers lag, so the swap may be overdue.
+      void this.renew()
     }
+  }
+
+  /**
+   * Aelora checks the token once, when the socket connects, and saves your
+   * changes with it for as long as the socket lives. Once it runs out (an hour)
+   * every save fails ("Got it" on a reminder springs back). So before then, get
+   * a fresh token and reconnect, but never in the middle of her reply.
+   */
+  private renewAt(): void {
+    clearTimeout(this.renewTimer)
+    this.renewing = false
+    if (!this.tokenExp) return
+    this.renewTimer = setTimeout(() => void this.renew(), Math.max(0, this.tokenExp - RENEW_BEFORE_MS - Date.now()))
+  }
+
+  private async renew(): Promise<void> {
+    if (this.renewing || !this.wanted || this.status !== 'open') return
+    this.renewing = true
+    clearTimeout(this.renewTimer)
+    try {
+      await this.opts.onReauth?.()
+    } catch {
+      // The reconnect reads whatever token there is; a refused one takes the 1008 path.
+    }
+    this.swapWhenQuiet()
+  }
+
+  private swapWhenQuiet(): void {
+    if (!this.wanted || this.status !== 'open') {
+      this.renewing = false
+      return
+    }
+    if (this.opts.busy?.()) {
+      this.renewTimer = setTimeout(() => this.swapWhenQuiet(), BUSY_RETRY_MS)
+      return
+    }
+    this.reconnect()
   }
 
   private async open(): Promise<void> {
@@ -133,6 +195,7 @@ export class AeloraSocket implements FrameBus {
       return
     }
 
+    this.tokenExp = tokenExpiry(token) ?? 0
     const ws = this.opts.open(token)
     this.ws = ws
     // The token goes in the first frame, not the address, so it stays out of request logs.
@@ -164,6 +227,7 @@ export class AeloraSocket implements FrameBus {
         this.reauthTried = false
         this.startPing()
         this.setStatus('open')
+        this.renewAt()
       }
       for (const fn of this.frameListeners) fn(frame)
     }
@@ -220,6 +284,8 @@ export class AeloraSocket implements FrameBus {
     clearTimeout(this.retryTimer)
     clearTimeout(this.connectTimer)
     clearInterval(this.pingTimer)
+    clearTimeout(this.renewTimer)
+    this.renewing = false
     const ws = this.ws
     this.ws = null
     if (ws) {

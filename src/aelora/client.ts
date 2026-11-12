@@ -10,7 +10,7 @@ import { isFindsThread, startFinds, useFinds } from '../finds/finds'
 import { rememberMain } from './mainThread'
 import { setTokenSource } from './http'
 import type { ClientMessage, Goal, Notification, ServerFrame, Task } from './protocol'
-import { failInflight, request } from './request'
+import { failInflight, hasInflight, request } from './request'
 import { dropUserState, homeScreen, reloadList, routeFrame, sendClientState } from './router'
 import { usePriorityStore } from '../stores/priority'
 import { usePending } from '../stores/pending'
@@ -61,6 +61,11 @@ async function connect(opts: StartOptions, cancelled: () => boolean): Promise<((
   const sock = new AeloraSocket({
     getToken: opts.getToken,
     onReauth: opts.onReauth,
+    // Her reply under way, or a change waiting on its answer: the token swap waits.
+    busy: () => {
+      const a = useAgent.getState()
+      return !!a.turnId || a.awaitingTurn || hasInflight()
+    },
     // The socket sends the token as its first frame once open (socket.ts).
     open: () => (Mock ? new Mock() : (new WebSocket(config.wsUrl) as unknown as WebSocketLike)),
   })
